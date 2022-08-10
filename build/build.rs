@@ -19,7 +19,6 @@ fn main() {
         .file("build/liolib.c")
         .file("build/llex.c")
         .file("build/lmathlib.c")
-        .file("build/lmem.c")
         .file("build/loadlib.c")
         .file("build/lobject.c")
         .file("build/lopcodes.c")

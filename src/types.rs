@@ -9,6 +9,12 @@ pub type lua_Number = c_double;
 /* type for integer functions */
 pub type lua_Integer = c_longlong;
 
+/* thread status */
+pub const LUA_ERRMEM: c_int = 4;
+
+/*
+** basic types
+*/
 pub const LUA_NUMTAGS: usize = 9;
 
 /*

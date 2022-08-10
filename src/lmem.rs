@@ -1,3 +1,15 @@
+use libc::{c_char, c_int, c_void, size_t};
+
+use crate::llimits::l_mem;
+use crate::lstate::lua_State;
+use crate::types::LUA_ERRMEM;
+
+extern "C" {
+    pub fn luaG_runerror(L: *mut lua_State, fmt: *const c_char, args: ...) -> !;
+    pub fn luaC_fullgc(L: *mut lua_State, isemergency: c_int);
+    pub fn luaD_throw(L: *mut lua_State, errcode: c_int) -> !;
+}
+
 /*
 ** About the realloc function:
 ** void * frealloc (void *ud, void *ptr, size_t osize, size_t nsize);
@@ -15,74 +27,76 @@
 ** (any reallocation to an equal or smaller size cannot fail!)
 */
 
-pub const MINSIZEARRAY: libc::c_int = 4 as libc::c_int;
+pub const MINSIZEARRAY: c_int = 4;
 
-pub unsafe fn luaM_growaux_(
-    mut L: *mut lua_State,
-    mut block: *mut libc::c_void,
-    mut size: *mut libc::c_int,
-    mut size_elems: size_t,
-    mut limit: libc::c_int,
-    mut what: *const libc::c_char,
-) -> *mut libc::c_void {
-    let mut newblock = 0 as *mut libc::c_void;
-    let mut newsize: libc::c_int = 0;
-    if *size >= limit / 2 as libc::c_int {
+#[no_mangle]
+pub unsafe extern "C" fn luaM_growaux_(
+    L: *mut lua_State,
+    block: *mut c_void,
+    size: *mut c_int,
+    size_elems: size_t,
+    limit: c_int,
+    what: *const c_char,
+) -> *mut c_void {
+    let mut newsize;
+    if *size >= limit / 2 {
         /* cannot double it? */
         if *size >= limit {
             /* cannot grow even a little? */
             luaG_runerror(
                 L,
-                b"too many %s (limit is %d)\0" as *const u8 as *const libc::c_char,
+                b"too many %s (limit is %d)\0" as *const u8 as *const c_char,
                 what,
                 limit,
             );
         }
-        newsize = limit;
+        newsize = limit; /* still have at least one free place */
     } else {
-        newsize = *size * 2 as libc::c_int;
+        newsize = *size * 2;
         if newsize < MINSIZEARRAY {
-            /* minimum size */
-            newsize = MINSIZEARRAY;
+            newsize = MINSIZEARRAY; /* minimum size */
         }
     }
-    newblock = luaM_realloc_(
+    let newblock = luaM_realloc_(
         L,
         block,
-        (*size as libc::c_ulong).checked_mul(size_elems),
-        (newsize as libc::c_ulong).checked_mul(size_elems),
+        (*size as size_t) * size_elems,
+        (newsize as size_t) * size_elems,
     );
-    /* update only when everything else is OK */
-    *size = newsize;
+    *size = newsize; /* update only when everything else is OK */
     return newblock;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn luaM_toobig(L: *mut lua_State) -> ! {
+    luaG_runerror(
+        L,
+        b"memory allocation error: block too big\0" as *const u8 as *const c_char,
+    );
 }
 
 /*
 ** generic allocation routine.
 */
-
-pub unsafe fn luaM_realloc_(
-    mut L: *mut lua_State,
-    mut block: *mut libc::c_void,
-    mut osize: size_t,
-    mut nsize: size_t,
-) -> *mut libc::c_void {
-    let mut newblock = 0 as *mut libc::c_void;
-    let mut g = (*L).l_G;
-    let mut realosize = if !block.is_null() {
-        osize
-    } else {
-        0 as libc::c_int as libc::c_ulong
-    };
+#[no_mangle]
+pub unsafe extern "C" fn luaM_realloc_(
+    L: *mut lua_State,
+    block: *mut c_void,
+    osize: size_t,
+    nsize: size_t,
+) -> *mut c_void {
+    let g = (*L).l_G;
+    let realosize = if !block.is_null() { osize } else { 0 };
+    debug_assert!((realosize == 0) == block.is_null());
     // TODO: HARDMEMTESTS
-    newblock = (((*g).frealloc).expect("non-null function pointer"))((*g).ud, block, osize, nsize);
-    if newblock.is_null() && nsize > 0 as libc::c_int as libc::c_ulong {
-        /* cannot fail when shrinking a block */
-        debug_assert!(nsize > realosize);
+    let mut newblock =
+        (((*g).frealloc).expect("non-null function pointer"))((*g).ud, block, osize, nsize);
+    if newblock.is_null() && nsize > 0 {
+        debug_assert!(nsize > realosize); /* cannot fail when shrinking a block */
         if !((*g).version).is_null() {
             /* is state fully built? */
             /* try to free some memory... */
-            luaC_fullgc(L, 1 as libc::c_int);
+            luaC_fullgc(L, 1);
             /* try again */
             newblock =
                 (((*g).frealloc).expect("non-null function pointer"))((*g).ud, block, osize, nsize);
@@ -92,8 +106,6 @@ pub unsafe fn luaM_realloc_(
         }
     }
     debug_assert!((nsize == 0) == newblock.is_null());
-    (*g).GCdebt = ((*g).GCdebt as libc::c_ulong)
-        .wrapping_add(nsize)
-        .wrapping_sub(realosize) as l_mem;
+    (*g).GCdebt = ((*g).GCdebt + nsize as l_mem) - realosize as l_mem;
     return newblock;
 }
