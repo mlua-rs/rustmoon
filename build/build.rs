@@ -35,6 +35,5 @@ fn main() {
         .file("build/lundump.c")
         .file("build/lutf8lib.c")
         .file("build/lvm.c")
-        .file("build/lzio.c")
         .compile("lua");
 }

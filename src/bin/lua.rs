@@ -19,3 +19,5 @@ fn main() {
         ) as i32)
     }
 }
+
+extern crate lua53_rs;
