@@ -21,7 +21,6 @@ fn main() {
         .file("build/lmathlib.c")
         .file("build/loadlib.c")
         .file("build/lobject.c")
-        .file("build/lopcodes.c")
         .file("build/loslib.c")
         .file("build/lparser.c")
         .file("build/lstate.c")
