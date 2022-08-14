@@ -7,6 +7,7 @@
 
 pub(crate) mod ldo;
 pub(crate) mod lfunc;
+pub(crate) mod lgc;
 pub(crate) mod llimits;
 pub(crate) mod lmem;
 pub(crate) mod lobject;

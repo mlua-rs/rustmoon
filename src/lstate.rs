@@ -3,7 +3,10 @@ use libc::{c_int, c_short, c_uint, c_ushort, c_void, ptrdiff_t};
 use crate::ldo::lua_longjmp;
 use crate::lfunc::UpVal;
 use crate::llimits::{l_mem, lu_byte, lu_mem, sig_atomic_t, Instruction, STRCACHE_M, STRCACHE_N};
-use crate::lobject::{GCObject, StkId, TString, TValue, Table};
+use crate::lobject::{
+    CClosure, Closure, GCObject, LClosure, Proto, StkId, TString, TValue, Table, Udata, LUA_TCCL,
+    LUA_TLCL, LUA_TPROTO,
+};
 use crate::ltm::TM_N;
 use crate::types::{
     lua_Alloc, lua_CFunction, lua_Hook, lua_KContext, lua_KFunction, lua_Number, LUA_NUMTAGS,
@@ -134,4 +137,40 @@ pub struct lua_State {
     pub nCcalls: c_ushort, /* number of nested C calls */
     pub hookmask: sig_atomic_t,
     pub allowhook: lu_byte,
+}
+
+/*
+** Union of all collectable objects (only for conversions)
+*/
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union GCUnion {
+    pub gc: GCObject,
+    pub ts: TString,
+    pub u: Udata,
+    pub cl: Closure,
+    pub h: Table,
+    pub p: Proto,
+    pub th: lua_State,
+}
+
+/* macros to convert a GCObject into a specific value */
+
+#[inline(always)]
+pub unsafe fn gco2lcl(o: *mut GCObject) -> *mut LClosure {
+    debug_assert!((*o).tt == LUA_TLCL as lu_byte);
+    &mut (*(o as *mut GCUnion)).cl.l
+}
+
+#[inline(always)]
+pub unsafe fn gco2ccl(o: *mut GCObject) -> *mut CClosure {
+    debug_assert!((*o).tt == LUA_TCCL as lu_byte);
+    &mut (*(o as *mut GCUnion)).cl.c
+}
+
+#[inline(always)]
+pub unsafe fn gco2p(o: *mut GCObject) -> *mut Proto {
+    debug_assert!((*o).tt == LUA_TPROTO as lu_byte);
+    &mut (*(o as *mut GCUnion)).p
 }

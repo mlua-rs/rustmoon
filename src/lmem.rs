@@ -1,3 +1,6 @@
+use std::mem::size_of;
+use std::ptr;
+
 use libc::{c_char, c_int, c_void, size_t};
 
 use crate::llimits::l_mem;
@@ -8,6 +11,26 @@ extern "C" {
     pub fn luaG_runerror(L: *mut lua_State, fmt: *const c_char, args: ...) -> !;
     pub fn luaC_fullgc(L: *mut lua_State, isemergency: c_int);
     pub fn luaD_throw(L: *mut lua_State, errcode: c_int) -> !;
+}
+
+/*
+** Arrays of chars do not need any test
+*/
+
+// #define luaM_freemem(L, b, s)	luaM_realloc_(L, (b), (s), 0)
+
+#[inline(always)]
+pub unsafe fn luaM_free<T>(L: *mut lua_State, b: *mut T) {
+    luaM_realloc_(L, b as *mut c_void, size_of::<T>(), 0);
+}
+
+pub unsafe fn luaM_freearray<T>(L: *mut lua_State, b: *mut T, n: usize) {
+    luaM_realloc_(L, b as *mut c_void, n * size_of::<T>(), 0);
+}
+
+#[inline(always)]
+pub unsafe fn luaM_new<T>(L: *mut lua_State) -> *mut T {
+    luaM_realloc_(L, ptr::null_mut(), 0, size_of::<T>()) as *mut T
 }
 
 /*

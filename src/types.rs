@@ -3,19 +3,37 @@ use libc::{c_char, c_double, c_int, c_longlong, c_uchar, c_void, intptr_t, size_
 use crate::llimits::LUA_IDSIZE;
 use crate::lstate::{lua_State, CallInfo};
 
+/* thread status */
+pub const LUA_OK: c_int = 0;
+pub const LUA_YIELD: c_int = 1;
+pub const LUA_ERRRUN: c_int = 2;
+pub const LUA_ERRSYNTAX: c_int = 3;
+pub const LUA_ERRMEM: c_int = 4;
+pub const LUA_ERRGCMM: c_int = 5;
+pub const LUA_ERRERR: c_int = 6;
+
+/*
+** basic types
+*/
+pub const LUA_TNONE: c_int = -1;
+
+pub const LUA_TNIL: c_int = 0;
+pub const LUA_TBOOLEAN: c_int = 1;
+pub const LUA_TLIGHTUSERDATA: c_int = 2;
+pub const LUA_TNUMBER: c_int = 3;
+pub const LUA_TSTRING: c_int = 4;
+pub const LUA_TTABLE: c_int = 5;
+pub const LUA_TFUNCTION: c_int = 6;
+pub const LUA_TUSERDATA: c_int = 7;
+pub const LUA_TTHREAD: c_int = 8;
+
+pub const LUA_NUMTAGS: usize = 9;
+
 /* type of numbers in Lua */
 pub type lua_Number = c_double;
 
 /* type for integer functions */
 pub type lua_Integer = c_longlong;
-
-/* thread status */
-pub const LUA_ERRMEM: c_int = 4;
-
-/*
-** basic types
-*/
-pub const LUA_NUMTAGS: usize = 9;
 
 /*
 ** Type for C functions registered with Lua

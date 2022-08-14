@@ -13,7 +13,6 @@ fn main() {
         .file("build/ldebug.c")
         .file("build/ldo.c")
         .file("build/ldump.c")
-        .file("build/lfunc.c")
         .file("build/lgc.c")
         .file("build/linit.c")
         .file("build/liolib.c")

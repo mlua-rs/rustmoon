@@ -1,9 +1,22 @@
-use libc::{c_int, c_uchar, c_uint, ptrdiff_t, size_t};
+use libc::{c_double, c_int, c_long, c_uchar, c_uint, c_void, ptrdiff_t, size_t};
+
+use crate::types::{lua_Integer, lua_Number};
 
 pub type lu_byte = c_uchar;
 pub type l_mem = ptrdiff_t;
 pub type lu_mem = size_t;
 pub type sig_atomic_t = c_int;
+
+/* type to ensure maximum alignment */
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union L_Umaxalign {
+    pub n: lua_Number,
+    pub u: c_double,
+    pub s: *mut c_void,
+    pub i: lua_Integer,
+    pub l: c_long,
+}
 
 /*
 ** type for virtual-machine instructions;
