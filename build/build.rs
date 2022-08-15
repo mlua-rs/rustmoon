@@ -27,7 +27,6 @@ fn main() {
         .file("build/lstrlib.c")
         .file("build/ltable.c")
         .file("build/ltablib.c")
-        .file("build/ltm.c")
         .file("build/lua.c")
         .file("build/lundump.c")
         .file("build/lutf8lib.c")

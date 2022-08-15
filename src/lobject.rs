@@ -1,13 +1,15 @@
 use std::mem::size_of;
+use std::ptr;
 
 use libc::{c_char, c_int, c_uint, c_void, size_t};
 
 use crate::lfunc::UpVal;
 use crate::lgc::isdead;
 use crate::llimits::{lu_byte, Instruction, L_Umaxalign};
-use crate::lstate::lua_State;
+use crate::lstate::{gco2ccl, gco2cl, gco2lcl, gco2t, gco2th, gco2ts, gco2u, lua_State};
 use crate::types::{
-    lua_CFunction, lua_Integer, lua_Number, LUA_NUMTAGS, LUA_TFUNCTION, LUA_TNIL, LUA_TSTRING,
+    lua_CFunction, lua_Integer, lua_Number, LUA_NUMTAGS, LUA_TBOOLEAN, LUA_TFUNCTION,
+    LUA_TLIGHTUSERDATA, LUA_TNIL, LUA_TNUMBER, LUA_TSTRING, LUA_TTABLE, LUA_TTHREAD, LUA_TUSERDATA,
 };
 
 /*
@@ -44,8 +46,17 @@ pub const LUA_TCCL: c_int = LUA_TFUNCTION | (2 << 4); /* C closure */
 pub const LUA_TSHRSTR: c_int = LUA_TSTRING | (0 << 4); /* short strings */
 pub const LUA_TLNGSTR: c_int = LUA_TSTRING | (1 << 4); /* long strings */
 
+/* Variant tags for numbers */
+pub const LUA_TNUMFLT: c_int = LUA_TNUMBER | (0 << 4); /* float numbers */
+pub const LUA_TNUMINT: c_int = LUA_TNUMBER | (1 << 4); /* integer numbers */
+
 /* Bit mark for collectable types */
 pub const BIT_ISCOLLECTABLE: c_int = 1 << 6;
+
+/* mark a tag as collectable */
+pub const fn ctb(t: c_int) -> c_int {
+    t | BIT_ISCOLLECTABLE
+}
 
 /*
 ** Common type has only the common header
@@ -86,6 +97,15 @@ pub struct lua_TValue {
     pub tt_: c_int,
 }
 
+/* macro defining a nil value */
+// #define NILCONSTANT	{NULL}, LUA_TNIL
+
+/* raw type tag of a TValue */
+#[inline(always)]
+pub unsafe fn rttype(o: *const TValue) -> c_int {
+    (*o).tt_
+}
+
 /* tag with no variants (bits 0-3) */
 pub const fn novariant(x: c_int) -> c_int {
     x & 0x0F
@@ -93,32 +113,198 @@ pub const fn novariant(x: c_int) -> c_int {
 
 /* type tag of a TValue (bits 0-3 for tags + variant bits 4-5) */
 #[inline(always)]
-pub unsafe fn ttype(o: *mut TValue) -> c_int {
-    (*o).tt_ & 0x3F
+pub unsafe fn ttype(o: *const TValue) -> c_int {
+    rttype(o) & 0x3F
 }
 
 /* type tag of a TValue with no variants (bits 0-3) */
-pub unsafe fn ttnov(o: *mut TValue) -> c_int {
-    novariant((*o).tt_)
+#[inline(always)]
+pub unsafe fn ttnov(o: *const TValue) -> c_int {
+    novariant(rttype(o))
 }
 
-/* Macros to access values */
-pub unsafe fn gcvalue(o: *mut TValue) -> *mut GCObject {
+/*
+ * Macros to test type
+ */
+pub unsafe fn checktag(o: *const TValue, t: c_int) -> bool {
+    rttype(o) == t
+}
+
+pub unsafe fn checktype(o: *const TValue, t: c_int) -> bool {
+    ttnov(o) == t
+}
+
+pub unsafe fn ttisnumber(o: *const TValue) -> bool {
+    checktype(o, LUA_TNUMBER)
+}
+
+pub unsafe fn ttisfloat(o: *const TValue) -> bool {
+    checktag(o, LUA_TNUMFLT)
+}
+
+pub unsafe fn ttisinteger(o: *const TValue) -> bool {
+    checktag(o, LUA_TNUMINT)
+}
+
+pub unsafe fn ttisnil(o: *const TValue) -> bool {
+    checktag(o, LUA_TNIL)
+}
+
+pub unsafe fn ttisboolean(o: *const TValue) -> bool {
+    checktag(o, LUA_TBOOLEAN)
+}
+
+pub unsafe fn ttislightuserdata(o: *const TValue) -> bool {
+    checktag(o, LUA_TLIGHTUSERDATA)
+}
+
+pub unsafe fn ttisstring(o: *const TValue) -> bool {
+    checktype(o, LUA_TSTRING)
+}
+
+pub unsafe fn ttisshrstring(o: *const TValue) -> bool {
+    checktag(o, ctb(LUA_TSHRSTR))
+}
+
+pub unsafe fn ttislngstring(o: *const TValue) -> bool {
+    checktag(o, ctb(LUA_TLNGSTR))
+}
+
+pub unsafe fn ttistable(o: *const TValue) -> bool {
+    checktag(o, ctb(LUA_TTABLE))
+}
+
+pub unsafe fn ttisfunction(o: *const TValue) -> bool {
+    checktype(o, LUA_TFUNCTION)
+}
+
+pub unsafe fn ttisclosure(o: *const TValue) -> bool {
+    (rttype(o) & 0x1F) == LUA_TFUNCTION
+}
+
+pub unsafe fn ttisCclosure(o: *const TValue) -> bool {
+    checktag(o, ctb(LUA_TCCL))
+}
+
+pub unsafe fn ttisLclosure(o: *const TValue) -> bool {
+    checktag(o, ctb(LUA_TLCL))
+}
+
+pub unsafe fn ttislcf(o: *const TValue) -> bool {
+    checktag(o, LUA_TLCF)
+}
+
+pub unsafe fn ttisfulluserdata(o: *const TValue) -> bool {
+    checktag(o, ctb(LUA_TUSERDATA))
+}
+
+pub unsafe fn ttisthread(o: *const TValue) -> bool {
+    checktag(o, ctb(LUA_TTHREAD))
+}
+
+pub unsafe fn ttisdeadkey(o: *const TValue) -> bool {
+    checktag(o, LUA_TDEADKEY)
+}
+
+/*
+ * Macros to access values
+ */
+
+pub unsafe fn ivalue(o: *const TValue) -> lua_Integer {
+    debug_assert!(ttisinteger(o));
+    (*o).value_.i
+}
+
+pub unsafe fn fltvalue(o: *const TValue) -> lua_Number {
+    debug_assert!(ttisfloat(o));
+    (*o).value_.n
+}
+
+pub unsafe fn nvalue(o: *const TValue) -> lua_Number {
+    debug_assert!(ttisnumber(o));
+    if ttisinteger(o) {
+        ivalue(o) as lua_Number
+    } else {
+        fltvalue(o)
+    }
+}
+
+pub unsafe fn gcvalue(o: *const TValue) -> *mut GCObject {
     debug_assert!(iscollectable(o));
     (*o).value_.gc
 }
 
-pub unsafe fn iscollectable(o: *mut TValue) -> bool {
+pub unsafe fn pvalue(o: *const TValue) -> *mut c_void {
+    debug_assert!(ttislightuserdata(o));
+    (*o).value_.p
+}
+
+pub unsafe fn tsvalue(o: *const TValue) -> *mut TString {
+    debug_assert!(ttisstring(o));
+    gco2ts((*o).value_.gc)
+}
+
+pub unsafe fn uvalue(o: *const TValue) -> *mut Udata {
+    debug_assert!(ttisfulluserdata(o));
+    gco2u((*o).value_.gc)
+}
+
+pub unsafe fn clvalue(o: *const TValue) -> *mut Closure {
+    debug_assert!(ttisclosure(o));
+    gco2cl((*o).value_.gc)
+}
+
+pub unsafe fn clLvalue(o: *const TValue) -> *mut LClosure {
+    debug_assert!(ttisLclosure(o));
+    gco2lcl((*o).value_.gc)
+}
+
+pub unsafe fn clCvalue(o: *const TValue) -> *mut CClosure {
+    debug_assert!(ttisCclosure(o));
+    gco2ccl((*o).value_.gc)
+}
+
+pub unsafe fn fvalue(o: *const TValue) -> lua_CFunction {
+    debug_assert!(ttislcf(o));
+    (*o).value_.f
+}
+
+pub unsafe fn hvalue(o: *const TValue) -> *mut Table {
+    debug_assert!(ttistable(o));
+    gco2t((*o).value_.gc)
+}
+
+pub unsafe fn bvalue(o: *const TValue) -> bool {
+    debug_assert!(ttisboolean(o));
+    (*o).value_.b != 0
+}
+
+pub unsafe fn thvalue(o: *const TValue) -> *mut lua_State {
+    debug_assert!(ttisthread(o));
+    gco2th((*o).value_.gc)
+}
+
+/* a dead value may get the 'gc' field, but cannot access its contents */
+pub unsafe fn deadvalue(o: *const TValue) -> *mut c_void {
+    debug_assert!(ttisdeadkey(o));
+    (*o).value_.gc as *mut c_void
+}
+
+pub unsafe fn l_isfalse(o: *const TValue) -> bool {
+    ttisnil(o) || (ttisboolean(o) && !bvalue(o))
+}
+
+pub unsafe fn iscollectable(o: *const TValue) -> bool {
     (*o).tt_ & BIT_ISCOLLECTABLE != 0
 }
 
 /* Macros for internal tests */
 
-pub unsafe fn righttt(obj: *mut TValue) -> bool {
+pub unsafe fn righttt(obj: *const TValue) -> bool {
     ttype(obj) == (*gcvalue(obj)).tt as c_int
 }
 
-pub unsafe fn checkliveness(L: *mut lua_State, obj: *mut TValue) {
+pub unsafe fn checkliveness(L: *mut lua_State, obj: *const TValue) {
     debug_assert!(
         !iscollectable(obj) || (righttt(obj) && (L.is_null() || !isdead((*L).l_G, gcvalue(obj))))
     );
@@ -132,7 +318,7 @@ pub unsafe fn setnilvalue(obj: *mut TValue) {
 }
 
 #[inline(always)]
-pub unsafe fn setobj(L: *mut lua_State, obj1: *mut TValue, obj2: *mut TValue) {
+pub unsafe fn setobj(L: *mut lua_State, obj1: *mut TValue, obj2: *const TValue) {
     *obj1 = *obj2;
     checkliveness(L, obj1);
 }
@@ -336,3 +522,14 @@ pub struct Table {
     pub metatable: *mut Table,
     pub gclist: *mut GCObject,
 }
+
+/*
+** (address of) a fixed nil value
+*/
+#[no_mangle]
+pub static mut luaO_nilobject_: TValue = lua_TValue {
+    value_: Value {
+        gc: ptr::null_mut(),
+    },
+    tt_: LUA_TNIL,
+};
