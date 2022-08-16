@@ -4,7 +4,7 @@
 
 use std::mem;
 
-use libc::c_int;
+use libc::{c_int, size_t};
 
 use crate::lfunc::upisopen;
 use crate::lfunc::UpVal;
@@ -127,7 +127,10 @@ pub unsafe fn isdead(g: *mut global_State, v: *mut GCObject) -> bool {
     isdeadm(otherwhite(g), (*v).marked)
 }
 
-// #define changewhite(x)	((x)->marked ^= WHITEBITS)
+pub unsafe fn changewhite(x: *mut GCObject) {
+    (*x).marked ^= WHITEBITS;
+}
+
 // #define gray2black(x)	l_setbit((x)->marked, BLACKBIT)
 
 // #define luaC_white(g)	cast(lu_byte, (g)->currentwhite & WHITEBITS)
@@ -165,5 +168,7 @@ pub unsafe fn luaC_upvalbarrier(L: *mut lua_State, uv: *mut UpVal) {
 }
 
 extern "C" {
-    fn luaC_upvalbarrier_(L: *mut lua_State, uv: *mut UpVal);
+    pub fn luaC_upvalbarrier_(L: *mut lua_State, uv: *mut UpVal);
+    pub fn luaC_fix(L: *mut lua_State, o: *mut GCObject);
+    pub fn luaC_newobj(L: *mut lua_State, tt: c_int, sz: size_t) -> *mut GCObject;
 }

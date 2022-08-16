@@ -279,6 +279,6 @@ pub unsafe fn gco2th(o: *mut GCObject) -> *mut lua_State {
 macro_rules! obj2gco {
     ($v:expr) => {{
         debug_assert!(crate::lobject::novariant((*$v).tt as c_int) < crate::lobject::LUA_TDEADKEY);
-        &mut (*($v as *mut crate::lstate::GCUnion)).gc as *mut GCObject
+        &mut (*($v as *mut crate::lstate::GCUnion)).gc as *mut crate::lobject::GCObject
     }};
 }

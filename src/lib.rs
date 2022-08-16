@@ -16,6 +16,7 @@ pub(crate) mod llimits;
 pub(crate) mod lmem;
 pub(crate) mod lobject;
 pub(crate) mod lopcodes;
+pub(crate) mod lstring;
 pub(crate) mod ltemp;
 pub(crate) mod ltm;
 pub(crate) mod lvm;

@@ -368,8 +368,8 @@ pub union UTString {
 ** Get the actual string (array of bytes) from a 'TString'.
 ** (Access to 'extra' ensures that value is really a 'TString'.)
 */
-pub unsafe fn getstr(ts: *mut TString) -> *const c_char {
-    (ts as *const c_char).add(size_of::<UTString>())
+pub unsafe fn getstr(ts: *mut TString) -> *mut c_char {
+    (ts as *mut c_char).add(size_of::<UTString>())
 }
 
 /*
@@ -387,6 +387,36 @@ pub struct Udata {
     pub metatable: *mut Table,
     pub len: size_t,  /* number of bytes */
     pub user_: Value, /* user value */
+}
+
+/*
+** Ensures that address after this type is always fully aligned.
+*/
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub union UUdata {
+    pub dummy: L_Umaxalign, /* ensures maximum alignment for 'local' udata */
+    pub uv: Udata,
+}
+
+/*
+**  Get the address of memory block inside 'Udata'.
+** (Access to 'ttuv_' ensures that value is really a 'Udata'.)
+*/
+pub unsafe fn getudatamem(u: *mut Udata) -> *mut c_void {
+    (u as *mut c_char).add(size_of::<UUdata>()) as *mut c_void
+}
+
+pub unsafe fn setuservalue(L: *mut lua_State, u: *mut Udata, o: *const TValue) {
+    (*u).user_ = (*o).value_;
+    (*u).ttuv_ = rttype(o) as lu_byte;
+    checkliveness(L, o);
+}
+
+pub unsafe fn getuservalue(L: *mut lua_State, u: *const Udata, o: *mut TValue) {
+    (*o).value_ = (*u).user_;
+    (*o).tt_ = (*u).ttuv_ as c_int;
+    checkliveness(L, o);
 }
 
 /*
@@ -521,6 +551,14 @@ pub struct Table {
     pub lastfree: *mut Node, /* any free position is before this position */
     pub metatable: *mut Table,
     pub gclist: *mut GCObject,
+}
+
+/*
+** 'module' operation for hashing (size is always a power of 2)
+*/
+pub const fn lmod(s: c_uint, size: c_int) -> c_uint {
+    debug_assert!(size & (size - 1) == 0);
+    s & (size - 1) as c_uint
 }
 
 /*

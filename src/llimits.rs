@@ -25,12 +25,31 @@ pub union L_Umaxalign {
 pub type Instruction = c_uint;
 
 /*
+** Maximum length for short strings, that is, strings that are
+** internalized. (Cannot be smaller than reserved words or tags for
+** metamethods, as these strings must be internalized;
+** #("function") = 8, #("__newindex") = 10.)
+*/
+pub const LUAI_MAXSHORTLEN: usize = 40;
+
+/*
+** Initial size for the string table (must be power of 2).
+** The Lua core alone registers ~50 strings (reserved words +
+** metaevent keys + a few others). Libraries would typically add
+** a few dozens more.
+*/
+pub const MINSTRTABSIZE: usize = 128;
+
+/*
 ** Size of cache for strings in the API. 'N' is the number of
 ** sets (better be a prime) and "M" is the size of each set (M == 1
 ** makes a direct cache.)
 */
 pub const STRCACHE_N: usize = 53;
 pub const STRCACHE_M: usize = 2;
+
+/* minimum size for string buffer */
+pub const LUA_MINBUFFER: usize = 32;
 
 /*
 @@ LUA_IDSIZE gives the maximum size for the description of the source

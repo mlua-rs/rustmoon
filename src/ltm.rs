@@ -9,10 +9,11 @@ use libc::{c_char, c_int, c_uint};
 
 use crate::ldebug::{luaG_concaterror, luaG_opinterror, luaG_tointerror};
 use crate::ldo::{luaD_call, luaD_callnoyield, restorestack, savestack};
+use crate::lgc::luaC_fix;
 use crate::llimits::lu_byte;
 use crate::lobject::{
     getstr, hvalue, l_isfalse, luaO_nilobject_, setobj, tsvalue, ttisfulluserdata, ttisnil,
-    ttisstring, ttistable, ttnov, uvalue, GCObject, StkId, TString, TValue, Table, LUA_TOTALTAGS,
+    ttisstring, ttistable, ttnov, uvalue, StkId, TString, TValue, Table, LUA_TOTALTAGS,
 };
 use crate::lstate::{isLua, lua_State};
 use crate::lvm::tonumber;
@@ -61,7 +62,6 @@ unsafe fn ttypename(i: usize) -> *const c_char {
 
 extern "C" {
     fn luaS_new(L: *mut lua_State, str: *const c_char) -> *mut TString;
-    fn luaC_fix(L: *mut lua_State, o: *mut GCObject);
     fn luaH_getshortstr(t: *mut Table, key: *mut TString) -> *const TValue;
 }
 

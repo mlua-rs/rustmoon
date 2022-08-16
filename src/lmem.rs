@@ -33,6 +33,15 @@ pub unsafe fn luaM_new<T>(L: *mut lua_State) -> *mut T {
     luaM_realloc_(L, ptr::null_mut(), 0, size_of::<T>()) as *mut T
 }
 
+pub unsafe fn luaM_reallocvector<T>(L: *mut lua_State, v: &mut *mut T, oldn: usize, n: usize) {
+    *v = luaM_realloc_(
+        L,
+        *v as *mut c_void,
+        oldn * size_of::<T>(),
+        n * size_of::<T>(),
+    ) as *mut T;
+}
+
 /*
 ** About the realloc function:
 ** void * frealloc (void *ud, void *ptr, size_t osize, size_t nsize);
