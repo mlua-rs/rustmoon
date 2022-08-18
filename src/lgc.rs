@@ -2,6 +2,7 @@
 ** Garbage Collector
 */
 
+use std::env;
 use std::mem;
 
 use libc::{c_int, size_t};
@@ -132,8 +133,10 @@ pub unsafe fn changewhite(x: *mut GCObject) {
 }
 
 // #define gray2black(x)	l_setbit((x)->marked, BLACKBIT)
-
-// #define luaC_white(g)	cast(lu_byte, (g)->currentwhite & WHITEBITS)
+#[inline(always)]
+pub unsafe fn luaC_white(g: *mut global_State) -> lu_byte {
+    (*g).currentwhite & WHITEBITS
+}
 
 /*
 ** Does one step of collection when debt becomes positive. 'pre'/'pos'
@@ -147,7 +150,15 @@ pub unsafe fn changewhite(x: *mut GCObject) {
 // 	  condchangemem(L,pre,pos); }
 
 /* more often than not, 'pre'/'pos' are empty */
-// #define luaC_checkGC(L)		luaC_condGC(L,(void)0,(void)0)
+pub unsafe fn luaC_checkGC(L: *mut lua_State) {
+    if (*(*L).l_G).GCdebt > 0 {
+        luaC_step(L);
+        #[cfg(debug_assertions)]
+        if env::var("LUA_HARDMEMTESTS").as_deref() == Ok("1") {
+            luaC_fullgc(L, 0);
+        }
+    }
+}
 
 // #define luaC_barrier(L,p,v) (  \
 // 	(iscollectable(v) && isblack(p) && iswhite(gcvalue(v))) ?  \
@@ -171,4 +182,7 @@ extern "C" {
     pub fn luaC_upvalbarrier_(L: *mut lua_State, uv: *mut UpVal);
     pub fn luaC_fix(L: *mut lua_State, o: *mut GCObject);
     pub fn luaC_newobj(L: *mut lua_State, tt: c_int, sz: size_t) -> *mut GCObject;
+    pub fn luaC_step(L: *mut lua_State);
+    pub fn luaC_freeallobjects(L: *mut lua_State);
+    pub fn luaC_fullgc(L: *mut lua_State, isemergency: c_int);
 }

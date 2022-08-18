@@ -22,7 +22,6 @@ fn main() {
         .file("build/lobject.c")
         .file("build/loslib.c")
         .file("build/lparser.c")
-        .file("build/lstate.c")
         .file("build/lstrlib.c")
         .file("build/ltable.c")
         .file("build/ltablib.c")

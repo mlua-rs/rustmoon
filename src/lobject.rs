@@ -313,8 +313,92 @@ pub unsafe fn checkliveness(L: *mut lua_State, obj: *const TValue) {
 /* Macros to set values */
 
 #[inline(always)]
+pub unsafe fn setfltvalue(obj: *mut TValue, x: lua_Number) {
+    (*obj).value_.n = x;
+    (*obj).tt_ = LUA_TNUMFLT;
+}
+
+#[inline(always)]
+pub unsafe fn chgfltvalue(obj: *mut TValue, x: lua_Number) {
+    debug_assert!(ttisfloat(obj));
+    (*obj).value_.n = x;
+}
+
+#[inline(always)]
+pub unsafe fn setivalue(obj: *mut TValue, x: lua_Integer) {
+    (*obj).value_.i = x;
+    (*obj).tt_ = LUA_TNUMINT;
+}
+
+#[inline(always)]
+pub unsafe fn chgivalue(obj: *mut TValue, x: lua_Integer) {
+    debug_assert!(ttisinteger(obj));
+    (*obj).value_.i = x;
+}
+
+#[inline(always)]
 pub unsafe fn setnilvalue(obj: *mut TValue) {
     (*obj).tt_ = LUA_TNIL;
+}
+
+pub unsafe fn setfvalue(obj: *mut TValue, x: lua_CFunction) {
+    (*obj).value_.f = x;
+    (*obj).tt_ = LUA_TLCF;
+}
+
+pub unsafe fn setpvalue(obj: *mut TValue, x: *mut c_void) {
+    (*obj).value_.p = x;
+    (*obj).tt_ = LUA_TLIGHTUSERDATA;
+}
+
+pub unsafe fn setbvalue(obj: *mut TValue, x: bool) {
+    (*obj).value_.b = x as c_int;
+    (*obj).tt_ = LUA_TBOOLEAN;
+}
+
+pub unsafe fn setgcovalue(obj: *mut TValue, x: *mut GCObject) {
+    (*obj).value_.gc = x;
+    (*obj).tt_ = ctb((*x).tt as c_int) as c_int;
+}
+
+pub unsafe fn setsvalue(L: *mut lua_State, obj: *mut TValue, x: *mut TString) {
+    (*obj).value_.gc = obj2gco!(x);
+    (*obj).tt_ = ctb((*x).tt as c_int) as c_int;
+    checkliveness(L, obj);
+}
+
+pub unsafe fn setuvalue(L: *mut lua_State, obj: *mut TValue, x: *mut Udata) {
+    (*obj).value_.gc = obj2gco!(x);
+    (*obj).tt_ = ctb(LUA_TUSERDATA) as c_int;
+    checkliveness(L, obj);
+}
+
+pub unsafe fn setthvalue(L: *mut lua_State, obj: *mut TValue, x: *mut lua_State) {
+    (*obj).value_.gc = obj2gco!(x);
+    (*obj).tt_ = ctb(LUA_TTHREAD) as c_int;
+    checkliveness(L, obj);
+}
+
+pub unsafe fn setclLvalue(L: *mut lua_State, obj: *mut TValue, x: *mut LClosure) {
+    (*obj).value_.gc = obj2gco!(x);
+    (*obj).tt_ = ctb(LUA_TLCL) as c_int;
+    checkliveness(L, obj);
+}
+
+pub unsafe fn setclCvalue(L: *mut lua_State, obj: *mut TValue, x: *mut CClosure) {
+    (*obj).value_.gc = obj2gco!(x);
+    (*obj).tt_ = ctb(LUA_TCCL) as c_int;
+    checkliveness(L, obj);
+}
+
+pub unsafe fn sethvalue(L: *mut lua_State, obj: *mut TValue, x: *mut Table) {
+    (*obj).value_.gc = obj2gco!(x);
+    (*obj).tt_ = ctb(LUA_TTABLE) as c_int;
+    checkliveness(L, obj);
+}
+
+pub unsafe fn setdeadvalue(obj: *mut TValue) {
+    (*obj).tt_ = LUA_TDEADKEY;
 }
 
 #[inline(always)]

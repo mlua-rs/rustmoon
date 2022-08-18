@@ -3,15 +3,12 @@ use std::ptr;
 
 use libc::{c_char, c_int, c_void, size_t};
 
+use crate::ldebug::luaG_runerror;
+use crate::ldo::luaD_throw;
+use crate::lgc::luaC_fullgc;
 use crate::llimits::l_mem;
 use crate::lstate::lua_State;
 use crate::types::LUA_ERRMEM;
-
-extern "C" {
-    pub fn luaG_runerror(L: *mut lua_State, fmt: *const c_char, args: ...) -> !;
-    pub fn luaC_fullgc(L: *mut lua_State, isemergency: c_int);
-    pub fn luaD_throw(L: *mut lua_State, errcode: c_int) -> !;
-}
 
 /*
 ** Arrays of chars do not need any test
@@ -24,6 +21,7 @@ pub unsafe fn luaM_free<T>(L: *mut lua_State, b: *mut T) {
     luaM_realloc_(L, b as *mut c_void, size_of::<T>(), 0);
 }
 
+#[inline(always)]
 pub unsafe fn luaM_freearray<T>(L: *mut lua_State, b: *mut T, n: usize) {
     luaM_realloc_(L, b as *mut c_void, n * size_of::<T>(), 0);
 }
@@ -33,6 +31,17 @@ pub unsafe fn luaM_new<T>(L: *mut lua_State) -> *mut T {
     luaM_realloc_(L, ptr::null_mut(), 0, size_of::<T>()) as *mut T
 }
 
+#[inline(always)]
+pub unsafe fn luaM_newvector<T>(L: *mut lua_State, n: usize) -> *mut T {
+    luaM_realloc_(L, ptr::null_mut(), 0, n * size_of::<T>()) as *mut T
+}
+
+#[inline(always)]
+pub unsafe fn luaM_newobject<T>(L: *mut lua_State, tag: u8) -> *mut T {
+    luaM_realloc_(L, ptr::null_mut(), tag as usize, size_of::<T>()) as *mut T
+}
+
+#[inline(always)]
 pub unsafe fn luaM_reallocvector<T>(L: *mut lua_State, v: &mut *mut T, oldn: usize, n: usize) {
     *v = luaM_realloc_(
         L,

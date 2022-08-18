@@ -16,6 +16,8 @@ use crate::lobject::{
     ttisstring, ttistable, ttnov, uvalue, StkId, TString, TValue, Table, LUA_TOTALTAGS,
 };
 use crate::lstate::{isLua, lua_State};
+use crate::lstring::luaS_new;
+use crate::ltable::luaH_getshortstr;
 use crate::lvm::tonumber;
 use crate::types::{LUA_TTABLE, LUA_TUSERDATA};
 
@@ -58,11 +60,6 @@ pub const TM_N: usize = 24; /* number of elements in the enum */
 
 unsafe fn ttypename(i: usize) -> *const c_char {
     luaT_typenames_[i + 1]
-}
-
-extern "C" {
-    fn luaS_new(L: *mut lua_State, str: *const c_char) -> *mut TString;
-    fn luaH_getshortstr(t: *mut Table, key: *mut TString) -> *const TValue;
 }
 
 static mut udatatypename: [c_char; 9] =

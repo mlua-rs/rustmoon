@@ -29,6 +29,14 @@ pub const LUA_TTHREAD: c_int = 8;
 
 pub const LUA_NUMTAGS: usize = 9;
 
+/* minimum Lua stack available to a C function */
+pub const LUA_MINSTACK: usize = 20;
+
+/* predefined values in the registry */
+pub const LUA_RIDX_MAINTHREAD: lua_Integer = 1;
+pub const LUA_RIDX_GLOBALS: lua_Integer = 2;
+pub const LUA_RIDX_LAST: lua_Integer = LUA_RIDX_GLOBALS;
+
 /* type of numbers in Lua */
 pub type lua_Number = c_double;
 

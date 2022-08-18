@@ -12,4 +12,5 @@ extern "C" {
         p2: *const TValue,
         msg: *const c_char,
     ) -> !;
+    pub fn luaG_runerror(L: *mut lua_State, fmt: *const c_char, args: ...) -> !;
 }

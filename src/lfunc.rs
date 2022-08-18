@@ -7,12 +7,12 @@ use std::ptr;
 
 use libc::{c_char, c_int, size_t};
 
-use crate::lgc::luaC_upvalbarrier;
+use crate::lgc::{luaC_newobj, luaC_upvalbarrier};
 use crate::llimits::{lu_byte, lu_mem};
 use crate::lmem::{luaM_free, luaM_freearray, luaM_new};
 use crate::lobject::{
-    getstr, setnilvalue, setobj, CClosure, GCObject, LClosure, Proto, StkId, TValue, LUA_TCCL,
-    LUA_TLCL, LUA_TPROTO,
+    getstr, setnilvalue, setobj, CClosure, LClosure, Proto, StkId, TValue, LUA_TCCL, LUA_TLCL,
+    LUA_TPROTO,
 };
 use crate::lstate::{gco2ccl, gco2lcl, gco2p, lua_State};
 
@@ -64,10 +64,6 @@ pub struct C2RustUnnamed_4 {
 #[inline(always)]
 pub unsafe fn upisopen(up: *mut UpVal) -> bool {
     (*up).v != &mut (*up).u.value as *mut _
-}
-
-extern "C" {
-    pub fn luaC_newobj(L: *mut lua_State, tt: c_int, sz: size_t) -> *mut GCObject;
 }
 
 #[no_mangle]

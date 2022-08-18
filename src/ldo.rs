@@ -2,7 +2,7 @@
 ** Stack and Call structure of Lua
 */
 
-use libc::{c_char, c_int, ptrdiff_t};
+use libc::{c_char, c_int, c_void, ptrdiff_t};
 
 use crate::lobject::{StkId, TValue};
 use crate::lstate::lua_State;
@@ -29,6 +29,9 @@ pub unsafe fn restorestack(L: *mut lua_State, n: ptrdiff_t) -> *mut TValue {
     ((*L).stack as *mut c_char).offset(n) as *mut TValue
 }
 
+/* type of protected functions, to be ran by 'runprotected' */
+pub type Pfunc = Option<unsafe extern "C" fn(*mut lua_State, *mut c_void)>;
+
 pub type jmp_buf = [libc::c_int; 37];
 
 /* chain list of long jump buffers */
@@ -43,4 +46,6 @@ pub struct lua_longjmp {
 extern "C" {
     pub fn luaD_call(L: *mut lua_State, func: StkId, nResults: c_int);
     pub fn luaD_callnoyield(L: *mut lua_State, func: StkId, nResults: c_int);
+    pub fn luaD_rawrunprotected(L: *mut lua_State, f: Pfunc, ud: *mut c_void) -> c_int;
+    pub fn luaD_throw(L: *mut lua_State, errcode: c_int) -> !;
 }
