@@ -1,4 +1,4 @@
-use libc::{c_char, c_double, c_int, c_longlong, c_uchar, c_void, intptr_t, size_t};
+use libc::{c_char, c_double, c_int, c_longlong, c_uchar, c_ulonglong, c_void, intptr_t, size_t};
 
 use crate::llimits::LUA_IDSIZE;
 use crate::lstate::{lua_State, CallInfo};
@@ -43,6 +43,9 @@ pub type lua_Number = c_double;
 /* type for integer functions */
 pub type lua_Integer = c_longlong;
 
+/* unsigned integer type */
+pub type lua_Unsigned = c_ulonglong;
+
 /*
 ** Type for C functions registered with Lua
 */
@@ -68,6 +71,25 @@ pub type lua_Writer =
 */
 pub type lua_Alloc =
     Option<unsafe extern "C" fn(*mut c_void, *mut c_void, size_t, size_t) -> *mut c_void>;
+
+/*
+** Comparison and arithmetic functions
+*/
+
+pub const LUA_OPADD: c_int = 0; /* ORDER TM, ORDER OP */
+pub const LUA_OPSUB: c_int = 1;
+pub const LUA_OPMUL: c_int = 2;
+pub const LUA_OPMOD: c_int = 3;
+pub const LUA_OPPOW: c_int = 4;
+pub const LUA_OPDIV: c_int = 5;
+pub const LUA_OPIDIV: c_int = 6;
+pub const LUA_OPBAND: c_int = 7;
+pub const LUA_OPBOR: c_int = 8;
+pub const LUA_OPBXOR: c_int = 9;
+pub const LUA_OPSHL: c_int = 10;
+pub const LUA_OPSHR: c_int = 11;
+pub const LUA_OPUNM: c_int = 12;
+pub const LUA_OPBNOT: c_int = 13;
 
 /* Functions to be called by the debugger in specific events */
 pub type lua_Hook = Option<unsafe extern "C" fn(*mut lua_State, *mut lua_Debug) -> ()>;
