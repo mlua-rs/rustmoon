@@ -418,9 +418,6 @@ pub unsafe fn setobj(L: *mut lua_State, obj1: *mut TValue, obj2: *const TValue) 
     checkliveness(L, obj1);
 }
 
-/* to table (define it as an expression to be used in macros) */
-// #define setobj2t(L,o1,o2)  ((void)L, *(o1)=*(o2), checkliveness(L,(o1)))
-
 /*
 ** ======================================================
 ** types and prototypes
@@ -685,13 +682,16 @@ pub unsafe fn setnodekey(L: *mut lua_State, key: *mut TKey, obj: *const TValue) 
 /*
 ** 'module' operation for hashing (size is always a power of 2)
 */
-pub const fn lmod(s: c_uint, size: c_int) -> c_uint {
-    debug_assert!(size & (size - 1) == 0);
-    s & (size - 1) as c_uint
+macro_rules! lmod {
+    ($x:expr, $size:expr) => {{
+        debug_assert!($size & ($size - 1) == 0);
+        ($x & ($size - 1)) as c_int
+    }};
 }
 
-// #define twoto(x)	(1<<(x))
-// #define sizenode(t)	(twoto((t)->lsizenode))
+pub unsafe fn sizenode(t: *const Table) -> usize {
+    1 << (*t).lsizenode as usize
+}
 
 /*
 ** (address of) a fixed nil value

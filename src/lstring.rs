@@ -11,7 +11,7 @@ use crate::lgc::{changewhite, isdead, iswhite, luaC_fix, luaC_newobj};
 use crate::llimits::{lu_byte, LUAI_MAXSHORTLEN, MINSTRTABSIZE, STRCACHE_M, STRCACHE_N};
 use crate::lmem::luaM_reallocvector;
 use crate::lobject::{
-    getstr, lmod, luaO_nilobject_, setuservalue, TString, UTString, UUdata, Udata, LUA_TLNGSTR,
+    getstr, luaO_nilobject_, setuservalue, TString, UTString, UUdata, Udata, LUA_TLNGSTR,
     LUA_TSHRSTR,
 };
 use crate::lstate::{gco2ts, gco2u, global_State, lua_State};
@@ -43,7 +43,10 @@ pub unsafe fn luaS_newliteral(L: *mut lua_State, s: &[c_char]) -> *mut TString {
 /*
 ** equality for short strings, which are always internalized
 */
-// #define eqshrstr(a,b)	check_exp((a)->tt == LUA_TSHRSTR, (a) == (b))
+pub unsafe fn eqshrstr(a: *const TString, b: *const TString) -> bool {
+    debug_assert!((*a).tt == LUA_TSHRSTR as u8 && (*b).tt == LUA_TSHRSTR as u8);
+    a == b
+}
 
 static MEMERRMSG: &[c_char; 17] = unsafe { mem::transmute(b"not enough memory") };
 
@@ -114,7 +117,7 @@ pub unsafe extern "C" fn luaS_resize(L: *mut lua_State, newsize: c_int) {
         while !p.is_null() {
             /* for each node in the list */
             let hnext = (*p).u.hnext; /* save next */
-            let h = lmod((*p).hash, newsize);
+            let h = lmod!((*p).hash, newsize as u32);
             (*p).u.hnext = *((*tb).hash).offset(h as isize); /* new position */
             *((*tb).hash).offset(h as isize) = p; /* chain it */
             p = hnext;
@@ -199,8 +202,8 @@ pub unsafe extern "C" fn luaS_createlngstrobj(L: *mut lua_State, l: size_t) -> *
 #[no_mangle]
 pub unsafe extern "C" fn luaS_remove(L: *mut lua_State, ts: *mut TString) {
     let tb = &mut (*(*L).l_G).strt;
-    let mut p =
-        &mut *((*tb).hash).offset(lmod((*ts).hash, (*tb).size) as isize) as *mut *mut TString;
+    let mut p = &mut *((*tb).hash).offset(lmod!((*ts).hash, (*tb).size as u32) as isize)
+        as *mut *mut TString;
     while *p != ts {
         /* find previous element */
         p = &mut (**p).u.hnext;
@@ -219,8 +222,8 @@ unsafe extern "C" fn internshrstr(
 ) -> *mut TString {
     let g = (*L).l_G;
     let h = luaS_hash(str, l, (*g).seed);
-    let mut list =
-        &mut *((*g).strt.hash).offset(lmod(h, (*g).strt.size) as isize) as *mut *mut TString;
+    let mut list = &mut *((*g).strt.hash).offset(lmod!(h, (*g).strt.size as u32) as isize)
+        as *mut *mut TString;
     debug_assert!(!str.is_null()); /* otherwise 'memcmp'/'memcpy' are undefined */
     let mut ts = *list;
     while !ts.is_null() {
@@ -236,7 +239,8 @@ unsafe extern "C" fn internshrstr(
     }
     if (*g).strt.nuse >= (*g).strt.size && (*g).strt.size <= c_int::MAX / 2 {
         luaS_resize(L, (*g).strt.size * 2);
-        list = &mut *((*g).strt.hash).offset(lmod(h, (*g).strt.size) as isize); /* recompute with new size */
+        /* recompute with new size */
+        list = &mut *((*g).strt.hash).offset(lmod!(h, (*g).strt.size as u32) as isize);
     }
     ts = createstrobj(L, l, LUA_TSHRSTR, h);
     memcpy(getstr(ts) as _, str as _, l);

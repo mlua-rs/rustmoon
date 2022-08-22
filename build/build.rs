@@ -23,7 +23,6 @@ fn main() {
         .file("build/loslib.c")
         .file("build/lparser.c")
         .file("build/lstrlib.c")
-        .file("build/ltable.c")
         .file("build/ltablib.c")
         .file("build/lua.c")
         .file("build/lundump.c")

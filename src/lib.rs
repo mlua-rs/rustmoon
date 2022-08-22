@@ -7,6 +7,8 @@
 
 #[macro_use]
 pub(crate) mod lstate;
+#[macro_use]
+pub(crate) mod lobject;
 
 pub(crate) mod lapi;
 pub(crate) mod ldebug;
@@ -16,7 +18,6 @@ pub(crate) mod lgc;
 pub(crate) mod llex;
 pub(crate) mod llimits;
 pub(crate) mod lmem;
-pub(crate) mod lobject;
 pub(crate) mod lopcodes;
 pub(crate) mod lstring;
 pub(crate) mod ltable;

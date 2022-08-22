@@ -10,7 +10,7 @@ use libc::{c_int, size_t};
 use crate::lfunc::upisopen;
 use crate::lfunc::UpVal;
 use crate::llimits::lu_byte;
-use crate::lobject::{iscollectable, GCObject, TString};
+use crate::lobject::{gcvalue, iscollectable, GCObject, TString, TValue, Table};
 use crate::lstate::{global_State, lua_State};
 
 /*
@@ -164,9 +164,11 @@ pub unsafe fn luaC_checkGC(L: *mut lua_State) {
 // 	(iscollectable(v) && isblack(p) && iswhite(gcvalue(v))) ?  \
 // 	luaC_barrier_(L,obj2gco(p),gcvalue(v)) : cast_void(0))
 
-// #define luaC_barrierback(L,p,v) (  \
-// 	(iscollectable(v) && isblack(p) && iswhite(gcvalue(v))) ? \
-// 	luaC_barrierback_(L,p) : cast_void(0))
+pub unsafe fn luaC_barrierback(L: *mut lua_State, p: *mut Table, v: *const TValue) {
+    if iscollectable(v) && isblack(obj2gco!(p)) && iswhite(gcvalue(v)) {
+        luaC_barrierback_(L, p)
+    }
+}
 
 // #define luaC_objbarrier(L,p,o) (  \
 // 	(isblack(p) && iswhite(o)) ? \
@@ -180,6 +182,7 @@ pub unsafe fn luaC_upvalbarrier(L: *mut lua_State, uv: *mut UpVal) {
 
 extern "C" {
     pub fn luaC_upvalbarrier_(L: *mut lua_State, uv: *mut UpVal);
+    pub fn luaC_barrierback_(L: *mut lua_State, t: *mut Table);
     pub fn luaC_fix(L: *mut lua_State, o: *mut GCObject);
     pub fn luaC_newobj(L: *mut lua_State, tt: c_int, sz: size_t) -> *mut GCObject;
     pub fn luaC_step(L: *mut lua_State);
