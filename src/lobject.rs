@@ -2,6 +2,7 @@
 ** Type definitions and some generic functions for Lua objects
 */
 
+use std::ffi::VaList;
 use std::mem::size_of;
 use std::ptr;
 
@@ -9,13 +10,15 @@ use libc::{
     c_char, c_int, c_uint, c_ulong, c_void, memcpy, size_t, strchr, strlen, strpbrk, strtod,
 };
 
+use crate::ldebug::luaG_runerror;
+use crate::ldo::{luaD_checkstack, luaD_inctop};
 use crate::lfunc::UpVal;
 use crate::lgc::isdead;
 use crate::llimits::{lu_byte, Instruction, L_Umaxalign};
 use crate::lstate::{gco2ccl, gco2cl, gco2lcl, gco2t, gco2th, gco2ts, gco2u, lua_State};
 use crate::lstring::luaS_newlstr;
 use crate::ltm::{luaT_trybinTM, TMS, TM_ADD};
-use crate::lvm::{luaV_div, luaV_mod, luaV_shiftl, tointeger, tonumber};
+use crate::lvm::{luaV_concat, luaV_div, luaV_mod, luaV_shiftl, tointeger, tonumber};
 use crate::types::{
     lua_CFunction, lua_Integer, lua_Number, lua_Unsigned, LUA_NUMTAGS, LUA_OPADD, LUA_OPBAND,
     LUA_OPBNOT, LUA_OPBOR, LUA_OPBXOR, LUA_OPDIV, LUA_OPIDIV, LUA_OPMOD, LUA_OPMUL, LUA_OPPOW,
@@ -898,7 +901,7 @@ unsafe extern "C" fn l_str2dloc(
 ** - '.' just optimizes the search for the common case (nothing special)
 */
 unsafe extern "C" fn l_str2d(s: *const c_char, result: *mut lua_Number) -> *const c_char {
-    let pmode = strpbrk(s, b".xXnN\0" as *const u8 as *const c_char);
+    let pmode = strpbrk(s, cstr!(".xXnN"));
     let mode = if !pmode.is_null() {
         char::from_u32_unchecked(*pmode as u32).to_ascii_lowercase() as c_int
     } else {
@@ -1035,7 +1038,114 @@ pub unsafe extern "C" fn luaO_tostring(L: *mut lua_State, obj: StkId) {
     );
 }
 
-// TODO: pushstr, luaO_pushvfstring, luaO_pushfstring
+unsafe extern "C" fn pushstr(L: *mut lua_State, str: *const c_char, l: size_t) {
+    setsvalue(L, (*L).top, luaS_newlstr(L, str, l));
+    luaD_inctop(L);
+}
+
+/*
+** this function handles only '%d', '%c', '%f', '%p', and '%s'
+   conventional formats, plus Lua-specific '%I' and '%U'
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaO_pushvfstring(
+    L: *mut lua_State,
+    mut fmt: *const c_char,
+    mut argp: VaList,
+) -> *const c_char {
+    // let mut current_block: u64;
+    let mut n = 0;
+    loop {
+        let e = strchr(fmt, '%' as i32);
+        if e.is_null() {
+            break;
+        }
+        pushstr(L, fmt, e.offset_from(fmt) as usize);
+        match *e.add(1) as u8 {
+            b's' => {
+                /* zero-terminated string */
+                let mut s: *const c_char = argp.arg();
+                if s.is_null() {
+                    s = cstr!("(null)");
+                }
+                pushstr(L, s, strlen(s));
+            }
+            b'c' => {
+                /* an 'int' as a character */
+                let buff = argp.arg::<i32>() as c_char;
+                if let Some(buff) = char::from_u32(buff as u32)
+                    .filter(|c| c.is_ascii_graphic() || c.is_ascii_whitespace())
+                {
+                    pushstr(L, &(buff as c_char), 1);
+                } else {
+                    /* non-printable character; print its code */
+                    luaO_pushfstring(L, cstr!("<\\%d>"), buff as u8 as c_uint);
+                }
+            }
+            b'd' => {
+                /* an 'int' */
+                setivalue((*L).top, argp.arg::<i32>() as lua_Integer);
+                luaD_inctop(L);
+                luaO_tostring(L, (*L).top.sub(1));
+            }
+            b'I' => {
+                /* a 'lua_Integer' */
+                setivalue((*L).top, argp.arg());
+                luaD_inctop(L);
+                luaO_tostring(L, (*L).top.sub(1));
+            }
+            b'f' => {
+                /* a 'lua_Number' */
+                setfltvalue((*L).top, argp.arg());
+                luaD_inctop(L);
+                luaO_tostring(L, (*L).top.sub(1));
+            }
+            b'p' => {
+                /* a pointer */
+                let p = argp.arg::<*const c_void>();
+                let pstr = format!("{:p}", p);
+                pushstr(L, pstr.as_ptr() as *const c_char, pstr.len());
+            }
+            b'U' => {
+                /* an 'int' as a UTF-8 sequence */
+                let mut buff = [0 as c_char; UTF8BUFFSZ];
+                let l = luaO_utf8esc(buff.as_mut_ptr(), argp.arg::<u64>());
+                pushstr(
+                    L,
+                    buff.as_ptr().offset(UTF8BUFFSZ as isize - l as isize),
+                    l as usize,
+                );
+            }
+            b'%' => {
+                pushstr(L, cstr!("%"), 1);
+            }
+            _ => {
+                luaG_runerror(
+                    L,
+                    cstr!("invalid option '%%%c' to 'lua_pushfstring'"),
+                    *e.offset(1) as i32,
+                );
+            }
+        }
+        n += 2;
+        fmt = e.add(2);
+    }
+    luaD_checkstack(L, 1);
+    pushstr(L, fmt, strlen(fmt));
+    if n > 0 {
+        luaV_concat(L, n + 1);
+    }
+    return svalue((*L).top.sub(1));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn luaO_pushfstring(
+    L: *mut lua_State,
+    fmt: *const c_char,
+    mut args: ...
+) -> *const c_char {
+    return luaO_pushvfstring(L, fmt, args.as_va_list());
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn luaO_chunkid(
@@ -1066,11 +1176,7 @@ pub unsafe extern "C" fn luaO_chunkid(
             memcpy(out as *mut c_void, source.add(1) as *const c_void, l);
         } else {
             /* add '...' before rest of name */
-            memcpy(
-                out as *mut c_void,
-                b"...\0" as *const u8 as *const c_void,
-                3,
-            );
+            memcpy(out as *mut c_void, cstr!("...") as *const c_void, 3);
             out = out.add(3);
             bufflen -= 3;
             memcpy(
@@ -1083,11 +1189,7 @@ pub unsafe extern "C" fn luaO_chunkid(
         /* string; format as [string "source"] */
         let nl = strchr(source, '\n' as i32); /* find first new line (if any) */
         /* add prefix */
-        memcpy(
-            out as *mut c_void,
-            b"[string \"\0" as *const u8 as *const c_void,
-            9,
-        );
+        memcpy(out as *mut c_void, cstr!("[string \"") as *const c_void, 9);
         out = out.add(9);
         /* save space for prefix + suffix + '\0' */
         bufflen -= 9 + 3 + 2 + 1;
@@ -1106,17 +1208,9 @@ pub unsafe extern "C" fn luaO_chunkid(
             }
             memcpy(out as *mut c_void, source as *const c_void, l);
             out = out.add(l);
-            memcpy(
-                out as *mut c_void,
-                b"...\0" as *const u8 as *const c_void,
-                3,
-            );
+            memcpy(out as *mut c_void, cstr!("...") as *const c_void, 3);
             out = out.add(3);
         }
-        memcpy(
-            out as *mut c_void,
-            b"\"]\0" as *const u8 as *const c_void,
-            4,
-        );
+        memcpy(out as *mut c_void, cstr!("\"]") as *const c_void, 4);
     };
 }

@@ -2,6 +2,8 @@
 ** Stack and Call structure of Lua
 */
 
+use std::env;
+
 use libc::{c_char, c_int, c_void, ptrdiff_t};
 
 use crate::lobject::{StkId, TValue};
@@ -14,12 +16,27 @@ use crate::lstate::lua_State;
 ** 'condmovestack' is used in heavy tests to force a stack reallocation
 ** at every check.
 */
-// #define luaD_checkstackaux(L,n,pre,pos)  \
-// 	if (L->stack_last - L->top <= (n)) \
-// 	  { pre; luaD_growstack(L, n); pos; } else { condmovestack(L,pre,pos); }
+pub unsafe fn luaD_checkstackaux(L: *mut lua_State, n: i32, mut pre: impl FnMut(), mut pos: impl FnMut()) {
+    if (*L).stack_last.offset_from((*L).top) <= n as isize {
+        pre();
+        luaD_growstack(L, n);
+        pos();
+    } else {
+        #[cfg(debug_assertions)]
+        if env::var("LUA_HARDSTACKTESTS").as_deref() == Ok("1") {
+            let sz = (*L).stacksize;
+            pre();
+            // realloc stack keeping its size
+            luaD_reallocstack(L, sz);
+            pos();
+        }
+    }
+}
 
 /* In general, 'pre'/'pos' are empty (nothing to save) */
-// #define luaD_checkstack(L,n)	luaD_checkstackaux(L,n,(void)0,(void)0)
+pub unsafe fn luaD_checkstack(L: *mut lua_State, n: i32) {
+    luaD_checkstackaux(L, n, || (), || ());
+}
 
 pub unsafe fn savestack(L: *mut lua_State, p: *const TValue) -> ptrdiff_t {
     (p as *const c_char).offset_from((*L).stack as *const c_char)
@@ -48,4 +65,8 @@ extern "C" {
     pub fn luaD_callnoyield(L: *mut lua_State, func: StkId, nResults: c_int);
     pub fn luaD_rawrunprotected(L: *mut lua_State, f: Pfunc, ud: *mut c_void) -> c_int;
     pub fn luaD_throw(L: *mut lua_State, errcode: c_int) -> !;
+    pub fn luaD_hook(L: *mut lua_State, event: c_int, line: c_int);
+    pub fn luaD_inctop(L: *mut lua_State);
+    pub fn luaD_growstack(L: *mut lua_State, n: c_int);
+    pub fn luaD_reallocstack(L: *mut lua_State, newsize: c_int);
 }

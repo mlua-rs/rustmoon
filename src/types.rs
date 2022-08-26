@@ -91,6 +91,23 @@ pub const LUA_OPSHR: c_int = 11;
 pub const LUA_OPUNM: c_int = 12;
 pub const LUA_OPBNOT: c_int = 13;
 
+//
+// Debug API
+//
+
+// Event codes
+pub const LUA_HOOKCALL: c_int = 0;
+pub const LUA_HOOKRET: c_int = 1;
+pub const LUA_HOOKLINE: c_int = 2;
+pub const LUA_HOOKCOUNT: c_int = 3;
+pub const LUA_HOOKTAILCALL: c_int = 4;
+
+// Event masks
+pub const LUA_MASKCALL: c_int = 1 << LUA_HOOKCALL;
+pub const LUA_MASKRET: c_int = 1 << LUA_HOOKRET;
+pub const LUA_MASKLINE: c_int = 1 << LUA_HOOKLINE;
+pub const LUA_MASKCOUNT: c_int = 1 << LUA_HOOKCOUNT;
+
 /* Functions to be called by the debugger in specific events */
 pub type lua_Hook = Option<unsafe extern "C" fn(*mut lua_State, *mut lua_Debug) -> ()>;
 

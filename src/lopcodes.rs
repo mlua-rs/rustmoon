@@ -4,9 +4,9 @@
 
 use std::ptr;
 
-use libc::{c_char, c_int};
+use libc::{c_char, c_int, c_uint};
 
-use crate::llimits::lu_byte;
+use crate::llimits::{lu_byte, Instruction};
 
 /*
   We assume that instructions are unsigned numbers.
@@ -35,49 +35,131 @@ pub const iAx: OpMode = 3;
 /*
   size and position of opcode arguments.
 */
-pub const SIZE_C: c_int = 9;
-pub const SIZE_B: c_int = 9;
-pub const SIZE_Bx: c_int = SIZE_C + SIZE_B;
-pub const SIZE_A: c_int = 8;
-pub const SIZE_Ax: c_int = SIZE_C + SIZE_B + SIZE_A;
+pub const SIZE_C: c_uint = 9;
+pub const SIZE_B: c_uint = 9;
+pub const SIZE_Bx: c_uint = SIZE_C + SIZE_B;
+pub const SIZE_A: c_uint = 8;
+pub const SIZE_Ax: c_uint = SIZE_C + SIZE_B + SIZE_A;
 
-pub const SIZE_OP: c_int = 6;
+pub const SIZE_OP: c_uint = 6;
 
-pub const POS_OP: c_int = 0;
-pub const POS_A: c_int = POS_OP + SIZE_OP;
-pub const POS_C: c_int = POS_A + SIZE_A;
-pub const POS_B: c_int = POS_C + SIZE_C;
-pub const POS_Bx: c_int = POS_C;
-pub const POS_Ax: c_int = POS_A;
+pub const POS_OP: c_uint = 0;
+pub const POS_A: c_uint = POS_OP + SIZE_OP;
+pub const POS_C: c_uint = POS_A + SIZE_A;
+pub const POS_B: c_uint = POS_C + SIZE_C;
+pub const POS_Bx: c_uint = POS_C;
+pub const POS_Ax: c_uint = POS_A;
 
 /*
 ** limits for opcode arguments.
 ** we use (signed) int to manipulate most arguments,
 ** so they must fit in LUAI_BITSINT-1 bits (-1 for sign)
 */
-pub const MAXARG_Bx: c_int = (1 << SIZE_Bx) - 1;
-pub const MAXARG_sBx: c_int = MAXARG_Bx >> 1;
-pub const MAXARG_Ax: c_int = (1 << SIZE_Ax) - 1;
-pub const MAXARG_A: c_int = (1 << SIZE_A) - 1;
-pub const MAXARG_C: c_int = (1 << SIZE_C) - 1;
+pub const MAXARG_Bx: c_uint = (1 << SIZE_Bx) - 1;
+pub const MAXARG_sBx: c_uint = MAXARG_Bx >> 1;
+pub const MAXARG_Ax: c_uint = (1 << SIZE_Ax) - 1;
+pub const MAXARG_A: c_uint = (1 << SIZE_A) - 1;
+pub const MAXARG_C: c_uint = (1 << SIZE_C) - 1;
 
 /*
 ** the following macros help to manipulate instructions
 */
 
-// TODO
+// creates a mask with 'n' 1 bits at position 'p'
+pub const fn MASK1(n: c_uint, p: c_uint) -> c_uint {
+    (!(!(0 as Instruction) << n)) << p
+}
+
+// creates a mask with 'n' 0 bits at position 'p'
+pub const fn MASK0(n: c_uint, p: c_uint) -> c_uint {
+    !MASK1(n, p)
+}
+
+pub const fn GET_OPCODE(i: Instruction) -> OpCode {
+    ((i >> POS_OP) & MASK1(SIZE_OP, 0)) as OpCode
+}
+
+pub fn SET_OPCODE(i: &mut Instruction, o: OpCode) {
+    *i = (*i & MASK0(SIZE_OP, POS_OP)) | (((o as Instruction) << POS_OP) & MASK1(SIZE_OP, POS_OP));
+}
+
+pub const fn getarg(i: Instruction, pos: c_uint, size: c_uint) -> c_int {
+    ((i >> pos) & MASK1(size, 0)) as c_int
+}
+
+// #define setarg(i,v,pos,size)	((i) = (((i)&MASK0(size,pos)) | \
+//                 ((cast(Instruction, v)<<pos)&MASK1(size,pos))))
+
+pub const fn GETARG_A(i: Instruction) -> c_int {
+    getarg(i, POS_A, SIZE_A)
+}
+
+// #define SETARG_A(i,v)	setarg(i, v, POS_A, SIZE_A)
+
+pub const fn GETARG_B(i: Instruction) -> c_int {
+    getarg(i, POS_B, SIZE_B)
+}
+
+// #define SETARG_B(i,v)	setarg(i, v, POS_B, SIZE_B)
+
+pub const fn GETARG_C(i: Instruction) -> c_int {
+    getarg(i, POS_C, SIZE_C)
+}
+
+// #define SETARG_C(i,v)	setarg(i, v, POS_C, SIZE_C)
+
+pub const fn GETARG_Bx(i: Instruction) -> c_int {
+    getarg(i, POS_Bx, SIZE_Bx)
+}
+
+// #define SETARG_Bx(i,v)	setarg(i, v, POS_Bx, SIZE_Bx)
+
+pub const fn GETARG_Ax(i: Instruction) -> c_int {
+    getarg(i, POS_Ax, SIZE_Ax)
+}
+
+// #define SETARG_Ax(i,v)	setarg(i, v, POS_Ax, SIZE_Ax)
+
+pub const fn GETARG_sBx(i: Instruction) -> c_int {
+    GETARG_Bx(i) - MAXARG_sBx as c_int
+}
+
+// #define SETARG_sBx(i,b)	SETARG_Bx((i),cast(unsigned int, (b)+MAXARG_sBx))
+
+// #define CREATE_ABC(o,a,b,c)	((cast(Instruction, o)<<POS_OP) \
+// 			| (cast(Instruction, a)<<POS_A) \
+// 			| (cast(Instruction, b)<<POS_B) \
+// 			| (cast(Instruction, c)<<POS_C))
+
+// #define CREATE_ABx(o,a,bc)	((cast(Instruction, o)<<POS_OP) \
+// 			| (cast(Instruction, a)<<POS_A) \
+// 			| (cast(Instruction, bc)<<POS_Bx))
+
+// #define CREATE_Ax(o,a)		((cast(Instruction, o)<<POS_OP) \
+// 			| (cast(Instruction, a)<<POS_Ax))
 
 /*
 ** Macros to operate RK indices
 */
 
-// TODO
+// this bit 1 means constant (0 means register)
+pub const BITRK: c_uint = 1 << (SIZE_B - 1);
+
+// test whether value is a constant
+pub const fn ISK(x: c_uint) -> bool {
+    x & BITRK != 0
+}
+
+// gets the index of the constant
+pub const fn INDEXK(r: c_uint) -> c_uint {
+    r & !BITRK
+}
 
 /*
 ** invalid register that fits in 8 bits
 */
 
-pub const NO_REG: c_int = MAXARG_A;
+pub const NO_REG: c_uint = MAXARG_A;
 
 /*
 ** R(x) - register
@@ -196,6 +278,10 @@ macro_rules! opmode {
     };
 }
 
+pub unsafe fn testAMode(m: u8) -> bool {
+    luaP_opmodes[m as usize] & (1 << 6) != 0
+}
+
 #[no_mangle]
 pub static mut luaP_opmodes: [lu_byte; NUM_OPCODES] = [
     /*      T  A    B       C     mode		opcode	*/
@@ -250,53 +336,53 @@ pub static mut luaP_opmodes: [lu_byte; NUM_OPCODES] = [
 
 /* opcode names */
 pub const luaP_opnames: [*const c_char; NUM_OPCODES + 1] = [
-    b"MOVE\0" as *const u8 as *const c_char,
-    b"LOADK\0" as *const u8 as *const c_char,
-    b"LOADKX\0" as *const u8 as *const c_char,
-    b"LOADBOOL\0" as *const u8 as *const c_char,
-    b"LOADNIL\0" as *const u8 as *const c_char,
-    b"GETUPVAL\0" as *const u8 as *const c_char,
-    b"GETTABUP\0" as *const u8 as *const c_char,
-    b"GETTABLE\0" as *const u8 as *const c_char,
-    b"SETTABUP\0" as *const u8 as *const c_char,
-    b"SETUPVAL\0" as *const u8 as *const c_char,
-    b"SETTABLE\0" as *const u8 as *const c_char,
-    b"NEWTABLE\0" as *const u8 as *const c_char,
-    b"SELF\0" as *const u8 as *const c_char,
-    b"ADD\0" as *const u8 as *const c_char,
-    b"SUB\0" as *const u8 as *const c_char,
-    b"MUL\0" as *const u8 as *const c_char,
-    b"MOD\0" as *const u8 as *const c_char,
-    b"POW\0" as *const u8 as *const c_char,
-    b"DIV\0" as *const u8 as *const c_char,
-    b"IDIV\0" as *const u8 as *const c_char,
-    b"BAND\0" as *const u8 as *const c_char,
-    b"BOR\0" as *const u8 as *const c_char,
-    b"BXOR\0" as *const u8 as *const c_char,
-    b"SHL\0" as *const u8 as *const c_char,
-    b"SHR\0" as *const u8 as *const c_char,
-    b"UNM\0" as *const u8 as *const c_char,
-    b"BNOT\0" as *const u8 as *const c_char,
-    b"NOT\0" as *const u8 as *const c_char,
-    b"LEN\0" as *const u8 as *const c_char,
-    b"CONCAT\0" as *const u8 as *const c_char,
-    b"JMP\0" as *const u8 as *const c_char,
-    b"EQ\0" as *const u8 as *const c_char,
-    b"LT\0" as *const u8 as *const c_char,
-    b"LE\0" as *const u8 as *const c_char,
-    b"TEST\0" as *const u8 as *const c_char,
-    b"TESTSET\0" as *const u8 as *const c_char,
-    b"CALL\0" as *const u8 as *const c_char,
-    b"TAILCALL\0" as *const u8 as *const c_char,
-    b"RETURN\0" as *const u8 as *const c_char,
-    b"FORLOOP\0" as *const u8 as *const c_char,
-    b"FORPREP\0" as *const u8 as *const c_char,
-    b"TFORCALL\0" as *const u8 as *const c_char,
-    b"TFORLOOP\0" as *const u8 as *const c_char,
-    b"SETLIST\0" as *const u8 as *const c_char,
-    b"CLOSURE\0" as *const u8 as *const c_char,
-    b"VARARG\0" as *const u8 as *const c_char,
-    b"EXTRAARG\0" as *const u8 as *const c_char,
+    cstr!("MOVE"),
+    cstr!("LOADK"),
+    cstr!("LOADKX"),
+    cstr!("LOADBOOL"),
+    cstr!("LOADNIL"),
+    cstr!("GETUPVAL"),
+    cstr!("GETTABUP"),
+    cstr!("GETTABLE"),
+    cstr!("SETTABUP"),
+    cstr!("SETUPVAL"),
+    cstr!("SETTABLE"),
+    cstr!("NEWTABLE"),
+    cstr!("SELF"),
+    cstr!("ADD"),
+    cstr!("SUB"),
+    cstr!("MUL"),
+    cstr!("MOD"),
+    cstr!("POW"),
+    cstr!("DIV"),
+    cstr!("IDIV"),
+    cstr!("BAND"),
+    cstr!("BOR"),
+    cstr!("BXOR"),
+    cstr!("SHL"),
+    cstr!("SHR"),
+    cstr!("UNM"),
+    cstr!("BNOT"),
+    cstr!("NOT"),
+    cstr!("LEN"),
+    cstr!("CONCAT"),
+    cstr!("JMP"),
+    cstr!("EQ"),
+    cstr!("LT"),
+    cstr!("LE"),
+    cstr!("TEST"),
+    cstr!("TESTSET"),
+    cstr!("CALL"),
+    cstr!("TAILCALL"),
+    cstr!("RETURN"),
+    cstr!("FORLOOP"),
+    cstr!("FORPREP"),
+    cstr!("TFORCALL"),
+    cstr!("TFORLOOP"),
+    cstr!("SETLIST"),
+    cstr!("CLOSURE"),
+    cstr!("VARARG"),
+    cstr!("EXTRAARG"),
     ptr::null(),
 ];
 

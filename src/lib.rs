@@ -4,6 +4,10 @@
     dead_code,
     non_upper_case_globals
 )]
+#![feature(c_variadic)]
+
+#[macro_use]
+pub(crate) mod macros;
 
 #[macro_use]
 pub(crate) mod lstate;
