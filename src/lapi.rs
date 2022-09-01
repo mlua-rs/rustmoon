@@ -2,6 +2,8 @@
 ** Lua API
 */
 
+use libc::c_int;
+
 use crate::lstate::lua_State;
 use crate::types::{lua_Number, LUA_MULTRET};
 
@@ -23,6 +25,11 @@ pub(crate) unsafe fn api_checknelems(L: *mut lua_State, n: i32) {
     );
 }
 
+pub unsafe fn lua_pop(L: *mut lua_State, n: c_int) {
+    lua_settop(L, -n - 1)
+}
+
 extern "C" {
     pub fn lua_version(L: *mut lua_State) -> *const lua_Number;
+    pub fn lua_settop(L: *mut lua_State, idx: c_int);
 }

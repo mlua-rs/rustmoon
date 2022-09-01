@@ -15,10 +15,13 @@ pub(crate) mod lstate;
 pub(crate) mod lobject;
 
 pub(crate) mod lapi;
+pub(crate) mod lauxlib;
 pub(crate) mod ldebug;
 pub(crate) mod ldo;
 pub(crate) mod lfunc;
 pub(crate) mod lgc;
+pub(crate) mod libs;
+pub(crate) mod linit;
 pub(crate) mod llex;
 pub(crate) mod llimits;
 pub(crate) mod lmem;
