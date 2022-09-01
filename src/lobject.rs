@@ -470,6 +470,10 @@ pub unsafe fn getstr(ts: *mut TString) -> *mut c_char {
     (ts as *mut c_char).add(size_of::<UTString>())
 }
 
+pub unsafe fn getstr_c(ts: *const TString) -> *const c_char {
+    (ts as *const c_char).add(size_of::<UTString>())
+}
+
 /* get the actual string (array of bytes) from a Lua value */
 pub unsafe fn svalue(o: *const TValue) -> *mut c_char {
     getstr(tsvalue(o))

@@ -18,6 +18,7 @@ pub(crate) mod lapi;
 pub(crate) mod lauxlib;
 pub(crate) mod ldebug;
 pub(crate) mod ldo;
+pub(crate) mod ldump;
 pub(crate) mod lfunc;
 pub(crate) mod lgc;
 pub(crate) mod libs;

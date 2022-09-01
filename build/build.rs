@@ -7,7 +7,6 @@ fn main() {
         .file("build/lapi.c")
         .file("build/lauxlib.c")
         .file("build/lcode.c")
-        .file("build/ldump.c")
         .file("build/lgc.c")
         .file("build/llex.c")
         .file("build/loadlib.c")
