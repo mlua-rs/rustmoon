@@ -2,7 +2,7 @@
 ** String table (keep all strings handled by Lua)
 */
 
-use std::mem::{self, size_of};
+use std::mem::size_of;
 use std::ptr;
 
 use libc::{c_char, c_int, c_uint, memcmp, memcpy, size_t, strcmp, strlen};
@@ -29,10 +29,8 @@ pub unsafe fn sizeudata(u: *const Udata) -> usize {
     sizeludata((*u).len)
 }
 
-// #define luaS_newliteral(L, s)	(luaS_newlstr(L, "" s, \
-//                                  (sizeof(s)/sizeof(char))-1))
-pub unsafe fn luaS_newliteral(L: *mut lua_State, s: &[c_char]) -> *mut TString {
-    luaS_newlstr(L, s.as_ptr(), s.len())
+pub unsafe fn luaS_newliteral(L: *mut lua_State, s: &str) -> *mut TString {
+    luaS_newlstr(L, s.as_ptr() as *const c_char, s.len())
 }
 
 /*
@@ -48,7 +46,7 @@ pub unsafe fn eqshrstr(a: *const TString, b: *const TString) -> bool {
     a == b
 }
 
-static MEMERRMSG: &[c_char; 17] = unsafe { mem::transmute(b"not enough memory") };
+static MEMERRMSG: &str = "not enough memory";
 
 /*
 ** Lua will use at most ~(2^LUAI_HASHLIMIT) bytes from a string to

@@ -1,13 +1,14 @@
+/*
+** Buffered streams
+*/
+
 use std::ptr;
 
 use libc::{c_char, c_int, c_uchar, c_void, memcpy, size_t};
 
+use crate::lmem::luaM_realloc_;
 use crate::lstate::lua_State;
 use crate::types::lua_Reader;
-
-///
-/// Buffered streams
-///
 
 pub type ZIO = Zio;
 
@@ -19,6 +20,47 @@ pub struct Zio {
     pub reader: lua_Reader,
     pub data: *mut c_void,
     pub L: *mut lua_State,
+}
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct Mbuffer {
+    pub buffer: *mut c_char,
+    pub n: size_t,
+    pub buffsize: size_t,
+}
+
+impl Mbuffer {
+    pub const fn new() -> Mbuffer {
+        Mbuffer {
+            buffer: ptr::null_mut(),
+            n: 0,
+            buffsize: 0,
+        }
+    }
+}
+
+pub const EOZ: c_int = -1; /* end of stream */
+
+pub unsafe fn zgetc(z: *mut Zio) -> c_int {
+    if (*z).n > 0 {
+        (*z).n -= 1;
+        let p = *(*z).p;
+        (*z).p = (*z).p.add(1);
+        p as c_int
+    } else {
+        luaZ_fill(z)
+    }
+}
+
+pub unsafe fn luaZ_resizebuffer(L: *mut lua_State, buff: *mut Mbuffer, size: usize) {
+    (*buff).buffer =
+        luaM_realloc_(L, (*buff).buffer as *mut c_void, (*buff).buffsize, size) as *mut c_char;
+    (*buff).buffsize = size;
+}
+
+pub unsafe fn luaZ_freebuffer(L: *mut lua_State, buff: *mut Mbuffer) {
+    luaZ_resizebuffer(L, buff, 0)
 }
 
 #[no_mangle]
@@ -34,8 +76,6 @@ pub unsafe extern "C" fn luaZ_init(
     (*z).n = 0;
     (*z).p = ptr::null();
 }
-
-pub const EOZ: c_int = -1; /* end of stream */
 
 #[no_mangle]
 pub unsafe extern "C" fn luaZ_fill(z: *mut ZIO) -> c_int {

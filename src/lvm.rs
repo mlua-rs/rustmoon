@@ -40,4 +40,6 @@ extern "C" {
     pub fn luaV_shiftl(x: lua_Integer, y: lua_Integer) -> lua_Integer;
     pub fn luaV_equalobj(L: *mut lua_State, t1: *const TValue, t2: *const TValue) -> c_int;
     pub fn luaV_concat(L: *mut lua_State, total: c_int);
+    pub fn luaV_execute(L: *mut lua_State);
+    pub fn luaV_finishOp(L: *mut lua_State);
 }

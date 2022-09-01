@@ -154,7 +154,7 @@ pub unsafe fn luaC_checkGC(L: *mut lua_State) {
     if (*(*L).l_G).GCdebt > 0 {
         luaC_step(L);
         #[cfg(debug_assertions)]
-        if env::var("LUA_HARDMEMTESTS").as_deref() == Ok("1") {
+        if env::var("LUA_HARDMEMTESTS").as_deref() == Ok("1") && (*(*L).l_G).gcrunning != 0 {
             luaC_fullgc(L, 0);
         }
     }

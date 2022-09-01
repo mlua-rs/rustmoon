@@ -3,6 +3,12 @@ use libc::{c_char, c_double, c_int, c_longlong, c_uchar, c_ulonglong, c_void, in
 use crate::llimits::LUA_IDSIZE;
 use crate::lstate::{lua_State, CallInfo};
 
+/* mark for precompiled code ('<esc>Lua') */
+pub const LUA_SIGNATURE: &'static [u8] = b"\x1bLua";
+
+/* option for multiple returns in 'lua_pcall' and 'lua_call' */
+pub const LUA_MULTRET: c_int = -1;
+
 /* thread status */
 pub const LUA_OK: c_int = 0;
 pub const LUA_YIELD: c_int = 1;

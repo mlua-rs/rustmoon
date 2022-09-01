@@ -57,3 +57,17 @@ pub const LUA_MINBUFFER: usize = 32;
 ** CHANGE it if you want a different size.
 */
 pub const LUA_IDSIZE: usize = 60;
+
+/*
+@@ LUAI_MAXSTACK limits the size of the Lua stack.
+** CHANGE it if you need a different limit. This limit is arbitrary;
+** its only purpose is to stop Lua from consuming unlimited stack
+** space (and to reserve some numbers for pseudo-indices).
+*/
+pub const LUAI_MAXSTACK: usize = 1000000;
+
+/*
+** maximum depth for nested C calls and syntactical nested non-terminals
+** in a program. (Value must fit in an unsigned short int.)
+*/
+pub const LUAI_MAXCCALLS: u16 = 200;

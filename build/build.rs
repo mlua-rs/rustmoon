@@ -6,7 +6,6 @@ fn main() {
         // Lua core
         .file("build/lapi.c")
         .file("build/lcode.c")
-        .file("build/ldo.c")
         .file("build/ldump.c")
         .file("build/lgc.c")
         .file("build/linit.c")
