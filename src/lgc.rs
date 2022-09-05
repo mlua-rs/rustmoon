@@ -170,9 +170,11 @@ pub unsafe fn luaC_barrierback(L: *mut lua_State, p: *mut Table, v: *const TValu
     }
 }
 
-// #define luaC_objbarrier(L,p,o) (  \
-// 	(isblack(p) && iswhite(o)) ? \
-// 	luaC_barrier_(L,obj2gco(p),obj2gco(o)) : cast_void(0))
+pub unsafe fn luaC_objbarrier(L: *mut lua_State, p: *mut GCObject, o: *mut GCObject) {
+    if isblack(p) && iswhite(o) {
+        luaC_barrier_(L, p, o);
+    }
+}
 
 pub unsafe fn luaC_upvalbarrier(L: *mut lua_State, uv: *mut UpVal) {
     if iscollectable((*uv).v) && !upisopen(uv) {
@@ -188,4 +190,5 @@ extern "C" {
     pub fn luaC_step(L: *mut lua_State);
     pub fn luaC_freeallobjects(L: *mut lua_State);
     pub fn luaC_fullgc(L: *mut lua_State, isemergency: c_int);
+    pub fn luaC_barrier_(L: *mut lua_State, o: *mut GCObject, v: *mut GCObject);
 }

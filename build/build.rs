@@ -11,7 +11,6 @@ fn main() {
         .file("build/llex.c")
         .file("build/loadlib.c")
         .file("build/lparser.c")
-        .file("build/lundump.c")
         .file("build/lvm.c")
         // Non core libs
         .file("build/lbaselib.c")
