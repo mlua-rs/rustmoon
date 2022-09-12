@@ -20,4 +20,4 @@ fn main() {
     }
 }
 
-extern crate lua53_rs;
+extern crate rustmoon;

@@ -20,4 +20,8 @@ extern "C" {
         openf: lua_CFunction,
         glb: c_int,
     );
+    pub fn luaL_newstate() -> *mut lua_State;
+    pub fn luaL_loadstring(L: *mut lua_State, s: *const c_char) -> c_int;
+    pub fn luaL_loadfilex(L: *mut lua_State, filename: *const c_char, mode: *const c_char)
+        -> c_int;
 }

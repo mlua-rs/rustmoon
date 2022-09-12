@@ -1,5 +1,5 @@
 [package]
-name = "lua53-rs"
+name = "rustmoon"
 version = "0.1.0"
 edition = "2021"
 build = "build/build.rs"

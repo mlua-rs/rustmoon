@@ -14,8 +14,6 @@ pub(crate) mod lstate;
 #[macro_use]
 pub(crate) mod lobject;
 
-pub(crate) mod lapi;
-pub(crate) mod lauxlib;
 pub(crate) mod ldebug;
 pub(crate) mod ldo;
 pub(crate) mod ldump;
@@ -34,4 +32,8 @@ pub(crate) mod ltm;
 pub(crate) mod lundump;
 pub(crate) mod lvm;
 pub(crate) mod lzio;
-pub(crate) mod types;
+
+pub mod lapi;
+pub mod lauxlib;
+pub mod lualib;
+pub mod types;
