@@ -1,32 +1,24 @@
+use crate::lapi::{
+    lua_createtable, lua_gettop, lua_pushcclosure, lua_pushfstring, lua_pushinteger,
+    lua_pushlstring, lua_pushnil, lua_pushvalue, lua_setfield, lua_tointegerx,
+};
 use crate::lauxlib::{luaL_Buffer, luaL_Reg};
 use crate::lstate::lua_State;
-use crate::types::{lua_CFunction, lua_Integer, lua_Number};
-use libc::{c_char, c_int, c_long, c_longlong, c_uchar, c_uint, c_ulong};
-
-// FIXME - this shouldn't be declared here
-type size_t = c_ulong;
+use crate::types::{lua_Integer, lua_Number};
+use libc::{c_char, c_int, c_long, c_longlong, c_uchar, c_uint, c_ulong, size_t};
 
 extern "C" {
+    // auxlib
+    pub fn luaL_error(L: *mut lua_State, fmt: *const c_char, args: ...) -> c_int;
     pub fn luaL_optinteger(L: *mut lua_State, arg: c_int, def: lua_Integer) -> lua_Integer;
     pub fn luaL_checklstring(L: *mut lua_State, arg: c_int, len: *mut size_t) -> *const c_char;
     pub fn luaL_argerror(L: *mut lua_State, arg: c_int, extramsg: *const c_char) -> c_int;
-    pub fn luaL_error(L: *mut lua_State, fmt: *const c_char, args: ...) -> c_int;
     pub fn luaL_checkstack(L: *mut lua_State, space: c_int, msg: *const c_char);
-    pub fn lua_pushinteger(L: *mut lua_State, n: lua_Integer);
-    pub fn lua_pushnil(L: *mut lua_State);
-    pub fn lua_gettop(L: *mut lua_State) -> c_int;
     pub fn luaL_buffinit(L: *mut lua_State, B: *mut luaL_Buffer);
     pub fn luaL_addvalue(B: *mut luaL_Buffer);
     pub fn luaL_pushresult(B: *mut luaL_Buffer);
     pub fn luaL_checkinteger(L: *mut lua_State, arg: c_int) -> lua_Integer;
-    pub fn lua_pushfstring(L: *mut lua_State, fmt: *const c_char, args: ...) -> *const c_char;
-    pub fn lua_pushcclosure(L: *mut lua_State, fn_0: lua_CFunction, n: c_int);
-    pub fn lua_pushvalue(L: *mut lua_State, idx: c_int);
-    pub fn lua_tointegerx(L: *mut lua_State, idx: c_int, pisnum: *mut c_int) -> lua_Integer;
-    pub fn lua_createtable(L: *mut lua_State, narray: c_int, nrec: c_int);
-    pub fn lua_setfield(L: *mut lua_State, idx: c_int, k: *const c_char);
     pub fn luaL_setfuncs(L: *mut lua_State, l: *const luaL_Reg, nup: c_int);
-    pub fn lua_pushlstring(L: *mut lua_State, s: *const c_char, len: size_t) -> *const c_char;
     pub fn luaL_checkversion_(L: *mut lua_State, ver: lua_Number, sz: size_t);
 }
 
@@ -35,7 +27,7 @@ extern "C" {
 fn u_posrelat(pos: lua_Integer, len: size_t) -> lua_Integer {
     if pos >= 0 as c_int as c_longlong {
         return pos;
-    } else if (0 as c_uint as c_ulong).wrapping_sub(pos as size_t) > len {
+    } else if (0 as c_uint as c_ulong).wrapping_sub(pos as u64) > len.try_into().unwrap() {
         return 0 as c_int as lua_Integer;
     } else {
         return len as lua_Integer + pos + 1 as c_int as c_longlong;
@@ -230,7 +222,7 @@ unsafe extern "C" fn byteoffset(L: *mut lua_State) -> c_int {
     let mut posi: lua_Integer = (if n >= 0 as c_int as c_longlong {
         1 as c_int as c_ulong
     } else {
-        len.wrapping_add(1 as c_int as c_ulong)
+        len.wrapping_add(1 as c_int as size_t).try_into().unwrap()
     }) as lua_Integer;
     posi = u_posrelat(luaL_optinteger(L, 3 as c_int, posi), len);
     (1 as c_int as c_longlong <= posi && {
@@ -385,9 +377,9 @@ pub unsafe extern "C" fn luaopen_utf8(L: *mut lua_State) -> c_int {
     luaL_checkversion_(
         L,
         503 as c_int as lua_Number,
-        (::std::mem::size_of::<lua_Integer>() as c_ulong)
-            .wrapping_mul(16 as c_int as c_ulong)
-            .wrapping_add(::std::mem::size_of::<lua_Number>() as c_ulong),
+        (::std::mem::size_of::<lua_Integer>() as size_t)
+            .wrapping_mul(16 as c_int as size_t)
+            .wrapping_add(::std::mem::size_of::<lua_Number>() as size_t),
     );
     lua_createtable(
         L,
@@ -400,9 +392,11 @@ pub unsafe extern "C" fn luaopen_utf8(L: *mut lua_State) -> c_int {
     lua_pushlstring(
         L,
         b"[\0-\x7F\xC2-\xF4][\x80-\xBF]*\0" as *const u8 as *const c_char,
-        (::std::mem::size_of::<[c_char; 15]>() as c_ulong)
-            .wrapping_div(::std::mem::size_of::<c_char>() as c_ulong)
-            .wrapping_sub(1 as c_int as c_ulong),
+        (::std::mem::size_of::<[c_char; 15]>() as size_t)
+            .wrapping_div(::std::mem::size_of::<c_char>() as size_t)
+            .wrapping_sub(1 as c_int as size_t)
+            .try_into()
+            .unwrap(),
     );
     lua_setfield(
         L,
