@@ -2,6 +2,7 @@
 ** Lua API
 */
 
+use std::ptr;
 use libc::{c_char, c_int, c_long, c_uint, c_ulong, c_void, ptrdiff_t, size_t};
 
 use crate::ldo::{
@@ -27,7 +28,7 @@ use crate::lvm::{luaV_equalobj, luaV_tointeger, luaV_tonumber_};
 use crate::lzio::{luaZ_init, ZIO};
 use crate::types::{
     lua_CFunction, lua_Integer, lua_KContext, lua_KFunction, lua_Number, lua_Reader, lua_Writer,
-    LUA_MULTRET,
+    LUA_MULTRET, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS, LUA_TFUNCTION, LUA_TNIL,
 };
 
 pub(crate) unsafe fn api_incr_top(L: *mut lua_State) {
@@ -48,8 +49,45 @@ pub(crate) unsafe fn api_checknelems(L: *mut lua_State, n: i32) {
     );
 }
 
+pub const fn lua_upvalueindex(i: c_int) -> c_int {
+    LUA_REGISTRYINDEX - i
+}
+
 pub unsafe fn lua_pop(L: *mut lua_State, n: c_int) {
     lua_settop(L, -n - 1)
+}
+
+pub unsafe fn lua_newtable(L: *mut lua_State) {
+    lua_createtable(L, 0, 0)
+}
+
+pub unsafe fn lua_pushcfunction(L: *mut lua_State, f: lua_CFunction) {
+    lua_pushcclosure(L, f, 0)
+}
+
+pub unsafe fn lua_pushglobaltable(L: *mut lua_State) {
+    lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
+}
+
+pub unsafe fn lua_tostring(L: *mut lua_State, idx: c_int) -> *const c_char {
+    lua_tolstring(L, idx, ptr::null_mut())
+}
+
+pub unsafe fn lua_isfunction(L: *mut lua_State, n: c_int) -> c_int {
+    (lua_type(L, n) == LUA_TFUNCTION) as c_int
+}
+
+pub unsafe fn lua_isnil(L: *mut lua_State, n: c_int) -> c_int {
+    (lua_type(L, n) == LUA_TNIL) as c_int
+}
+
+pub unsafe fn lua_insert(L: *mut lua_State, idx: c_int) {
+    lua_rotate(L, idx, 1)
+}
+
+pub unsafe fn lua_remove(L: *mut lua_State, idx: c_int) {
+    lua_rotate(L, idx, -1);
+    lua_pop(L, 1);
 }
 
 pub unsafe fn lua_call(L: *mut lua_State, n: c_int, r: c_int) {
@@ -1530,15 +1568,7 @@ pub unsafe extern "C" fn lua_status(L: *mut lua_State) -> c_int {
 
 extern "C" {
     pub fn lua_version(L: *mut lua_State) -> *const lua_Number;
-    pub fn index2addr(L: *mut lua_State, idx: c_int) -> *mut TValue;
     pub fn luaC_step(L: *mut lua_State);
-    pub fn luaV_finishset(
-        L: *mut lua_State,
-        t: *const TValue,
-        key: *mut TValue,
-        val: StkId,
-        slot: *const TValue,
-    );
     pub fn luaV_lessthan(L: *mut lua_State, l: *const TValue, r: *const TValue) -> c_int;
     pub fn luaV_lessequal(L: *mut lua_State, l: *const TValue, r: *const TValue) -> c_int;
     pub fn luaV_finishget(
@@ -1549,4 +1579,15 @@ extern "C" {
         slot: *const TValue,
     );
     pub fn luaC_checkfinalizer(L: *mut lua_State, o: *mut GCObject, mt: *mut Table);
+    pub fn luaV_finishset(
+        L: *mut lua_State,
+        t: *const TValue,
+        key: *mut TValue,
+        val: StkId,
+        slot: *const TValue,
+    );
+    fn index2addr(
+        L: *mut lua_State,
+         idx: libc::c_int,
+    ) -> *mut TValue;
 }

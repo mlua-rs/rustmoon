@@ -59,6 +59,15 @@ pub const LUA_MINBUFFER: usize = 32;
 pub const LUA_IDSIZE: usize = 60;
 
 /*
+@@ LUAL_BUFFERSIZE is the buffer size used by the lauxlib buffer system.
+** CHANGE it if it uses too much C-stack space. (For long double,
+** 'string.format("%.99f", -1e4932)' needs 5034 bytes, so a
+** smaller buffer would force a memory allocation for each call to
+** 'string.format'.)
+*/
+pub const LUAL_BUFFERSIZE: usize = 8192;
+
+/*
 @@ LUAI_MAXSTACK limits the size of the Lua stack.
 ** CHANGE it if you need a different limit. This limit is arbitrary;
 ** its only purpose is to stop Lua from consuming unlimited stack

@@ -24,6 +24,7 @@ pub(crate) mod linit;
 pub(crate) mod llex;
 pub(crate) mod llimits;
 pub(crate) mod lmem;
+pub(crate) mod loadlib;
 pub(crate) mod lopcodes;
 pub(crate) mod lparser;
 pub(crate) mod lstring;

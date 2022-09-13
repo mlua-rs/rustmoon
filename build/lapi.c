@@ -125,62 +125,11 @@ LUA_API const lua_Number *lua_version (lua_State *L) {
 */
 
 
-LUA_API void lua_settable (lua_State *L, int idx) {
-  StkId t;
-  lua_lock(L);
-  api_checknelems(L, 2);
-  t = index2addr(L, idx);
-  luaV_settable(L, t, L->top - 2, L->top - 1);
-  L->top -= 2;  /* pop index and value */
-  lua_unlock(L);
-}
 
 
-LUA_API void lua_seti (lua_State *L, int idx, lua_Integer n) {
-  StkId t;
-  const TValue *slot;
-  lua_lock(L);
-  api_checknelems(L, 1);
-  t = index2addr(L, idx);
-  if (luaV_fastset(L, t, n, slot, luaH_getint, L->top - 1))
-    L->top--;  /* pop value */
-  else {
-    setivalue(L->top, n);
-    api_incr_top(L);
-    luaV_finishset(L, t, L->top - 1, L->top - 2, slot);
-    L->top -= 2;  /* pop value and key */
-  }
-  lua_unlock(L);
-}
 
 
-LUA_API void lua_rawset (lua_State *L, int idx) {
-  StkId o;
-  TValue *slot;
-  lua_lock(L);
-  api_checknelems(L, 2);
-  o = index2addr(L, idx);
-  api_check(L, ttistable(o), "table expected");
-  slot = luaH_set(L, hvalue(o), L->top - 2);
-  setobj2t(L, slot, L->top - 1);
-  invalidateTMcache(hvalue(o));
-  luaC_barrierback(L, hvalue(o), L->top-1);
-  L->top -= 2;
-  lua_unlock(L);
-}
 
-
-LUA_API void lua_rawseti (lua_State *L, int idx, lua_Integer n) {
-  StkId o;
-  lua_lock(L);
-  api_checknelems(L, 1);
-  o = index2addr(L, idx);
-  api_check(L, ttistable(o), "table expected");
-  luaH_setint(L, hvalue(o), n, L->top - 1);
-  luaC_barrierback(L, hvalue(o), L->top-1);
-  L->top--;
-  lua_unlock(L);
-}
 
 
 LUA_API void lua_rawsetp (lua_State *L, int idx, const void *p) {
