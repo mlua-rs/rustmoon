@@ -39,7 +39,10 @@ extern "C" {
     pub fn lua_pushinteger(L: *mut lua_State, n: lua_Integer);
 }
 
-
+/* from strlib */
+/* translate a relative string position: negative means back from end */
+// TODO static
+#[no_mangle]
 unsafe extern "C" fn u_posrelat(mut pos: lua_Integer, mut len: size_t) -> lua_Integer {
     if pos >= 0 as libc::c_int as libc::c_longlong {
         return pos
@@ -54,6 +57,7 @@ unsafe extern "C" fn u_posrelat(mut pos: lua_Integer, mut len: size_t) -> lua_In
 ** codepoint(s, [i, [j]])  -> returns codepoints for all characters
 ** that start in the range [i,j]
 */
+// TODO static
 #[no_mangle]
 pub unsafe extern "C" fn codepoint(mut L: *mut lua_State) -> libc::c_int {
     let mut len: size_t = 0;

@@ -24,21 +24,15 @@
 
 #define iscont(p)	((*(p) & 0xC0) == 0x80)
 
-
+// begin functions moved to rust
 int codepoint (lua_State *L);
-
-/* from strlib */
-/* translate a relative string position: negative means back from end */
-static lua_Integer u_posrelat (lua_Integer pos, size_t len) {
-  if (pos >= 0) return pos;
-  else if (0u - (size_t)pos > len) return 0;
-  else return (lua_Integer)len + pos + 1;
-}
-
+lua_Integer u_posrelat (lua_Integer pos, size_t len);
+// end functions moved to rust
 
 /*
 ** Decode one UTF-8 sequence, returning NULL if byte sequence is invalid.
 */
+// TODO static
 const char *utf8_decode (const char *o, int *val) {
   static const unsigned int limits[] = {0xFF, 0x7F, 0x7FF, 0xFFFF};
   const unsigned char *s = (const unsigned char *)o;
