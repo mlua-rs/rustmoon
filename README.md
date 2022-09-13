@@ -5,6 +5,11 @@
   * Install rust (needs to be a nightly)
     * curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
     * rustup default nightly
+  * if you want to work on libraries:
+    * `brew install llvm`
+    * `echo 'export PATH="/opt/homebrew/opt/llvm/bin:$PATH"' >> ~/.zshrc`
+    * `export PATH="/opt/homebrew/opt/llvm/bin:$PATH"`
+    * `cargo install c2rust`
   * `cargo b` to build
   * `cargo test` to run the tests
 
@@ -95,7 +100,7 @@ Take some of the ready made `.rs` rust code and make more idiomatic.
 
 Lua uses exceptions a lot (both in lua + in the C api). C by it's nature doesn't have exceptions, so the C api uses `setjmp` and `longjmp`.
 
-Replace with Rust native implementation of exceptions.
+This has all already been wrapped in Rust code so that you get native rust exceptions.
 
 ## Wrapping
 
