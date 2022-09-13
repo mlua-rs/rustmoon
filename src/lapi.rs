@@ -5,30 +5,31 @@
 use libc::{c_char, c_int, c_long, c_uint, c_ulong, c_void, ptrdiff_t, size_t};
 use std::ptr;
 
+use crate::ldebug::luaG_errormsg;
 use crate::ldo::{
     luaD_call, luaD_callnoyield, luaD_growstack, luaD_pcall, luaD_protectedparser,
     luaD_rawrunprotected,
 };
 use crate::ldump::luaU_dump;
-use crate::lfunc::luaF_newCclosure;
-use crate::lgc::{luaC_barrier_, luaC_barrierback_, luaC_checkGC, luaC_upvalbarrier_};
-use crate::llimits::lu_byte;
+use crate::lfunc::{luaF_newCclosure, UpVal};
+use crate::lgc::{luaC_barrier_, luaC_barrierback_, luaC_checkGC, luaC_upvalbarrier_, luaC_fullgc};
+use crate::llimits::{lu_byte, l_mem, lu_mem};
 use crate::lobject::{
     luaO_arith, luaO_nilobject_, luaO_pushvfstring, luaO_str2num, luaO_tostring, setivalue,
     setnilvalue, setobj, CClosure, GCObject, LClosure, StkId, TString, TValue, Table, UTString,
-    UUdata, Udata, Value,
+    UUdata, Udata, Value, Proto,
 };
-use crate::lstate::{lua_State, CallInfo, GCUnion};
-use crate::lstring::{luaS_new, luaS_newlstr};
+use crate::lstate::{lua_State, CallInfo, GCUnion, luaE_setdebt, global_State};
+use crate::lstring::{luaS_new, luaS_newlstr, luaS_newudata};
 use crate::ltable::{
-    luaH_get, luaH_getint, luaH_getn, luaH_getstr, luaH_new, luaH_resize, luaH_set, luaH_setint,
+    luaH_get, luaH_getint, luaH_getn, luaH_getstr, luaH_new, luaH_resize, luaH_set, luaH_setint, luaH_next,
 };
 use crate::ltm::luaT_typenames_;
-use crate::lvm::{luaV_equalobj, luaV_tointeger, luaV_tonumber_};
+use crate::lvm::{luaV_equalobj, luaV_tointeger, luaV_tonumber_, luaV_concat};
 use crate::lzio::{luaZ_init, ZIO};
 use crate::types::{
     lua_CFunction, lua_Integer, lua_KContext, lua_KFunction, lua_Number, lua_Reader, lua_Writer,
-    LUA_MULTRET, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS, LUA_TFUNCTION, LUA_TNIL,
+    LUA_MULTRET, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS, LUA_TFUNCTION, LUA_TNIL, lua_Alloc,
 };
 
 pub(crate) unsafe fn api_incr_top(L: *mut lua_State) {
@@ -1490,36 +1491,366 @@ pub unsafe extern "C" fn lua_status(L: *mut lua_State) -> c_int {
 ** Garbage-collection function
 */
 
-// LUA_API int lua_gc (lua_State *L, int what, int data) {
+#[no_mangle]
+pub unsafe extern "C" fn lua_gc(
+    L: *mut lua_State,
+    what: c_int,
+    mut data: c_int,
+) -> c_int {
+    let mut res: c_int = 0 as c_int;
+    let g: *mut global_State;
+    g = (*L).l_G;
+    match what {
+        0 => {
+            (*g).gcrunning = 0 as c_int as lu_byte;
+        }
+        1 => {
+            luaE_setdebt(g, 0 as c_int as l_mem);
+            (*g).gcrunning = 1 as c_int as lu_byte;
+        }
+        2 => {
+            luaC_fullgc(L, 0 as c_int);
+        }
+        3 => {
+            res = (((*g).totalbytes + (*g).GCdebt) as lu_mem >> 10 as c_int)
+                as c_int;
+        }
+        4 => {
+            res = (((*g).totalbytes + (*g).GCdebt) as lu_mem
+                & 0x3ff as usize) as c_int;
+        }
+        5 => {
+            let mut debt: l_mem = 1 as c_int as l_mem;
+            let oldrunning: lu_byte = (*g).gcrunning;
+            (*g).gcrunning = 1 as c_int as lu_byte;
+            if data == 0 as c_int {
+                luaE_setdebt(
+                    g,
+                    -((100 as c_int as libc::c_ulong)
+                        .wrapping_mul(::std::mem::size_of::<TString>() as libc::c_ulong)
+                        as c_int) as l_mem,
+                );
+                luaC_step(L);
+            } else {
+                debt = data as l_mem * 1024 as isize + (*g).GCdebt;
+                luaE_setdebt(g, debt);
+                if (*(*L).l_G).GCdebt > 0 {
+                    luaC_step(L);
+                }
+            }
+            (*g).gcrunning = oldrunning;
+            if debt > 0
+                && (*g).gcstate as c_int == 7 as c_int
+            {
+                res = 1 as c_int;
+            }
+        }
+        6 => {
+            res = (*g).gcpause;
+            (*g).gcpause = data;
+        }
+        7 => {
+            res = (*g).gcstepmul;
+            if data < 40 as c_int {
+                data = 40 as c_int;
+            }
+            (*g).gcstepmul = data;
+        }
+        9 => {
+            res = (*g).gcrunning as c_int;
+        }
+        _ => {
+            res = -(1 as c_int);
+        }
+    }
+    return res;
+}
+
+
 /*
 ** miscellaneous functions
 */
 
-// LUA_API int lua_error (lua_State *L) {
-// LUA_API int lua_next (lua_State *L, int idx) {
+#[no_mangle]
+pub unsafe extern "C" fn lua_error(L: *mut lua_State) -> ! {
+    luaG_errormsg(L);
+}
 
-// LUA_API void lua_concat (lua_State *L, int n) {
+#[no_mangle]
+pub unsafe extern "C" fn lua_next(
+    L: *mut lua_State,
+    idx: c_int,
+) -> c_int {
+    let t: StkId;
+    let more: c_int;
+    t = index2addr(L, idx);
+    more = luaH_next(
+        L,
+        &mut (*((*t).value_.gc as *mut GCUnion)).h,
+        ((*L).top).offset(-(1 as c_int as isize)),
+    );
+    if more != 0 {
+        let ref mut fresh67 = (*L).top;
+        *fresh67 = (*fresh67).offset(1);
+    } else {
+        let ref mut fresh68 = (*L).top;
+        *fresh68 = (*fresh68).offset(-(1 as c_int as isize));
+    }
+    return more;
+}
 
-// LUA_API void lua_len (lua_State *L, int idx) {
+#[no_mangle]
+pub unsafe extern "C" fn lua_concat(L: *mut lua_State, n: c_int) {
+    if n >= 2 as c_int {
+        luaV_concat(L, n);
+    } else if n == 0 as c_int {
+        let mut io: *mut TValue = (*L).top;
+        let x_: *mut TString = luaS_newlstr(
+            L,
+            b"\0" as *const u8 as *const libc::c_char,
+            0 as c_int as size_t,
+        );
+        let ref mut fresh69 = (*io).value_.gc;
+        *fresh69 = &mut (*(x_ as *mut GCUnion)).gc;
+        (*io).tt_ = (*x_).tt as c_int | (1 as c_int) << 6 as c_int;
+        let ref mut fresh70 = (*L).top;
+        *fresh70 = (*fresh70).offset(1);
+    }
+    if (*(*L).l_G).GCdebt > 0 {
+        luaC_step(L);
+    }
+}
 
-// LUA_API lua_Alloc lua_getallocf (lua_State *L, void **ud) {
+#[no_mangle]
+pub unsafe extern "C" fn lua_len(L: *mut lua_State, idx: c_int) {
+    let t: StkId;
+    t = index2addr(L, idx);
+    luaV_objlen(L, (*L).top, t as *const TValue);
+    let ref mut fresh71 = (*L).top;
+    *fresh71 = (*fresh71).offset(1);
+}
 
-// LUA_API void lua_setallocf (lua_State *L, lua_Alloc f, void *ud) {
+#[no_mangle]
+pub unsafe extern "C" fn lua_getallocf(
+    L: *mut lua_State,
+    ud: *mut *mut libc::c_void,
+) -> lua_Alloc {
+    let f: lua_Alloc;
+    if !ud.is_null() {
+        *ud = (*(*L).l_G).ud;
+    }
+    f = (*(*L).l_G).frealloc;
+    return f;
+}
 
-// LUA_API void *lua_newuserdata (lua_State *L, size_t size) {
+#[no_mangle]
+pub unsafe extern "C" fn lua_setallocf(
+    L: *mut lua_State,
+    f: lua_Alloc,
+    ud: *mut libc::c_void,
+) {
+    let ref mut fresh72 = (*(*L).l_G).ud;
+    *fresh72 = ud;
+    let ref mut fresh73 = (*(*L).l_G).frealloc;
+    *fresh73 = f;
+}
 
-// static const char *aux_upvalue (StkId fi, int n, TValue **val,
-//                                 CClosure **owner, UpVal **uv) {
-// LUA_API const char *lua_getupvalue (lua_State *L, int funcindex, int n) {
+#[no_mangle]
+pub unsafe extern "C" fn lua_newuserdata(
+    L: *mut lua_State,
+    size: size_t,
+) -> *mut libc::c_void {
+    let u: *mut Udata;
+    u = luaS_newudata(L, size);
+    let mut io: *mut TValue = (*L).top;
+    let x_: *mut Udata = u;
+    let ref mut fresh74 = (*io).value_.gc;
+    *fresh74 = &mut (*(x_ as *mut GCUnion)).gc;
+    (*io).tt_ = 7 as c_int | (1 as c_int) << 6 as c_int;
+    let ref mut fresh75 = (*L).top;
+    *fresh75 = (*fresh75).offset(1);
+    if (*(*L).l_G).GCdebt > 0 {
+        luaC_step(L);
+    }
+    return (u as *mut libc::c_char)
+        .offset(::std::mem::size_of::<UUdata>() as libc::c_ulong as isize)
+        as *mut libc::c_void;
+}
 
-// LUA_API const char *lua_setupvalue (lua_State *L, int funcindex, int n) {
+unsafe extern "C" fn aux_upvalue(
+    fi: StkId,
+    n: c_int,
+    val: *mut *mut TValue,
+    owner: *mut *mut CClosure,
+    uv: *mut *mut UpVal,
+) -> *const libc::c_char {
+    match (*fi).tt_ & 0x3f as c_int {
+        38 => {
+            let f: *mut CClosure = &mut (*((*fi).value_.gc as *mut GCUnion)).cl.c;
+            if !(1 as c_int <= n && n <= (*f).nupvalues as c_int) {
+                return 0 as *const libc::c_char;
+            }
+            *val = &mut *((*f).upvalue)
+                .as_mut_ptr()
+                .offset((n - 1 as c_int) as isize) as *mut TValue;
+            if !owner.is_null() {
+                *owner = f;
+            }
+            return b"\0" as *const u8 as *const libc::c_char;
+        }
+        6 => {
+            let f_0: *mut LClosure = &mut (*((*fi).value_.gc as *mut GCUnion)).cl.l;
+            let name: *mut TString;
+            let p: *mut Proto = (*f_0).p;
+            if !(1 as c_int <= n && n <= (*p).sizeupvalues) {
+                return 0 as *const libc::c_char;
+            }
+            *val = (**((*f_0).upvals)
+                .as_mut_ptr()
+                .offset((n - 1 as c_int) as isize))
+                .v;
+            if !uv.is_null() {
+                *uv = *((*f_0).upvals)
+                    .as_mut_ptr()
+                    .offset((n - 1 as c_int) as isize);
+            }
+            name = (*((*p).upvalues).offset((n - 1 as c_int) as isize)).name;
+            return if name.is_null() {
+                b"(*no name)\0" as *const u8 as *const libc::c_char
+            } else {
+                (name as *mut libc::c_char)
+                    .offset(::std::mem::size_of::<UTString>() as libc::c_ulong as isize)
+                    as *const libc::c_char
+            };
+        }
+        _ => return 0 as *const libc::c_char,
+    };
+}
 
-// static UpVal **getupvalref (lua_State *L, int fidx, int n) {
+#[no_mangle]
+pub unsafe extern "C" fn lua_getupvalue(
+    L: *mut lua_State,
+    funcindex: c_int,
+    n: c_int,
+) -> *const libc::c_char {
+    let name: *const c_char;
+    let mut val: *mut TValue = 0 as *mut TValue;
+    name = aux_upvalue(
+        index2addr(L, funcindex),
+        n,
+        &mut val,
+        0 as *mut *mut CClosure,
+        0 as *mut *mut UpVal,
+    );
+    if !name.is_null() {
+        let io1: *mut TValue = (*L).top;
+        *io1 = *val;
+        let ref mut fresh76 = (*L).top;
+        *fresh76 = (*fresh76).offset(1);
+    }
+    return name;
+}
 
-// LUA_API void *lua_upvalueid (lua_State *L, int fidx, int n) {
+#[no_mangle]
+pub unsafe extern "C" fn lua_setupvalue(
+    L: *mut lua_State,
+    funcindex: c_int,
+    n: c_int,
+) -> *const libc::c_char {
+    let name: *const c_char;
+    let mut val: *mut TValue = 0 as *mut TValue;
+    let mut owner: *mut CClosure = 0 as *mut CClosure;
+    let mut uv: *mut UpVal = 0 as *mut UpVal;
+    let fi: StkId;
+    fi = index2addr(L, funcindex);
+    name = aux_upvalue(fi, n, &mut val, &mut owner, &mut uv);
+    if !name.is_null() {
+        let ref mut fresh77 = (*L).top;
+        *fresh77 = (*fresh77).offset(-1);
+        let io1: *mut TValue = val;
+        *io1 = *(*L).top;
+        if !owner.is_null() {
+            if (*(*L).top).tt_ & (1 as c_int) << 6 as c_int != 0
+                && (*owner).marked as c_int
+                    & (1 as c_int) << 2 as c_int != 0
+                && (*(*(*L).top).value_.gc).marked as c_int
+                    & ((1 as c_int) << 0 as c_int
+                        | (1 as c_int) << 1 as c_int) != 0
+            {
+                luaC_barrier_(
+                    L,
+                    &mut (*(owner as *mut GCUnion)).gc,
+                    (*(*L).top).value_.gc,
+                );
+            } else {};
+        } else if !uv.is_null() {
+            if (*(*uv).v).tt_ & (1 as c_int) << 6 as c_int != 0
+                && !((*uv).v != &mut (*uv).u.value as *mut TValue)
+            {
+                luaC_upvalbarrier_(L, uv);
+            } else {};
+        }
+    }
+    return name;
+}
 
-// LUA_API void lua_upvaluejoin (lua_State *L, int fidx1, int n1,
-//                                             int fidx2, int n2) {
+unsafe extern "C" fn getupvalref(
+    L: *mut lua_State,
+    fidx: c_int,
+    n: c_int,
+) -> *mut *mut UpVal {
+    let f: *mut LClosure;
+    let fi: StkId = index2addr(L, fidx);
+    f = &mut (*((*fi).value_.gc as *mut GCUnion)).cl.l;
+    return &mut *((*f).upvals).as_mut_ptr().offset((n - 1 as c_int) as isize)
+        as *mut *mut UpVal;
+}
+#[no_mangle]
+pub unsafe extern "C" fn lua_upvalueid(
+    L: *mut lua_State,
+    fidx: c_int,
+    n: c_int,
+) -> *mut libc::c_void {
+    let fi: StkId = index2addr(L, fidx);
+    match (*fi).tt_ & 0x3f as c_int {
+        6 => return *getupvalref(L, fidx, n) as *mut libc::c_void,
+        38 => {
+            let f: *mut CClosure = &mut (*((*fi).value_.gc as *mut GCUnion)).cl.c;
+            return &mut *((*f).upvalue)
+                .as_mut_ptr()
+                .offset((n - 1 as c_int) as isize) as *mut TValue
+                as *mut libc::c_void;
+        }
+        _ => return 0 as *mut libc::c_void,
+    };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn lua_upvaluejoin(
+    L: *mut lua_State,
+    fidx1: c_int,
+    n1: c_int,
+    fidx2: c_int,
+    n2: c_int,
+) {
+    let mut up1: *mut *mut UpVal = getupvalref(L, fidx1, n1);
+    let up2: *mut *mut UpVal = getupvalref(L, fidx2, n2);
+    if *up1 == *up2 {
+        return;
+    }
+    luaC_upvdeccount(L, *up1);
+    *up1 = *up2;
+    let ref mut fresh78 = (**up1).refcount;
+    *fresh78 = (*fresh78).wrapping_add(1);
+    if (**up1).v != &mut (**up1).u.value as *mut TValue {
+        (**up1).u.open.touched = 1 as c_int;
+    }
+    if (*(**up1).v).tt_ & (1 as c_int) << 6 as c_int != 0
+        && !((**up1).v != &mut (**up1).u.value as *mut TValue)
+    {
+        luaC_upvalbarrier_(L, *up1);
+    } else {};
+}
 
 extern "C" {
     pub fn lua_version(L: *mut lua_State) -> *const lua_Number;
@@ -1541,5 +1872,11 @@ extern "C" {
         val: StkId,
         slot: *const TValue,
     );
-    fn index2addr(L: *mut lua_State, idx: libc::c_int) -> *mut TValue;
+    fn index2addr(L: *mut lua_State, idx: c_int) -> *mut TValue;
+    pub fn luaC_upvdeccount(L: *mut lua_State, uv: *mut UpVal);
+    pub fn luaV_objlen(
+        L: *mut lua_State,
+        ra: StkId,
+        rb: *const TValue,
+    );
 }
