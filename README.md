@@ -12,6 +12,7 @@
 
  * Send Alex (aorlenko/khvzak) your github username to be added to the repo to push branches (so you don't have to work from a fork).
  * Please don't push to master unless the tests pass!
+ * Not everything needs porting. E.g. rust supplies printf already, so you don't need to port this
 
 # Project tracking
 
@@ -21,6 +22,8 @@
 # Examples
 
 ## Tests
+
+https://www.lua.org/tests/
 
 Start at `tests/tests.rs`
 
@@ -40,7 +43,7 @@ Does not include the lua standard libraries at the moment
 
 See `build/` and specifically `build/build.rs` - this includes the mapping of all C files built and what rust code to link them with.
 
-Once things are ported, the `.c` files can be removed (but the `.h` files cannot)
+Once things are ported, the `.c` files can be removed (but the `.h` files cannot). Any `.c` code in `build/` is still to be moved and should be deleted once moved.
 
 ## Using rust code from C
 
@@ -61,6 +64,8 @@ E.g. from lstate.rs
     }
 
 ## Using C code from rust
+
+Lua C API https://www.lua.org/pil/24.html
 
 See in lgc.rs
 
@@ -84,3 +89,14 @@ Take some of the ready made `.rs` rust code and make more idiomatic.
   * Stop calculating hashes and use rust native
   * Use primitives like vectors
   * Remove libc
+
+## Exceptions
+
+Lua uses exceptions a lot (both in lua + in the C api). C by it's nature doesn't have exceptions, so the C api uses `setjmp` and `longjmp`.
+
+Replace with Rust native implementation of exceptions.
+
+## Wrapping
+
+Lua uses integer number overflow and wraparound explcitily. In rust this will cause an exception.
+
