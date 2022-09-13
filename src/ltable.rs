@@ -7,7 +7,7 @@ use std::hash::{Hash, Hasher};
 use std::mem::{self, size_of};
 use std::ptr;
 
-use libc::{c_char, c_int, c_uint, c_void};
+use libc::{c_int, c_uint, c_void};
 
 use crate::ldebug::luaG_runerror;
 use crate::ldo::{luaD_rawrunprotected, luaD_throw};
@@ -252,7 +252,7 @@ unsafe extern "C" fn findindex(L: *mut lua_State, t: *mut Table, key: StkId) -> 
         nx = gnext(n);
         if nx == 0 {
             /* key not found */
-            luaG_runerror(L, b"invalid key to 'next'\0" as *const u8 as *const c_char);
+            luaG_runerror(L, cstr!("invalid key to 'next'"));
         } else {
             n = n.offset(nx as isize);
         }
@@ -406,7 +406,7 @@ unsafe extern "C" fn setnodevector(L: *mut lua_State, t: *mut Table, mut size: c
     } else {
         let lsize = luaO_ceillog2(size);
         if lsize as u64 > MAXHBITS {
-            luaG_runerror(L, b"table overflow\0" as *const u8 as *const c_char);
+            luaG_runerror(L, cstr!("table overflow"));
         }
         size = 1 << lsize; // 2^lsize
         (*t).node = luaM_newvector::<Node>(L, size as usize);
@@ -583,7 +583,7 @@ pub unsafe extern "C" fn luaH_newkey(
         tt_: 0,
     };
     if ttisnil(key) {
-        luaG_runerror(L, b"table index is nil\0" as *const u8 as *const c_char);
+        luaG_runerror(L, cstr!("table index is nil"));
     } else if ttisfloat(key) {
         let mut k: lua_Integer = 0;
         if luaV_tointeger(key, &mut k, 0) != 0 {
@@ -592,7 +592,7 @@ pub unsafe extern "C" fn luaH_newkey(
             /* insert it as an integer */
             key = &mut aux;
         } else if fltvalue(key).is_nan() {
-            luaG_runerror(L, b"table index is NaN\0" as *const u8 as *const c_char);
+            luaG_runerror(L, cstr!("table index is NaN"));
         }
     }
     let mut mp = mainposition(t, key);

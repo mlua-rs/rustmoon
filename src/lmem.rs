@@ -84,12 +84,7 @@ pub unsafe extern "C" fn luaM_growaux_(
         /* cannot double it? */
         if *size >= limit {
             /* cannot grow even a little? */
-            luaG_runerror(
-                L,
-                b"too many %s (limit is %d)\0" as *const u8 as *const c_char,
-                what,
-                limit,
-            );
+            luaG_runerror(L, cstr!("too many %s (limit is %d)"), what, limit);
         }
         newsize = limit; /* still have at least one free place */
     } else {
@@ -110,10 +105,7 @@ pub unsafe extern "C" fn luaM_growaux_(
 
 #[no_mangle]
 pub unsafe extern "C" fn luaM_toobig(L: *mut lua_State) -> ! {
-    luaG_runerror(
-        L,
-        b"memory allocation error: block too big\0" as *const u8 as *const c_char,
-    );
+    luaG_runerror(L, cstr!("memory allocation error: block too big"));
 }
 
 /*

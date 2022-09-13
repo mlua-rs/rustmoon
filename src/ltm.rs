@@ -2,7 +2,6 @@
 ** Tag methods
 */
 
-use std::mem;
 use std::ptr;
 
 use libc::{c_char, c_int, c_uint};
@@ -62,23 +61,22 @@ unsafe fn ttypename(i: usize) -> *const c_char {
     luaT_typenames_[i + 1]
 }
 
-static mut udatatypename: [c_char; 9] =
-    unsafe { *mem::transmute::<&[u8; 9], &[c_char; 9]>(b"userdata\0") };
+const udatatypename: *const c_char = cstr!("userdata");
 
 #[no_mangle]
-pub static mut luaT_typenames_: [*const c_char; LUA_TOTALTAGS] = unsafe {
+pub static mut luaT_typenames_: [*const c_char; LUA_TOTALTAGS] = {
     [
-        b"no value\0" as *const u8 as *const c_char,
-        b"nil\0" as *const u8 as *const c_char,
-        b"boolean\0" as *const u8 as *const c_char,
-        udatatypename.as_ptr(),
-        b"number\0" as *const u8 as *const c_char,
-        b"string\0" as *const u8 as *const c_char,
-        b"table\0" as *const u8 as *const c_char,
-        b"function\0" as *const u8 as *const c_char,
-        udatatypename.as_ptr(),
-        b"thread\0" as *const u8 as *const c_char,
-        b"proto\0" as *const u8 as *const c_char, /* this last case is used for tests only */
+        cstr!("no value"),
+        cstr!("nil"),
+        cstr!("boolean"),
+        udatatypename,
+        cstr!("number"),
+        cstr!("string"),
+        cstr!("table"),
+        cstr!("function"),
+        udatatypename,
+        cstr!("thread"),
+        cstr!("proto"), /* this last case is used for tests only */
     ]
 };
 
@@ -86,30 +84,30 @@ pub static mut luaT_typenames_: [*const c_char; LUA_TOTALTAGS] = unsafe {
 pub unsafe extern "C" fn luaT_init(L: *mut lua_State) {
     static mut luaT_eventname: [*const c_char; 24] = [
         /* ORDER TM */
-        b"__index\0" as *const u8 as *const c_char,
-        b"__newindex\0" as *const u8 as *const c_char,
-        b"__gc\0" as *const u8 as *const c_char,
-        b"__mode\0" as *const u8 as *const c_char,
-        b"__len\0" as *const u8 as *const c_char,
-        b"__eq\0" as *const u8 as *const c_char,
-        b"__add\0" as *const u8 as *const c_char,
-        b"__sub\0" as *const u8 as *const c_char,
-        b"__mul\0" as *const u8 as *const c_char,
-        b"__mod\0" as *const u8 as *const c_char,
-        b"__pow\0" as *const u8 as *const c_char,
-        b"__div\0" as *const u8 as *const c_char,
-        b"__idiv\0" as *const u8 as *const c_char,
-        b"__band\0" as *const u8 as *const c_char,
-        b"__bor\0" as *const u8 as *const c_char,
-        b"__bxor\0" as *const u8 as *const c_char,
-        b"__shl\0" as *const u8 as *const c_char,
-        b"__shr\0" as *const u8 as *const c_char,
-        b"__unm\0" as *const u8 as *const c_char,
-        b"__bnot\0" as *const u8 as *const c_char,
-        b"__lt\0" as *const u8 as *const c_char,
-        b"__le\0" as *const u8 as *const c_char,
-        b"__concat\0" as *const u8 as *const c_char,
-        b"__call\0" as *const u8 as *const c_char,
+        cstr!("__index"),
+        cstr!("__newindex"),
+        cstr!("__gc"),
+        cstr!("__mode"),
+        cstr!("__len"),
+        cstr!("__eq"),
+        cstr!("__add"),
+        cstr!("__sub"),
+        cstr!("__mul"),
+        cstr!("__mod"),
+        cstr!("__pow"),
+        cstr!("__div"),
+        cstr!("__idiv"),
+        cstr!("__band"),
+        cstr!("__bor"),
+        cstr!("__bxor"),
+        cstr!("__shl"),
+        cstr!("__shr"),
+        cstr!("__unm"),
+        cstr!("__bnot"),
+        cstr!("__lt"),
+        cstr!("__le"),
+        cstr!("__concat"),
+        cstr!("__call"),
     ];
     let mut i = 0;
     while i < TM_N {
@@ -177,7 +175,7 @@ pub unsafe extern "C" fn luaT_objtypename(L: *mut lua_State, o: *const TValue) -
         mt = (*uvalue(o)).metatable;
     }
     if !mt.is_null() {
-        let name = luaH_getshortstr(mt, luaS_new(L, b"__name\0" as *const u8 as *const c_char));
+        let name = luaH_getshortstr(mt, luaS_new(L, cstr!("__name")));
         if ttisstring(name) {
             /* is '__name' a string? */
             return getstr(tsvalue(name)); /* use it as type name */
@@ -257,21 +255,11 @@ pub unsafe extern "C" fn luaT_trybinTM(
                 if tonumber(p1, &mut dummy) != 0 && tonumber(p2, &mut dummy) != 0 {
                     luaG_tointerror(L, p1, p2);
                 } else {
-                    luaG_opinterror(
-                        L,
-                        p1,
-                        p2,
-                        b"perform bitwise operation on\0" as *const u8 as *const c_char,
-                    );
+                    luaG_opinterror(L, p1, p2, cstr!("perform bitwise operation on"));
                 }
             }
             _ => {
-                luaG_opinterror(
-                    L,
-                    p1,
-                    p2,
-                    b"perform arithmetic on\0" as *const u8 as *const c_char,
-                );
+                luaG_opinterror(L, p1, p2, cstr!("perform arithmetic on"));
             }
         }
     }
