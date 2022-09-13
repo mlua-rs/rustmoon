@@ -1,12 +1,13 @@
 
 
 use crate::lstate::lua_State;
-use crate::lauxlib::luaL_Buffer;
+use crate::lauxlib::{luaL_Buffer, luaL_Reg};
 use crate::types::lua_CFunction;
 use libc::{c_int, c_char};
 
 type size_t = libc::c_ulong;
 type lua_Integer = libc::c_longlong;
+type lua_Number = libc::c_double;
 
 extern "C" {
     pub fn luaL_optinteger(
@@ -60,6 +61,31 @@ extern "C" {
         idx: c_int,
         pisnum: *mut c_int,
     ) -> lua_Integer;
+    pub fn lua_createtable(
+        L: *mut lua_State,
+        narray: c_int,
+        nrec: c_int,
+    );
+    pub fn lua_setfield(
+        L: *mut lua_State,
+        idx: libc::c_int,
+        k: *const c_char,
+    );
+    pub fn luaL_setfuncs(
+        L: *mut lua_State,
+        l: *const luaL_Reg,
+        nup: c_int,
+    );
+    pub fn lua_pushlstring(
+        L: *mut lua_State,
+        s: *const c_char,
+        len: size_t,
+    ) -> *const c_char;
+    pub fn luaL_checkversion_(
+        L: *mut lua_State,
+        ver: lua_Number,
+        sz: size_t,
+    );
 }
 
 /* from strlib */
@@ -413,4 +439,97 @@ unsafe extern "C" fn iter_codes(mut L: *mut lua_State) -> libc::c_int {
     lua_pushvalue(L, 1 as libc::c_int);
     lua_pushinteger(L, 0 as libc::c_int as lua_Integer);
     return 3 as libc::c_int;
+}
+
+static mut funcs: [luaL_Reg; 7] = unsafe {
+    [
+        {
+            let mut init = luaL_Reg {
+                name: b"offset\0" as *const u8 as *const libc::c_char,
+                func: Some(
+                    byteoffset as unsafe extern "C" fn(*mut lua_State) -> libc::c_int,
+                ),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"codepoint\0" as *const u8 as *const libc::c_char,
+                func: Some(
+                    codepoint as unsafe extern "C" fn(*mut lua_State) -> libc::c_int,
+                ),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"char\0" as *const u8 as *const libc::c_char,
+                func: Some(
+                    utfchar as unsafe extern "C" fn(*mut lua_State) -> libc::c_int,
+                ),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"len\0" as *const u8 as *const libc::c_char,
+                func: Some(utflen as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"codes\0" as *const u8 as *const libc::c_char,
+                func: Some(
+                    iter_codes as unsafe extern "C" fn(*mut lua_State) -> libc::c_int,
+                ),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"charpattern\0" as *const u8 as *const libc::c_char,
+                func: None,
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: 0 as *const libc::c_char,
+                func: None,
+            };
+            init
+        },
+    ]
+};
+#[no_mangle]
+pub unsafe extern "C" fn luaopen_utf8(mut L: *mut lua_State) -> libc::c_int {
+    luaL_checkversion_(
+        L,
+        503 as libc::c_int as lua_Number,
+        (::std::mem::size_of::<lua_Integer>() as libc::c_ulong)
+            .wrapping_mul(16 as libc::c_int as libc::c_ulong)
+            .wrapping_add(::std::mem::size_of::<lua_Number>() as libc::c_ulong),
+    );
+    lua_createtable(
+        L,
+        0 as libc::c_int,
+        (::std::mem::size_of::<[luaL_Reg; 7]>() as libc::c_ulong)
+            .wrapping_div(::std::mem::size_of::<luaL_Reg>() as libc::c_ulong)
+            .wrapping_sub(1 as libc::c_int as libc::c_ulong) as libc::c_int,
+    );
+    luaL_setfuncs(L, funcs.as_ptr(), 0 as libc::c_int);
+    lua_pushlstring(
+        L,
+        b"[\0-\x7F\xC2-\xF4][\x80-\xBF]*\0" as *const u8 as *const libc::c_char,
+        (::std::mem::size_of::<[libc::c_char; 15]>() as libc::c_ulong)
+            .wrapping_div(::std::mem::size_of::<libc::c_char>() as libc::c_ulong)
+            .wrapping_sub(1 as libc::c_int as libc::c_ulong),
+    );
+    lua_setfield(
+        L,
+        -(2 as libc::c_int),
+        b"charpattern\0" as *const u8 as *const libc::c_char,
+    );
+    return 1 as libc::c_int;
 }
