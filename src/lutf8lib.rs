@@ -7,10 +7,6 @@ type size_t = libc::c_ulong;
 type lua_Integer = libc::c_longlong;
 
 extern "C" {
-    pub fn utf8_decode(
-        o: *const libc::c_char,
-        val: *mut libc::c_int,
-    ) -> *const libc::c_char;
     pub fn luaL_optinteger(
         L: *mut lua_State,
         arg: libc::c_int,
@@ -115,4 +111,49 @@ pub unsafe extern "C" fn codepoint(mut L: *mut lua_State) -> libc::c_int {
         n += 1;
     }
     return n;
+}
+
+/*
+** Decode one UTF-8 sequence, returning NULL if byte sequence is invalid.
+*/
+// TODO static
+#[no_mangle]
+unsafe extern "C" fn utf8_decode(
+    mut o: *const libc::c_char,
+    mut val: *mut libc::c_int,
+) -> *const libc::c_char {
+    static mut limits: [libc::c_uint; 4] = [
+        0xff as libc::c_int as libc::c_uint,
+        0x7f as libc::c_int as libc::c_uint,
+        0x7ff as libc::c_int as libc::c_uint,
+        0xffff as libc::c_int as libc::c_uint,
+    ];
+    let mut s: *const libc::c_uchar = o as *const libc::c_uchar;
+    let mut c: libc::c_uint = *s.offset(0 as libc::c_int as isize) as libc::c_uint;
+    let mut res: libc::c_uint = 0 as libc::c_int as libc::c_uint;
+    if c < 0x80 as libc::c_int as libc::c_uint {
+        res = c;
+    } else {
+        let mut count: libc::c_int = 0 as libc::c_int;
+        while c & 0x40 as libc::c_int as libc::c_uint != 0 {
+            count += 1;
+            let mut cc: libc::c_int = *s.offset(count as isize) as libc::c_int;
+            if cc & 0xc0 as libc::c_int != 0x80 as libc::c_int {
+                return 0 as *const libc::c_char;
+            }
+            res = res << 6 as libc::c_int | (cc & 0x3f as libc::c_int) as libc::c_uint;
+            c <<= 1 as libc::c_int;
+        }
+        res |= (c & 0x7f as libc::c_int as libc::c_uint) << count * 5 as libc::c_int;
+        if count > 3 as libc::c_int || res > 0x10ffff as libc::c_int as libc::c_uint
+            || res <= limits[count as usize]
+        {
+            return 0 as *const libc::c_char;
+        }
+        s = s.offset(count as isize);
+    }
+    if !val.is_null() {
+        *val = res as libc::c_int;
+    }
+    return (s as *const libc::c_char).offset(1 as libc::c_int as isize);
 }
