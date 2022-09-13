@@ -6,7 +6,7 @@
     * curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
     * rustup default nightly
   * if you want to work on libraries:
-    * `brew install llvm`
+    * `brew install llvm cmake`
     * `echo 'export PATH="/opt/homebrew/opt/llvm/bin:$PATH"' >> ~/.zshrc`
     * `export PATH="/opt/homebrew/opt/llvm/bin:$PATH"`
     * `cargo install c2rust`
