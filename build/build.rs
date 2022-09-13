@@ -9,7 +9,6 @@ fn main() {
         .file("build/lcode.c")
         .file("build/lgc.c")
         .file("build/llex.c")
-        .file("build/loadlib.c")
         .file("build/lparser.c")
         .file("build/lvm.c")
         // Non core libs
