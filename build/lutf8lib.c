@@ -25,6 +25,8 @@
 #define iscont(p)	((*(p) & 0xC0) == 0x80)
 
 
+static int codepoint (lua_State *L);
+
 /* from strlib */
 /* translate a relative string position: negative means back from end */
 static lua_Integer u_posrelat (lua_Integer pos, size_t len) {
@@ -90,38 +92,6 @@ static int utflen (lua_State *L) {
   }
   lua_pushinteger(L, n);
   return 1;
-}
-
-
-/*
-** codepoint(s, [i, [j]])  -> returns codepoints for all characters
-** that start in the range [i,j]
-*/
-static int codepoint (lua_State *L) {
-  size_t len;
-  const char *s = luaL_checklstring(L, 1, &len);
-  lua_Integer posi = u_posrelat(luaL_optinteger(L, 2, 1), len);
-  lua_Integer pose = u_posrelat(luaL_optinteger(L, 3, posi), len);
-  int n;
-  const char *se;
-  luaL_argcheck(L, posi >= 1, 2, "out of range");
-  luaL_argcheck(L, pose <= (lua_Integer)len, 3, "out of range");
-  if (posi > pose) return 0;  /* empty interval; return no values */
-  if (pose - posi >= INT_MAX)  /* (lua_Integer -> int) overflow? */
-    return luaL_error(L, "string slice too long");
-  n = (int)(pose -  posi) + 1;
-  luaL_checkstack(L, n, "string slice too long");
-  n = 0;
-  se = s + pose;
-  for (s += posi - 1; s < se;) {
-    int code;
-    s = utf8_decode(s, &code);
-    if (s == NULL)
-      return luaL_error(L, "invalid UTF-8 code");
-    lua_pushinteger(L, code);
-    n++;
-  }
-  return n;
 }
 
 
