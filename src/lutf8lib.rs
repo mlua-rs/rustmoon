@@ -1,7 +1,7 @@
 use crate::lauxlib::{luaL_Buffer, luaL_Reg};
 use crate::lstate::lua_State;
 use crate::types::lua_CFunction;
-use libc::{c_char, c_double, c_int, c_longlong, c_ulong};
+use libc::{c_char, c_double, c_int, c_long, c_longlong, c_ulong};
 
 type size_t = c_ulong;
 type lua_Integer = c_longlong;
@@ -25,7 +25,7 @@ extern "C" {
     pub fn lua_pushvalue(L: *mut lua_State, idx: c_int);
     pub fn lua_tointegerx(L: *mut lua_State, idx: c_int, pisnum: *mut c_int) -> lua_Integer;
     pub fn lua_createtable(L: *mut lua_State, narray: c_int, nrec: c_int);
-    pub fn lua_setfield(L: *mut lua_State, idx: libc::c_int, k: *const c_char);
+    pub fn lua_setfield(L: *mut lua_State, idx: c_int, k: *const c_char);
     pub fn luaL_setfuncs(L: *mut lua_State, l: *const luaL_Reg, nup: c_int);
     pub fn lua_pushlstring(L: *mut lua_State, s: *const c_char, len: size_t) -> *const c_char;
     pub fn luaL_checkversion_(L: *mut lua_State, ver: lua_Number, sz: size_t);
@@ -176,7 +176,7 @@ unsafe extern "C" fn utflen(L: *mut lua_State) -> c_int {
             lua_pushinteger(L, posi + 1 as c_int as c_longlong);
             return 2 as c_int;
         }
-        posi = s1.offset_from(s) as libc::c_long as lua_Integer;
+        posi = s1.offset_from(s) as c_long as lua_Integer;
         n += 1;
     }
     lua_pushinteger(L, n as lua_Integer);
@@ -219,55 +219,50 @@ unsafe extern "C" fn pushutfchar(L: *mut lua_State, arg: c_int) {
             arg,
             b"value out of range\0" as *const u8 as *const c_char,
         ) != 0) as c_int;
-    lua_pushfstring(
-        L,
-        b"%U\0" as *const u8 as *const c_char,
-        code as libc::c_long,
-    );
+    lua_pushfstring(L, b"%U\0" as *const u8 as *const c_char, code as c_long);
 }
 
 /*
 ** offset(s, n, [i])  -> index where n-th character counting from
 **   position 'i' starts; 0 means character at 'i'.
 */
-unsafe extern "C" fn byteoffset(L: *mut lua_State) -> libc::c_int {
+unsafe extern "C" fn byteoffset(L: *mut lua_State) -> c_int {
     let mut len: size_t = 0;
-    let s: *const libc::c_char = luaL_checklstring(L, 1 as libc::c_int, &mut len);
-    let mut n: lua_Integer = luaL_checkinteger(L, 2 as libc::c_int);
-    let mut posi: lua_Integer = (if n >= 0 as libc::c_int as c_longlong {
-        1 as libc::c_int as c_ulong
+    let s: *const libc::c_char = luaL_checklstring(L, 1 as c_int, &mut len);
+    let mut n: lua_Integer = luaL_checkinteger(L, 2 as c_int);
+    let mut posi: lua_Integer = (if n >= 0 as c_int as c_longlong {
+        1 as c_int as c_ulong
     } else {
-        len.wrapping_add(1 as libc::c_int as c_ulong)
+        len.wrapping_add(1 as c_int as c_ulong)
     }) as lua_Integer;
-    posi = u_posrelat(luaL_optinteger(L, 3 as libc::c_int, posi), len);
-    (1 as libc::c_int as c_longlong <= posi && {
+    posi = u_posrelat(luaL_optinteger(L, 3 as c_int, posi), len);
+    (1 as c_int as c_longlong <= posi && {
         posi -= 1;
         posi <= len as lua_Integer
     } || luaL_argerror(
         L,
-        3 as libc::c_int,
+        3 as c_int,
         b"position out of range\0" as *const u8 as *const libc::c_char,
-    ) != 0) as libc::c_int;
-    if n == 0 as libc::c_int as c_longlong {
-        while posi > 0 as libc::c_int as c_longlong
-            && *s.offset(posi as isize) as libc::c_int & 0xc0 as libc::c_int == 0x80 as libc::c_int
+    ) != 0) as c_int;
+    if n == 0 as c_int as c_longlong {
+        while posi > 0 as c_int as c_longlong
+            && *s.offset(posi as isize) as c_int & 0xc0 as c_int == 0x80 as c_int
         {
             posi -= 1;
         }
     } else {
-        if *s.offset(posi as isize) as libc::c_int & 0xc0 as libc::c_int == 0x80 as libc::c_int {
+        if *s.offset(posi as isize) as c_int & 0xc0 as c_int == 0x80 as c_int {
             return luaL_error(
                 L,
                 b"initial position is a continuation byte\0" as *const u8 as *const libc::c_char,
             );
         }
-        if n < 0 as libc::c_int as c_longlong {
-            while n < 0 as libc::c_int as c_longlong && posi > 0 as libc::c_int as c_longlong {
+        if n < 0 as c_int as c_longlong {
+            while n < 0 as c_int as c_longlong && posi > 0 as c_int as c_longlong {
                 loop {
                     posi -= 1;
-                    if !(posi > 0 as libc::c_int as c_longlong
-                        && *s.offset(posi as isize) as libc::c_int & 0xc0 as libc::c_int
-                            == 0x80 as libc::c_int)
+                    if !(posi > 0 as c_int as c_longlong
+                        && *s.offset(posi as isize) as c_int & 0xc0 as c_int == 0x80 as c_int)
                     {
                         break;
                     }
@@ -276,12 +271,10 @@ unsafe extern "C" fn byteoffset(L: *mut lua_State) -> libc::c_int {
             }
         } else {
             n -= 1;
-            while n > 0 as libc::c_int as c_longlong && posi < len as lua_Integer {
+            while n > 0 as c_int as c_longlong && posi < len as lua_Integer {
                 loop {
                     posi += 1;
-                    if !(*s.offset(posi as isize) as libc::c_int & 0xc0 as libc::c_int
-                        == 0x80 as libc::c_int)
-                    {
+                    if !(*s.offset(posi as isize) as c_int & 0xc0 as c_int == 0x80 as c_int) {
                         break;
                     }
                 }
@@ -289,54 +282,54 @@ unsafe extern "C" fn byteoffset(L: *mut lua_State) -> libc::c_int {
             }
         }
     }
-    if n == 0 as libc::c_int as c_longlong {
-        lua_pushinteger(L, posi + 1 as libc::c_int as c_longlong);
+    if n == 0 as c_int as c_longlong {
+        lua_pushinteger(L, posi + 1 as c_int as c_longlong);
     } else {
         lua_pushnil(L);
     }
-    return 1 as libc::c_int;
+    return 1 as c_int;
 }
 
-unsafe extern "C" fn iter_aux(L: *mut lua_State) -> libc::c_int {
+unsafe extern "C" fn iter_aux(L: *mut lua_State) -> c_int {
     let mut len: size_t = 0;
-    let s: *const libc::c_char = luaL_checklstring(L, 1 as libc::c_int, &mut len);
+    let s: *const libc::c_char = luaL_checklstring(L, 1 as c_int, &mut len);
     let mut n: lua_Integer =
-        lua_tointegerx(L, 2 as libc::c_int, 0 as *mut libc::c_int) - 1 as libc::c_int as c_longlong;
-    if n < 0 as libc::c_int as c_longlong {
-        n = 0 as libc::c_int as lua_Integer;
+        lua_tointegerx(L, 2 as c_int, 0 as *mut c_int) - 1 as c_int as c_longlong;
+    if n < 0 as c_int as c_longlong {
+        n = 0 as c_int as lua_Integer;
     } else if n < len as lua_Integer {
         n += 1;
-        while *s.offset(n as isize) as libc::c_int & 0xc0 as libc::c_int == 0x80 as libc::c_int {
+        while *s.offset(n as isize) as c_int & 0xc0 as c_int == 0x80 as c_int {
             n += 1;
         }
     }
     if n >= len as lua_Integer {
-        return 0 as libc::c_int;
+        return 0 as c_int;
     } else {
-        let mut code: libc::c_int = 0;
+        let mut code: c_int = 0;
         let next: *const libc::c_char = utf8_decode(s.offset(n as isize), &mut code);
-        if next.is_null() || *next as libc::c_int & 0xc0 as libc::c_int == 0x80 as libc::c_int {
+        if next.is_null() || *next as c_int & 0xc0 as c_int == 0x80 as c_int {
             return luaL_error(
                 L,
                 b"invalid UTF-8 code\0" as *const u8 as *const libc::c_char,
             );
         }
-        lua_pushinteger(L, n + 1 as libc::c_int as c_longlong);
+        lua_pushinteger(L, n + 1 as c_int as c_longlong);
         lua_pushinteger(L, code as lua_Integer);
-        return 2 as libc::c_int;
+        return 2 as c_int;
     };
 }
 
-unsafe extern "C" fn iter_codes(L: *mut lua_State) -> libc::c_int {
-    luaL_checklstring(L, 1 as libc::c_int, 0 as *mut size_t);
+unsafe extern "C" fn iter_codes(L: *mut lua_State) -> c_int {
+    luaL_checklstring(L, 1 as c_int, 0 as *mut size_t);
     lua_pushcclosure(
         L,
-        Some(iter_aux as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
-        0 as libc::c_int,
+        Some(iter_aux as unsafe extern "C" fn(*mut lua_State) -> c_int),
+        0 as c_int,
     );
-    lua_pushvalue(L, 1 as libc::c_int);
-    lua_pushinteger(L, 0 as libc::c_int as lua_Integer);
-    return 3 as libc::c_int;
+    lua_pushvalue(L, 1 as c_int);
+    lua_pushinteger(L, 0 as c_int as lua_Integer);
+    return 3 as c_int;
 }
 
 static mut funcs: [luaL_Reg; 7] = {
@@ -344,35 +337,35 @@ static mut funcs: [luaL_Reg; 7] = {
         {
             let init = luaL_Reg {
                 name: b"offset\0" as *const u8 as *const libc::c_char,
-                func: Some(byteoffset as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+                func: Some(byteoffset as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
                 name: b"codepoint\0" as *const u8 as *const libc::c_char,
-                func: Some(codepoint as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+                func: Some(codepoint as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
                 name: b"char\0" as *const u8 as *const libc::c_char,
-                func: Some(utfchar as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+                func: Some(utfchar as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
                 name: b"len\0" as *const u8 as *const libc::c_char,
-                func: Some(utflen as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+                func: Some(utflen as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
                 name: b"codes\0" as *const u8 as *const libc::c_char,
-                func: Some(iter_codes as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+                func: Some(iter_codes as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
@@ -394,33 +387,33 @@ static mut funcs: [luaL_Reg; 7] = {
 };
 
 #[no_mangle]
-pub unsafe extern "C" fn luaopen_utf8(L: *mut lua_State) -> libc::c_int {
+pub unsafe extern "C" fn luaopen_utf8(L: *mut lua_State) -> c_int {
     luaL_checkversion_(
         L,
-        503 as libc::c_int as lua_Number,
+        503 as c_int as lua_Number,
         (::std::mem::size_of::<lua_Integer>() as c_ulong)
-            .wrapping_mul(16 as libc::c_int as c_ulong)
+            .wrapping_mul(16 as c_int as c_ulong)
             .wrapping_add(::std::mem::size_of::<lua_Number>() as c_ulong),
     );
     lua_createtable(
         L,
-        0 as libc::c_int,
+        0 as c_int,
         (::std::mem::size_of::<[luaL_Reg; 7]>() as c_ulong)
             .wrapping_div(::std::mem::size_of::<luaL_Reg>() as c_ulong)
-            .wrapping_sub(1 as libc::c_int as c_ulong) as libc::c_int,
+            .wrapping_sub(1 as c_int as c_ulong) as c_int,
     );
-    luaL_setfuncs(L, funcs.as_ptr(), 0 as libc::c_int);
+    luaL_setfuncs(L, funcs.as_ptr(), 0 as c_int);
     lua_pushlstring(
         L,
         b"[\0-\x7F\xC2-\xF4][\x80-\xBF]*\0" as *const u8 as *const libc::c_char,
         (::std::mem::size_of::<[libc::c_char; 15]>() as c_ulong)
             .wrapping_div(::std::mem::size_of::<libc::c_char>() as c_ulong)
-            .wrapping_sub(1 as libc::c_int as c_ulong),
+            .wrapping_sub(1 as c_int as c_ulong),
     );
     lua_setfield(
         L,
-        -(2 as libc::c_int),
+        -(2 as c_int),
         b"charpattern\0" as *const u8 as *const libc::c_char,
     );
-    return 1 as libc::c_int;
+    return 1 as c_int;
 }
