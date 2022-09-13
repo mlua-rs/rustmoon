@@ -28,36 +28,8 @@
 int codepoint (lua_State *L);
 lua_Integer u_posrelat (lua_Integer pos, size_t len);
 const char *utf8_decode (const char *o, int *val);
+int utflen (lua_State *L);
 // end functions moved to rust
-
-/*
-** utf8len(s [, i [, j]]) --> number of characters that start in the
-** range [i,j], or nil + current position if 's' is not well formed in
-** that interval
-*/
-static int utflen (lua_State *L) {
-  int n = 0;
-  size_t len;
-  const char *s = luaL_checklstring(L, 1, &len);
-  lua_Integer posi = u_posrelat(luaL_optinteger(L, 2, 1), len);
-  lua_Integer posj = u_posrelat(luaL_optinteger(L, 3, -1), len);
-  luaL_argcheck(L, 1 <= posi && --posi <= (lua_Integer)len, 2,
-                   "initial position out of string");
-  luaL_argcheck(L, --posj < (lua_Integer)len, 3,
-                   "final position out of string");
-  while (posi <= posj) {
-    const char *s1 = utf8_decode(s + posi, NULL);
-    if (s1 == NULL) {  /* conversion error? */
-      lua_pushnil(L);  /* return nil ... */
-      lua_pushinteger(L, posi + 1);  /* ... and current position */
-      return 2;
-    }
-    posi = s1 - s;
-    n++;
-  }
-  lua_pushinteger(L, n);
-  return 1;
-}
 
 
 static void pushutfchar (lua_State *L, int arg) {

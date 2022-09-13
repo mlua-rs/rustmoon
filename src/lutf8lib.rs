@@ -33,6 +33,7 @@ extern "C" {
         msg: *const libc::c_char,
     );
     pub fn lua_pushinteger(L: *mut lua_State, n: lua_Integer);
+    pub fn lua_pushnil(L: *mut lua_State);
 }
 
 /* from strlib */
@@ -156,4 +157,57 @@ unsafe extern "C" fn utf8_decode(
         *val = res as libc::c_int;
     }
     return (s as *const libc::c_char).offset(1 as libc::c_int as isize);
+}
+
+/*
+** utf8len(s [, i [, j]]) --> number of characters that start in the
+** range [i,j], or nil + current position if 's' is not well formed in
+** that interval
+*/
+// TODO static
+#[no_mangle]
+unsafe extern "C" fn utflen(mut L: *mut lua_State) -> libc::c_int {
+    let mut n: libc::c_int = 0 as libc::c_int;
+    let mut len: size_t = 0;
+    let mut s: *const libc::c_char = luaL_checklstring(L, 1 as libc::c_int, &mut len);
+    let mut posi: lua_Integer = u_posrelat(
+        luaL_optinteger(L, 2 as libc::c_int, 1 as libc::c_int as lua_Integer),
+        len,
+    );
+    let mut posj: lua_Integer = u_posrelat(
+        luaL_optinteger(L, 3 as libc::c_int, -(1 as libc::c_int) as lua_Integer),
+        len,
+    );
+    (1 as libc::c_int as libc::c_longlong <= posi
+        && {
+            posi -= 1;
+            posi <= len as lua_Integer
+        }
+        || luaL_argerror(
+            L,
+            2 as libc::c_int,
+            b"initial position out of string\0" as *const u8 as *const libc::c_char,
+        ) != 0) as libc::c_int;
+    posj -= 1;
+    (posj < len as lua_Integer
+        || luaL_argerror(
+            L,
+            3 as libc::c_int,
+            b"final position out of string\0" as *const u8 as *const libc::c_char,
+        ) != 0) as libc::c_int;
+    while posi <= posj {
+        let mut s1: *const libc::c_char = utf8_decode(
+            s.offset(posi as isize),
+            0 as *mut libc::c_int,
+        );
+        if s1.is_null() {
+            lua_pushnil(L);
+            lua_pushinteger(L, posi + 1 as libc::c_int as libc::c_longlong);
+            return 2 as libc::c_int;
+        }
+        posi = s1.offset_from(s) as libc::c_long as lua_Integer;
+        n += 1;
+    }
+    lua_pushinteger(L, n as lua_Integer);
+    return 1 as libc::c_int;
 }
