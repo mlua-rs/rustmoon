@@ -31,42 +31,8 @@ const char *utf8_decode (const char *o, int *val);
 int utflen (lua_State *L);
 int utfchar (lua_State *L);
 int byteoffset (lua_State *L);
-//int iter_codes (lua_State *L);
+int iter_codes (lua_State *L);
 // end functions moved to rust
-
-
-
-static int iter_aux (lua_State *L) {
-  size_t len;
-  const char *s = luaL_checklstring(L, 1, &len);
-  lua_Integer n = lua_tointeger(L, 2) - 1;
-  if (n < 0)  /* first iteration? */
-    n = 0;  /* start from here */
-  else if (n < (lua_Integer)len) {
-    n++;  /* skip current byte */
-    while (iscont(s + n)) n++;  /* and its continuations */
-  }
-  if (n >= (lua_Integer)len)
-    return 0;  /* no more codepoints */
-  else {
-    int code;
-    const char *next = utf8_decode(s + n, &code);
-    if (next == NULL || iscont(next))
-      return luaL_error(L, "invalid UTF-8 code");
-    lua_pushinteger(L, n + 1);
-    lua_pushinteger(L, code);
-    return 2;
-  }
-}
-
-
-static int iter_codes (lua_State *L) {
-  luaL_checkstring(L, 1);
-  lua_pushcfunction(L, iter_aux);
-  lua_pushvalue(L, 1);
-  lua_pushinteger(L, 0);
-  return 3;
-}
 
 
 /* pattern to match a single UTF-8 character */
