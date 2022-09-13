@@ -32,6 +32,7 @@ pub(crate) mod ltm;
 pub(crate) mod lundump;
 pub(crate) mod lvm;
 pub(crate) mod lzio;
+pub(crate) mod ltablib;
 
 pub mod lapi;
 pub mod lauxlib;
