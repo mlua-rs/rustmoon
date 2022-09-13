@@ -30,6 +30,7 @@ pub(crate) mod lstring;
 pub(crate) mod ltable;
 pub(crate) mod ltm;
 pub(crate) mod lundump;
+pub(crate) mod lutf8lib;
 pub(crate) mod lvm;
 pub(crate) mod lzio;
 
