@@ -1,8 +1,10 @@
 use crate::lauxlib::{luaL_Buffer, luaL_Reg};
 use crate::lstate::lua_State;
-use crate::types::lua_CFunction;
-use crate::types::{lua_Integer, lua_Number};
-use libc::{c_char, c_double, c_int, c_long, c_longlong, c_uchar, c_uint, c_ulong, size_t};
+use crate::types::{lua_CFunction, lua_Integer, lua_Number};
+use libc::{c_char, c_int, c_long, c_longlong, c_uchar, c_uint, c_ulong};
+
+// FIXME - this shouldn't be declared here
+type size_t = c_ulong;
 
 extern "C" {
     pub fn luaL_optinteger(L: *mut lua_State, arg: c_int, def: lua_Integer) -> lua_Integer;
