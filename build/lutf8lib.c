@@ -25,7 +25,7 @@
 #define iscont(p)	((*(p) & 0xC0) == 0x80)
 
 
-static int codepoint (lua_State *L);
+int codepoint (lua_State *L);
 
 /* from strlib */
 /* translate a relative string position: negative means back from end */
