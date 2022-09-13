@@ -90,9 +90,7 @@ extern "C" {
 
 /* from strlib */
 /* translate a relative string position: negative means back from end */
-// TODO static
-#[no_mangle]
-unsafe extern "C" fn u_posrelat(pos: lua_Integer, len: size_t) -> lua_Integer {
+fn u_posrelat(pos: lua_Integer, len: size_t) -> lua_Integer {
     if pos >= 0 as c_int as libc::c_longlong {
         return pos
     } else if (0 as libc::c_uint as libc::c_ulong).wrapping_sub(pos as size_t) > len {
@@ -106,9 +104,7 @@ unsafe extern "C" fn u_posrelat(pos: lua_Integer, len: size_t) -> lua_Integer {
 ** codepoint(s, [i, [j]])  -> returns codepoints for all characters
 ** that start in the range [i,j]
 */
-// TODO static
-#[no_mangle]
-pub unsafe extern "C" fn codepoint(L: *mut lua_State) -> c_int {
+unsafe extern "C" fn codepoint(L: *mut lua_State) -> c_int {
     let mut len: size_t = 0;
     let mut s: *const c_char = luaL_checklstring(L, 1 as c_int, &mut len);
     let posi: lua_Integer = u_posrelat(
@@ -169,8 +165,6 @@ pub unsafe extern "C" fn codepoint(L: *mut lua_State) -> c_int {
 /*
 ** Decode one UTF-8 sequence, returning NULL if byte sequence is invalid.
 */
-// TODO static
-#[no_mangle]
 unsafe extern "C" fn utf8_decode(
     o: *const c_char,
     val: *mut c_int,
@@ -216,8 +210,6 @@ unsafe extern "C" fn utf8_decode(
 ** range [i,j], or nil + current position if 's' is not well formed in
 ** that interval
 */
-// TODO static
-#[no_mangle]
 unsafe extern "C" fn utflen(L: *mut lua_State) -> c_int {
     let mut n: c_int = 0 as c_int;
     let mut len: size_t = 0;
@@ -268,8 +260,6 @@ unsafe extern "C" fn utflen(L: *mut lua_State) -> c_int {
 /*
 ** utfchar(n1, n2, ...)  -> char(n1)..char(n2)...
 */
-// TODO static
-#[no_mangle]
 unsafe extern "C" fn utfchar(L: *mut lua_State) -> c_int {
     let n: c_int = lua_gettop(L);
     if n == 1 as c_int {
@@ -295,7 +285,6 @@ unsafe extern "C" fn utfchar(L: *mut lua_State) -> c_int {
     return 1 as c_int;
 }
 
-// TODO static?
 unsafe extern "C" fn pushutfchar(L: *mut lua_State, arg: c_int) {
     let code: lua_Integer = luaL_checkinteger(L, arg);
     (0 as c_int as libc::c_longlong <= code
@@ -317,8 +306,6 @@ unsafe extern "C" fn pushutfchar(L: *mut lua_State, arg: c_int) {
 ** offset(s, n, [i])  -> index where n-th character counting from
 **   position 'i' starts; 0 means character at 'i'.
 */
-// TODO static
-#[no_mangle]
 unsafe extern "C" fn byteoffset(L: *mut lua_State) -> libc::c_int {
     let mut len: size_t = 0;
     let s: *const libc::c_char = luaL_checklstring(L, 1 as libc::c_int, &mut len);
@@ -428,7 +415,6 @@ unsafe extern "C" fn iter_aux(L: *mut lua_State) -> libc::c_int {
     };
 }
 
-#[no_mangle]
 unsafe extern "C" fn iter_codes(L: *mut lua_State) -> libc::c_int {
     luaL_checklstring(L, 1 as libc::c_int, 0 as *mut size_t);
     lua_pushcclosure(
@@ -502,6 +488,8 @@ static mut funcs: [luaL_Reg; 7] = {
         },
     ]
 };
+
+
 #[no_mangle]
 pub unsafe extern "C" fn luaopen_utf8(L: *mut lua_State) -> libc::c_int {
     luaL_checkversion_(
