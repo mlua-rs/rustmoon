@@ -21,7 +21,6 @@ fn main() {
         .file("build/lmathlib.c")
         .file("build/loslib.c")
         .file("build/lstrlib.c")
-        .file("build/ltablib.c")
         .file("build/lua.c")
         .file("build/lutf8lib.c")
         .compile("lua");
