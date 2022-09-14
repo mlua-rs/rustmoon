@@ -15,9 +15,9 @@ use crate::lfunc::{luaF_newCclosure, UpVal};
 use crate::lgc::{luaC_barrier_, luaC_barrierback_, luaC_checkGC, luaC_fullgc, luaC_upvalbarrier_};
 use crate::llimits::{l_mem, lu_byte, lu_mem};
 use crate::lobject::{
-    luaO_arith, luaO_nilobject_, luaO_pushvfstring, luaO_str2num, luaO_tostring, setivalue,
-    setnilvalue, setobj, CClosure, GCObject, LClosure, Proto, StkId, TString, TValue, Table,
-    UTString, UUdata, Udata, Value,
+    clCvalue, luaO_arith, luaO_nilobject_, luaO_pushvfstring, luaO_str2num, luaO_tostring,
+    setivalue, setnilvalue, setobj, ttislcf, CClosure, GCObject, LClosure, Proto, StkId, TString,
+    TValue, Table, UTString, UUdata, Udata, Value,
 };
 use crate::lstate::{global_State, luaE_setdebt, lua_State, CallInfo, GCUnion};
 use crate::lstring::{luaS_new, luaS_newlstr, luaS_newudata};
@@ -31,6 +31,7 @@ use crate::lzio::{luaZ_init, ZIO};
 use crate::types::{
     lua_Alloc, lua_CFunction, lua_Integer, lua_KContext, lua_KFunction, lua_Number, lua_Reader,
     lua_Writer, LUA_MULTRET, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS, LUA_TFUNCTION, LUA_TNIL,
+    LUA_VERSION_NUM,
 };
 
 pub(crate) unsafe fn api_incr_top(L: *mut lua_State) {
@@ -100,7 +101,41 @@ pub unsafe fn lua_pcall(L: *mut lua_State, n: c_int, r: c_int, f: c_int) -> c_in
     lua_pcallk(L, n, r, f, 0, None)
 }
 
-// static TValue *index2addr (lua_State *L, int idx) {
+/* test for pseudo index */
+#[inline(always)]
+fn ispseudo(i: c_int) -> bool {
+    return i <= LUA_REGISTRYINDEX;
+}
+
+unsafe extern "C" fn index2addr(L: *mut lua_State, mut idx: libc::c_int) -> *mut TValue {
+    let ci = (*L).ci;
+    if idx > 0 as libc::c_int {
+        let o = ((*ci).func).offset(idx as isize);
+        if o >= (*L).top {
+            return &luaO_nilobject_ as *const TValue as *mut TValue;
+        } else {
+            return o;
+        }
+    } else if !ispseudo(idx) {
+        return ((*L).top).offset(idx as isize);
+    } else if idx == LUA_REGISTRYINDEX {
+        return &mut (*(*L).l_G).l_registry;
+    } else {
+        idx = LUA_REGISTRYINDEX - idx;
+        if ttislcf((*ci).func) {
+            return &luaO_nilobject_ as *const TValue as *mut TValue;
+        } else {
+            let func: *mut CClosure = clCvalue((*ci).func);
+            return if idx <= (*func).nupvalues as libc::c_int {
+                &mut *((*func).upvalue)
+                    .as_mut_ptr()
+                    .offset((idx - 1 as libc::c_int) as isize) as *mut TValue
+            } else {
+                &luaO_nilobject_ as *const TValue as *mut TValue
+            };
+        }
+    };
+}
 
 unsafe extern "C" fn growstack(L: *mut lua_State, ud: *mut c_void) {
     let size: c_int = *(ud as *mut c_int);
@@ -159,7 +194,15 @@ pub unsafe extern "C" fn lua_atpanic(L: *mut lua_State, panicf: lua_CFunction) -
     return old;
 }
 
-// LUA_API const lua_Number *lua_version (lua_State *L) {
+#[no_mangle]
+pub unsafe extern "C" fn lua_version(L: *mut lua_State) -> *const lua_Number {
+    static mut version: lua_Number = LUA_VERSION_NUM as lua_Number;
+    if L.is_null() {
+        return &version;
+    } else {
+        return (*(*L).l_G).version;
+    };
+}
 
 /*
 ** basic stack manipulation
@@ -1825,7 +1868,6 @@ pub unsafe extern "C" fn lua_upvaluejoin(
 }
 
 extern "C" {
-    pub fn lua_version(L: *mut lua_State) -> *const lua_Number;
     pub fn luaC_step(L: *mut lua_State);
     pub fn luaV_lessthan(L: *mut lua_State, l: *const TValue, r: *const TValue) -> c_int;
     pub fn luaV_lessequal(L: *mut lua_State, l: *const TValue, r: *const TValue) -> c_int;
@@ -1844,7 +1886,6 @@ extern "C" {
         val: StkId,
         slot: *const TValue,
     );
-    fn index2addr(L: *mut lua_State, idx: c_int) -> *mut TValue;
     pub fn luaC_upvdeccount(L: *mut lua_State, uv: *mut UpVal);
     pub fn luaV_objlen(L: *mut lua_State, ra: StkId, rb: *const TValue);
 }
