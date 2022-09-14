@@ -27,6 +27,7 @@ pub(crate) mod lmathlib;
 pub(crate) mod lmem;
 pub(crate) mod loadlib;
 pub(crate) mod lopcodes;
+pub(crate) mod loslib;
 pub(crate) mod lparser;
 pub(crate) mod lstring;
 pub(crate) mod ltable;
