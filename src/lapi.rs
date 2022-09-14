@@ -30,7 +30,8 @@ use crate::lvm::{luaV_concat, luaV_equalobj, luaV_tointeger, luaV_tonumber_};
 use crate::lzio::{luaZ_init, ZIO};
 use crate::types::{
     lua_Alloc, lua_CFunction, lua_Integer, lua_KContext, lua_KFunction, lua_Number, lua_Reader,
-    lua_Writer, LUA_MULTRET, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS, LUA_TFUNCTION, LUA_TNIL, LUA_VERSION_NUM,
+    lua_Writer, LUA_MULTRET, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS, LUA_TFUNCTION, LUA_TNIL,
+    LUA_VERSION_NUM,
 };
 
 pub(crate) unsafe fn api_incr_top(L: *mut lua_State) {
@@ -106,26 +107,23 @@ fn ispseudo(i: c_int) -> bool {
     return i <= LUA_REGISTRYINDEX;
 }
 
-unsafe extern "C" fn index2addr(
-    L: *mut lua_State,
-    mut idx: libc::c_int,
-) -> *mut TValue {
+unsafe extern "C" fn index2addr(L: *mut lua_State, mut idx: libc::c_int) -> *mut TValue {
     let ci = (*L).ci;
     if idx > 0 as libc::c_int {
         let o = ((*ci).func).offset(idx as isize);
         if o >= (*L).top {
-            return &luaO_nilobject_ as *const TValue as *mut TValue
+            return &luaO_nilobject_ as *const TValue as *mut TValue;
         } else {
-            return o
+            return o;
         }
     } else if !ispseudo(idx) {
-        return ((*L).top).offset(idx as isize)
+        return ((*L).top).offset(idx as isize);
     } else if idx == LUA_REGISTRYINDEX {
-        return &mut (*(*L).l_G).l_registry
+        return &mut (*(*L).l_G).l_registry;
     } else {
         idx = LUA_REGISTRYINDEX - idx;
         if ttislcf((*ci).func) {
-            return &luaO_nilobject_ as *const TValue as *mut TValue
+            return &luaO_nilobject_ as *const TValue as *mut TValue;
         } else {
             let func: *mut CClosure = clCvalue((*ci).func);
             return if idx <= (*func).nupvalues as libc::c_int {
@@ -199,7 +197,11 @@ pub unsafe extern "C" fn lua_atpanic(L: *mut lua_State, panicf: lua_CFunction) -
 #[no_mangle]
 pub unsafe extern "C" fn lua_version(L: *mut lua_State) -> *const lua_Number {
     static mut version: lua_Number = LUA_VERSION_NUM as lua_Number;
-    if L.is_null() { return &version } else { return (*(*L).l_G).version };
+    if L.is_null() {
+        return &version;
+    } else {
+        return (*(*L).l_G).version;
+    };
 }
 
 /*
