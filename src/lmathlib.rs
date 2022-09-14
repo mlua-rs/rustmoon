@@ -4,12 +4,12 @@ use std::os::raw::c_int;
 
 use libc::{size_t, srand};
 
-use crate::lapi::{lua_createtable, lua_pushnumber, lua_setfield, lua_version};
-use crate::lauxlib::luaL_Reg;
+use crate::lapi::{lua_pushnumber, lua_setfield, lua_version};
+use crate::lauxlib::{luaL_Reg, luaL_newlib};
 use crate::lobject::TValue;
 use crate::lstate::lua_State;
 use crate::lvm::tointeger;
-use crate::types::{lua_Integer, lua_Number, lua_Unsigned};
+use crate::types::{lua_CFunction, lua_Integer, lua_Number, lua_Unsigned};
 
 pub const NULL: libc::c_int = 0 as libc::c_int;
 pub const PI: libc::c_double = 3.141592653589793238462643383279502884f64;
@@ -319,20 +319,236 @@ pub unsafe extern "C" fn luaL_checkversion_(L: *mut lua_State, ver: lua_Number, 
     }
 }
 
+static mut mathlib: [luaL_Reg; 28] = unsafe {
+    [
+        {
+            let mut init = luaL_Reg {
+                name: b"abs\0" as *const u8 as *const libc::c_char,
+                func: Some(math_abs as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"acos\0" as *const u8 as *const libc::c_char,
+                func: Some(math_acos as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"asin\0" as *const u8 as *const libc::c_char,
+                func: Some(math_asin as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"atan\0" as *const u8 as *const libc::c_char,
+                func: Some(math_atan as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"ceil\0" as *const u8 as *const libc::c_char,
+                func: Some(math_ceil as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"cos\0" as *const u8 as *const libc::c_char,
+                func: Some(math_cos as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"deg\0" as *const u8 as *const libc::c_char,
+                func: Some(math_deg as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"exp\0" as *const u8 as *const libc::c_char,
+                func: Some(math_exp as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"tointeger\0" as *const u8 as *const libc::c_char,
+                func: Some(math_toint as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"floor\0" as *const u8 as *const libc::c_char,
+                func: Some(math_floor as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"fmod\0" as *const u8 as *const libc::c_char,
+                func: Some(math_fmod as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"ult\0" as *const u8 as *const libc::c_char,
+                func: Some(math_ult as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"log\0" as *const u8 as *const libc::c_char,
+                func: Some(math_log as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"max\0" as *const u8 as *const libc::c_char,
+                func: Some(math_max as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"min\0" as *const u8 as *const libc::c_char,
+                func: Some(math_min as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"modf\0" as *const u8 as *const libc::c_char,
+                func: Some(math_modf as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"rad\0" as *const u8 as *const libc::c_char,
+                func: Some(math_rad as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"random\0" as *const u8 as *const libc::c_char,
+                func: Some(math_random as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"randomseed\0" as *const u8 as *const libc::c_char,
+                func: Some(math_randomseed as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"sin\0" as *const u8 as *const libc::c_char,
+                func: Some(math_sin as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"sqrt\0" as *const u8 as *const libc::c_char,
+                func: Some(math_sqrt as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"tan\0" as *const u8 as *const libc::c_char,
+                func: Some(math_tan as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"type\0" as *const u8 as *const libc::c_char,
+                func: Some(math_type as unsafe extern "C" fn(*mut lua_State) -> libc::c_int),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"pi\0" as *const u8 as *const libc::c_char,
+                func: ::core::mem::transmute::<libc::intptr_t, lua_CFunction>(
+                    NULL as libc::intptr_t,
+                ),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"huge\0" as *const u8 as *const libc::c_char,
+                func: ::core::mem::transmute::<libc::intptr_t, lua_CFunction>(
+                    NULL as libc::intptr_t,
+                ),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"maxinteger\0" as *const u8 as *const libc::c_char,
+                func: ::core::mem::transmute::<libc::intptr_t, lua_CFunction>(
+                    NULL as libc::intptr_t,
+                ),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: b"mininteger\0" as *const u8 as *const libc::c_char,
+                func: ::core::mem::transmute::<libc::intptr_t, lua_CFunction>(
+                    NULL as libc::intptr_t,
+                ),
+            };
+            init
+        },
+        {
+            let mut init = luaL_Reg {
+                name: NULL as *const libc::c_char,
+                func: ::core::mem::transmute::<libc::intptr_t, lua_CFunction>(
+                    NULL as libc::intptr_t,
+                ),
+            };
+            init
+        },
+    ]
+};
+
+/* /*
+** Open math library
+*/
+LUAMOD_API int luaopen_math (lua_State *L) {
+  luaL_newlib(L, mathlib);
+  lua_pushnumber(L, PI);
+  lua_setfield(L, -2, "pi");
+  lua_pushnumber(L, (lua_Number)HUGE_VAL);
+  lua_setfield(L, -2, "huge");
+  lua_pushinteger(L, LUA_MAXINTEGER);
+  lua_setfield(L, -2, "maxinteger");
+  lua_pushinteger(L, LUA_MININTEGER);
+  lua_setfield(L, -2, "mininteger");
+  return 1;
+} */
+
 #[no_mangle]
 pub unsafe extern "C" fn luaopen_math(L: *mut lua_State) -> libc::c_int {
-    luaL_checkversion_(
-        L,
-        LUA_VERSION_NUM as lua_Number,
-        LUAL_NUMSIZES.try_into().unwrap(),
-    );
-    lua_createtable(
-        L,
-        0 as libc::c_int,
-        (::core::mem::size_of::<[luaL_Reg; 28]>() as libc::c_ulong)
-            .wrapping_div(::core::mem::size_of::<luaL_Reg>() as libc::c_ulong)
-            .wrapping_sub(1 as libc::c_int as libc::c_ulong) as libc::c_int,
-    );
+    luaL_newlib(L, mathlib.as_ptr());
     lua_pushnumber(L, PI);
     lua_setfield(
         L,
@@ -358,4 +574,10 @@ pub unsafe extern "C" fn luaopen_math(L: *mut lua_State) -> libc::c_int {
         b"mininteger\0" as *const u8 as *const libc::c_char,
     );
     return 1 as libc::c_int;
+}
+
+extern "C" {
+    pub fn math_toint(L: *mut lua_State) -> libc::c_int;
+    pub fn math_type(L: *mut lua_State) -> libc::c_int;
+    pub fn math_random(L: *mut lua_State) -> libc::c_int;
 }

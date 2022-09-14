@@ -18,6 +18,7 @@ fn main() {
         .file("build/liolib.c")
         .file("build/loslib.c")
         .file("build/lstrlib.c")
+        .file("build/lmathlib.c")
         .file("build/ltablib.c")
         .file("build/lua.c")
         .compile("lua");
