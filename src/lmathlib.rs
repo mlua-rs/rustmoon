@@ -1,10 +1,15 @@
-use core::ffi::c_double;
 use std::convert::TryInto;
 use std::os::raw::c_int;
+use std::ptr;
 
+use core::ffi::c_double;
 use libc::{size_t, srand};
 
+<<<<<<< HEAD
 use crate::lapi::{lua_pushnumber, lua_setfield, lua_version};
+=======
+use crate::lapi::{index2addr, lua_createtable, lua_pushnumber, lua_setfield};
+>>>>>>> origin/lmathlib
 use crate::lauxlib::{luaL_Reg, luaL_newlib};
 use crate::lobject::TValue;
 use crate::lstate::lua_State;
@@ -32,8 +37,7 @@ pub const LUA_MAXINTEGER: libc::c_longlong = LLONG_MAX;
 pub const LUA_OPLT: libc::c_int = 1 as libc::c_int;
 
 extern "C" {
-    pub fn index2addr(L: *mut lua_State, idx: libc::c_int) -> *mut TValue;
-    pub fn pushnumint(L: *mut lua_State, d: lua_Number);
+    pub fn luaL_checkversion_(L: *mut lua_State, ver: lua_Number, sz: size_t);
     pub fn lua_pushinteger(L: *mut lua_State, n: lua_Integer);
     pub fn lua_gettop(L: *mut lua_State) -> libc::c_int;
     pub fn luaL_checknumber(L: *mut lua_State, arg: libc::c_int) -> lua_Number;
@@ -68,6 +72,15 @@ extern "C" {
     pub fn log(x: c_double) -> c_double;
     pub fn log2(x: c_double) -> c_double;
     pub fn log10(x: c_double) -> c_double;
+}
+
+unsafe extern "C" fn pushnumint(L: *mut lua_State, d: lua_Number) {
+    let n: lua_Integer = d as lua_Integer;
+    if n != 0 {
+        lua_pushinteger(L, n);
+    } else {
+        lua_pushnumber(L, d);
+    };
 }
 
 #[inline(always)]
@@ -293,31 +306,96 @@ pub unsafe extern "C" fn math_randomseed(L: *mut lua_State) -> libc::c_int {
     return 0 as libc::c_int;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn luaL_checkversion_(L: *mut lua_State, ver: lua_Number, sz: size_t) {
-    let v = lua_version(L);
-    if sz != LUAL_NUMSIZES.try_into().unwrap() {
-        luaL_error(
-            L,
-            b"core and library have incompatible numeric types\0" as *const u8
-                as *const libc::c_char,
-        );
-    }
-    if v != lua_version(NULL as *mut lua_State) {
-        luaL_error(
-            L,
-            b"multiple Lua VMs detected\0" as *const u8 as *const libc::c_char,
-        );
-    } else if *v != ver {
-        luaL_error(
-            L,
-            b"version mismatch: app. needs %f, Lua core provides %f\0" as *const u8
-                as *const libc::c_char,
-            ver,
-            *v,
-        );
-    }
-}
+static mut mathlib: [luaL_Reg; 22] = [
+    luaL_Reg {
+        name: cstr!("abs"),
+        func: Some(math_abs),
+    },
+    luaL_Reg {
+        name: cstr!("acos"),
+        func: Some(math_acos),
+    },
+    luaL_Reg {
+        name: cstr!("asin"),
+        func: Some(math_asin),
+    },
+    luaL_Reg {
+        name: cstr!("atan"),
+        func: Some(math_atan),
+    },
+    luaL_Reg {
+        name: cstr!("ceil"),
+        func: Some(math_ceil),
+    },
+    luaL_Reg {
+        name: cstr!("cos"),
+        func: Some(math_cos),
+    },
+    luaL_Reg {
+        name: cstr!("deg"),
+        func: Some(math_deg),
+    },
+    luaL_Reg {
+        name: cstr!("exp"),
+        func: Some(math_exp),
+    },
+    luaL_Reg {
+        name: cstr!("floor"),
+        func: Some(math_floor),
+    },
+    luaL_Reg {
+        name: cstr!("fmod"),
+        func: Some(math_fmod),
+    },
+    luaL_Reg {
+        name: cstr!("ult"),
+        func: Some(math_ult),
+    },
+    luaL_Reg {
+        name: cstr!("log"),
+        func: Some(math_log),
+    },
+    luaL_Reg {
+        name: cstr!("max"),
+        func: Some(math_max),
+    },
+    luaL_Reg {
+        name: cstr!("min"),
+        func: Some(math_min),
+    },
+    luaL_Reg {
+        name: cstr!("modf"),
+        func: Some(math_modf),
+    },
+    luaL_Reg {
+        name: cstr!("rad"),
+        func: Some(math_rad),
+    },
+    luaL_Reg {
+        name: cstr!("randomseed"),
+        func: Some(math_randomseed),
+    },
+    luaL_Reg {
+        name: cstr!("pi"),
+        func: None,
+    },
+    luaL_Reg {
+        name: cstr!("huge"),
+        func: None,
+    },
+    luaL_Reg {
+        name: cstr!("maxinteger"),
+        func: None,
+    },
+    luaL_Reg {
+        name: cstr!("mininteger"),
+        func: None,
+    },
+    luaL_Reg {
+        name: ptr::null(),
+        func: None,
+    },
+];
 
 static mut mathlib: [luaL_Reg; 28] = unsafe {
     [
