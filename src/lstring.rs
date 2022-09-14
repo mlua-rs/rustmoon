@@ -80,7 +80,7 @@ pub unsafe extern "C" fn luaS_hash(str: *const c_char, mut l: size_t, seed: c_ui
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn luaS_hashlongstr(ts: *mut TString) -> libc::c_uint {
+pub unsafe extern "C" fn luaS_hashlongstr(ts: *mut TString) -> c_uint {
     debug_assert!((*ts).tt as c_int == LUA_TLNGSTR);
     if (*ts).extra == 0 {
         /* no hash? */

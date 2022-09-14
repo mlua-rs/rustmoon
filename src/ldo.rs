@@ -606,7 +606,7 @@ unsafe extern "C" fn stackerror(L: *mut lua_State) {
 ** function position.
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaD_call(L: *mut lua_State, func: StkId, nResults: libc::c_int) {
+pub unsafe extern "C" fn luaD_call(L: *mut lua_State, func: StkId, nResults: c_int) {
     (*L).nCcalls += 1;
     if (*L).nCcalls >= LUAI_MAXCCALLS {
         stackerror(L);
@@ -830,13 +830,13 @@ pub unsafe extern "C" fn lua_resume(
 
 #[no_mangle]
 pub unsafe extern "C" fn lua_isyieldable(L: *mut lua_State) -> c_int {
-    return ((*L).nny == 0) as libc::c_int;
+    return ((*L).nny == 0) as c_int;
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn lua_yieldk(
     L: *mut lua_State,
-    nresults: libc::c_int,
+    nresults: c_int,
     ctx: lua_KContext,
     k: lua_KFunction,
 ) -> c_int {
@@ -875,7 +875,7 @@ pub unsafe extern "C" fn luaD_pcall(
     old_top: ptrdiff_t,
     ef: ptrdiff_t,
 ) -> c_int {
-    // let mut status: libc::c_int = 0;
+    // let mut status: c_int = 0;
     let old_ci = (*L).ci;
     let old_allowhooks = (*L).allowhook;
     let old_nny = (*L).nny;
