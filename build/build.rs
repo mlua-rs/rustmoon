@@ -4,12 +4,10 @@ fn main() {
         .define("LUA_USE_CTYPE", None)
         .define("LUA_USE_POSIX", None)
         // Lua core
-        .file("build/lapi.c")
         .file("build/lauxlib.c")
         .file("build/lcode.c")
         .file("build/lgc.c")
         .file("build/llex.c")
-        .file("build/loadlib.c")
         .file("build/lparser.c")
         .file("build/lvm.c")
         // Non core libs
@@ -22,6 +20,5 @@ fn main() {
         .file("build/loslib.c")
         .file("build/lstrlib.c")
         .file("build/lua.c")
-        .file("build/lutf8lib.c")
         .compile("lua");
 }

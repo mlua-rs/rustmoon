@@ -1,13 +1,22 @@
 use libc::{c_char, c_double, c_int, c_longlong, c_uchar, c_ulonglong, c_void, intptr_t, size_t};
 
-use crate::llimits::LUA_IDSIZE;
+use crate::llimits::{LUAI_MAXSTACK, LUA_IDSIZE};
 use crate::lstate::{lua_State, CallInfo};
+
+pub const LUA_VERSION_NUM: lua_Number = 503.0;
 
 /* mark for precompiled code ('<esc>Lua') */
 pub const LUA_SIGNATURE: &'static [u8] = b"\x1bLua";
 
 /* option for multiple returns in 'lua_pcall' and 'lua_call' */
 pub const LUA_MULTRET: c_int = -1;
+
+/*
+** Pseudo-indices
+** (-LUAI_MAXSTACK is the minimum valid index; we keep some free empty
+** space after that to help overflow detection)
+*/
+pub const LUA_REGISTRYINDEX: c_int = -(LUAI_MAXSTACK as c_int) - 1000;
 
 /* thread status */
 pub const LUA_OK: c_int = 0;
