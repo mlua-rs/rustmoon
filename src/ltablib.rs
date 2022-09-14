@@ -361,11 +361,7 @@ pub unsafe extern "C" fn set2(L: *mut lua_State, i: IdxT, j: IdxT) {
     lua_seti(L, 1 as libc::c_int, j as lua_Integer);
 }
 
-unsafe extern "C" fn sort_comp(
-    L: *mut lua_State,
-    a: libc::c_int,
-    b: libc::c_int,
-) -> libc::c_int {
+unsafe extern "C" fn sort_comp(L: *mut lua_State, a: libc::c_int, b: libc::c_int) -> libc::c_int {
     if lua_type(L, 2 as libc::c_int) == 0 as libc::c_int {
         return lua_compare(L, a, b, 1 as libc::c_int);
     } else {
@@ -434,12 +430,7 @@ unsafe extern "C" fn choosePivot(lo: IdxT, up: IdxT, rnd: libc::c_uint) -> IdxT 
         .wrapping_add(lo.wrapping_add(r4));
     return p;
 }
-unsafe extern "C" fn auxsort(
-    L: *mut lua_State,
-    mut lo: IdxT,
-    mut up: IdxT,
-    mut rnd: libc::c_uint,
-) {
+unsafe extern "C" fn auxsort(L: *mut lua_State, mut lo: IdxT, mut up: IdxT, mut rnd: libc::c_uint) {
     while lo < up {
         let mut p: IdxT;
         let n: IdxT;
