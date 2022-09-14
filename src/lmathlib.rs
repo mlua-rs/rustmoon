@@ -5,11 +5,7 @@ use std::ptr;
 use core::ffi::c_double;
 use libc::{size_t, srand};
 
-<<<<<<< HEAD
-use crate::lapi::{lua_pushnumber, lua_setfield, lua_version};
-=======
-use crate::lapi::{index2addr, lua_createtable, lua_pushnumber, lua_setfield};
->>>>>>> origin/lmathlib
+use crate::lapi::{lua_pushnumber, lua_setfield, lua_version, index2addr, lua_createtable, lua_pushnumber, lua_setfield};
 use crate::lauxlib::{luaL_Reg, luaL_newlib};
 use crate::lobject::TValue;
 use crate::lstate::lua_State;
