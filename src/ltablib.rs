@@ -58,7 +58,7 @@ unsafe fn checktab(L: *mut lua_State, arg: c_int, what: c_int) {
 }
 unsafe extern "C" fn tinsert(L: *mut lua_State) -> c_int {
     checktab(L, 1, 1 | 2 | 4);
-    let e: lua_Integer = luaL_len(L, 1) + 1 as c_longlong;
+    let e: lua_Integer = luaL_len(L, 1) + 1;
     let pos;
     match lua_gettop(L) {
         2 => {
@@ -66,11 +66,11 @@ unsafe extern "C" fn tinsert(L: *mut lua_State) -> c_int {
         }
         3 => {
             pos = luaL_checkinteger(L, 2);
-            let _ = 1 as c_longlong <= pos && pos <= e
-                || luaL_argerror(L, 2, cstr!("position out of bounds")) != 0;
+            let _ =
+                1 <= pos && pos <= e || luaL_argerror(L, 2, cstr!("position out of bounds")) != 0;
             let mut i: lua_Integer = e;
             while i > pos {
-                lua_geti(L, 1, i - 1 as c_longlong);
+                lua_geti(L, 1, i - 1);
                 lua_seti(L, 1, i);
                 i -= 1;
             }
@@ -87,12 +87,12 @@ unsafe extern "C" fn tremove(L: *mut lua_State) -> c_int {
     let size: lua_Integer = luaL_len(L, 1);
     let mut pos: lua_Integer = luaL_optinteger(L, 2, size);
     if pos != size {
-        let _ = 1 as c_longlong <= pos && pos <= size + 1 as c_longlong
+        let _ = 1 <= pos && pos <= size + 1
             || luaL_argerror(L, 1, cstr!("position out of bounds")) != 0;
     }
     lua_geti(L, 1, pos);
     while pos < size {
-        lua_geti(L, 1, pos + 1 as c_longlong);
+        lua_geti(L, 1, pos + 1);
         lua_seti(L, 1, pos);
         pos += 1;
     }
@@ -109,11 +109,11 @@ unsafe extern "C" fn tmove(L: *mut lua_State) -> c_int {
     checktab(L, tt, 2);
     if e >= f {
         let mut i = 0 as lua_Integer;
-        let _ = f > 0 as c_longlong
+        let _ = f > 0
             || e < lua_Integer::MAX + f
             || luaL_argerror(L, 3, cstr!("too many elements to move")) != 0;
-        let n: lua_Integer = e - f + 1 as c_longlong;
-        let _ = t <= lua_Integer::MAX - n + 1 as c_longlong
+        let n: lua_Integer = e - f + 1;
+        let _ = t <= lua_Integer::MAX - n + 1
             || luaL_argerror(L, 4, cstr!("destination wrap around")) != 0;
         if t > e || t <= f || tt != 1 && lua_compare(L, 1, tt, 0) == 0 {
             while i < n {
@@ -122,8 +122,8 @@ unsafe extern "C" fn tmove(L: *mut lua_State) -> c_int {
                 i += 1;
             }
         } else {
-            i = n - 1 as c_longlong;
-            while i >= 0 as c_longlong {
+            i = n - 1;
+            while i >= 0 {
                 lua_geti(L, 1, f + i);
                 lua_seti(L, tt, t + i);
                 i -= 1;
@@ -225,7 +225,7 @@ unsafe fn l_randomizePivot() -> c_uint {
             .wrapping_div(::std::mem::size_of::<c_uint>() as usize)
             .wrapping_mul(::std::mem::size_of::<c_uint>() as usize),
     );
-    let mut i = 0 as c_uint;
+    let mut i: c_int = 0;
     while (i as c_ulong)
         < (::std::mem::size_of::<[c_uint; 4]>() as c_ulong)
             .wrapping_div(::std::mem::size_of::<c_uint>() as c_ulong)
@@ -256,7 +256,7 @@ unsafe fn sort_comp(L: *mut lua_State, a: c_int, b: c_int) -> c_int {
 }
 unsafe fn partition(L: *mut lua_State, lo: IdxT, up: IdxT) -> IdxT {
     let mut i: IdxT = lo;
-    let mut j: IdxT = up.wrapping_sub(1 as c_uint);
+    let mut j: IdxT = up.wrapping_sub(1);
     loop {
         loop {
             i = i.wrapping_add(1);
@@ -264,7 +264,7 @@ unsafe fn partition(L: *mut lua_State, lo: IdxT, up: IdxT) -> IdxT {
             if !(sort_comp(L, -(1), -(2)) != 0) {
                 break;
             }
-            if i == up.wrapping_sub(1 as c_uint) {
+            if i == up.wrapping_sub(1) {
                 luaL_error(L, cstr!("invalid order function for sorting"));
             }
             lua_settop(L, -(1) - 1);
@@ -282,7 +282,7 @@ unsafe fn partition(L: *mut lua_State, lo: IdxT, up: IdxT) -> IdxT {
         }
         if j < i {
             lua_settop(L, -(1) - 1);
-            set2(L, up.wrapping_sub(1 as c_uint), i);
+            set2(L, up.wrapping_sub(1), i);
             return i;
         }
         set2(L, i, j);
@@ -290,9 +290,9 @@ unsafe fn partition(L: *mut lua_State, lo: IdxT, up: IdxT) -> IdxT {
 }
 
 unsafe fn choosePivot(lo: IdxT, up: IdxT, rnd: c_uint) -> IdxT {
-    let r4: IdxT = up.wrapping_sub(lo).wrapping_div(4 as c_uint);
+    let r4: IdxT = up.wrapping_sub(lo).wrapping_div(4);
     let p: IdxT = rnd
-        .wrapping_rem(r4.wrapping_mul(2 as c_uint))
+        .wrapping_rem(r4.wrapping_mul(2))
         .wrapping_add(lo.wrapping_add(r4));
     return p;
 }
@@ -307,11 +307,11 @@ unsafe fn auxsort(L: *mut lua_State, mut lo: IdxT, mut up: IdxT, mut rnd: c_uint
         } else {
             lua_settop(L, -(2) - 1);
         }
-        if up.wrapping_sub(lo) == 1 as c_uint {
+        if up.wrapping_sub(lo) == 1 {
             return;
         }
-        if up.wrapping_sub(lo) < 100 as c_uint || rnd == 0 as c_uint {
-            p = lo.wrapping_add(up).wrapping_div(2 as c_uint);
+        if up.wrapping_sub(lo) < 100 || rnd == 0 {
+            p = lo.wrapping_add(up).wrapping_div(2);
         } else {
             p = choosePivot(lo, up, rnd);
         }
@@ -328,24 +328,24 @@ unsafe fn auxsort(L: *mut lua_State, mut lo: IdxT, mut up: IdxT, mut rnd: c_uint
                 lua_settop(L, -(2) - 1);
             }
         }
-        if up.wrapping_sub(lo) == 2 as c_uint {
+        if up.wrapping_sub(lo) == 2 {
             return;
         }
         lua_geti(L, 1, p as lua_Integer);
         lua_pushvalue(L, -(1));
-        lua_geti(L, 1, up.wrapping_sub(1 as c_uint) as lua_Integer);
-        set2(L, p, up.wrapping_sub(1 as c_uint));
+        lua_geti(L, 1, up.wrapping_sub(1) as lua_Integer);
+        set2(L, p, up.wrapping_sub(1));
         p = partition(L, lo, up);
         if p.wrapping_sub(lo) < up.wrapping_sub(p) {
-            auxsort(L, lo, p.wrapping_sub(1 as c_uint), rnd);
+            auxsort(L, lo, p.wrapping_sub(1), rnd);
             n = p.wrapping_sub(lo);
-            lo = p.wrapping_add(1 as c_uint);
+            lo = p.wrapping_add(1);
         } else {
-            auxsort(L, p.wrapping_add(1 as c_uint), up, rnd);
+            auxsort(L, p.wrapping_add(1), up, rnd);
             n = up.wrapping_sub(p);
-            up = p.wrapping_sub(1 as c_uint);
+            up = p.wrapping_sub(1);
         }
-        if up.wrapping_sub(lo).wrapping_div(128 as c_uint) > n {
+        if up.wrapping_sub(lo).wrapping_div(128) > n {
             rnd = l_randomizePivot();
         }
     }
@@ -354,13 +354,13 @@ unsafe fn auxsort(L: *mut lua_State, mut lo: IdxT, mut up: IdxT, mut rnd: c_uint
 unsafe extern "C" fn sort(L: *mut lua_State) -> c_int {
     checktab(L, 1, 1 | 2 | 4);
     let n: lua_Integer = luaL_len(L, 1);
-    if n > 1 as c_longlong {
+    if n > 1 {
         let _ = n < c_int::MAX as c_longlong || luaL_argerror(L, 1, cstr!("array too big")) != 0;
         if !(lua_type(L, 2) <= 0) {
             luaL_checktype(L, 2, 6);
         }
         lua_settop(L, 2);
-        auxsort(L, 1 as IdxT, n as IdxT, 0 as c_uint);
+        auxsort(L, 1 as IdxT, n as IdxT, 0);
     }
     return 0;
 }
