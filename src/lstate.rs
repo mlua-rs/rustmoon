@@ -579,9 +579,6 @@ pub unsafe extern "C" fn luaE_freethread(L: *mut lua_State, L1: *mut lua_State) 
 
 #[no_mangle]
 pub unsafe extern "C" fn lua_newstate(f: lua_Alloc, ud: *mut c_void) -> *mut lua_State {
-    // let mut i: libc::c_int = 0;
-    // let mut L = 0 as *mut lua_State;
-    // let mut g = 0 as *mut global_State;
     let l = (f.expect("non-null function pointer"))(
         ud,
         ptr::null_mut(),

@@ -52,7 +52,7 @@ unsafe fn lsys_sym(L: *mut lua_State, _lib: *mut c_void, _sym: *const c_char) ->
 **
 */
 
-unsafe extern "C" fn noenv(L: *mut lua_State) -> libc::c_int {
+unsafe extern "C" fn noenv(L: *mut lua_State) -> c_int {
     lua_getfield(L, LUA_REGISTRYINDEX, cstr!("LUA_NOENV)"));
     let b = lua_toboolean(L, -1);
     lua_pop(L, 1); /* remove value */
@@ -284,7 +284,7 @@ unsafe fn findfile(
     return searchpath(L, name, path, cstr!("."), dirsep);
 }
 
-unsafe fn checkload(L: *mut lua_State, stat: c_int, filename: *const c_char) -> libc::c_int {
+unsafe fn checkload(L: *mut lua_State, stat: c_int, filename: *const c_char) -> c_int {
     if stat != 0 {
         /* module loaded successfully? */
         lua_pushstring(L, filename); /* will be 2nd argument to module */
