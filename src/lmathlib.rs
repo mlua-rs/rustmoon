@@ -1,4 +1,4 @@
-use libc::{size_t, srand, c_int, c_double, c_longlong};
+use libc::{size_t, srand, c_int, c_double, c_longlong, intptr_t, c_ulong, c_double};
 
 use crate::lapi::{lua_pushnumber, lua_setfield, index2addr};
 use crate::lauxlib::{luaL_Reg, luaL_newlib};
@@ -8,20 +8,20 @@ use crate::lvm::tointeger;
 use crate::types::{lua_CFunction, lua_Integer, lua_Number, lua_Unsigned};
 
 pub const NULL: c_int = 0 as c_int;
-pub const PI: libc::c_double = 3.141592653589793238462643383279502884f64;
+pub const PI: c_double = 3.141592653589793238462643383279502884f64;
 pub const __LONG_LONG_MAX__: c_longlong = 9223372036854775807;
 
 pub const RAND_MAX: c_int = 2147483647 as c_int;
 pub const L_RANDMAX: c_int = RAND_MAX;
 
 pub const LUA_VERSION_NUM: c_int = 503 as c_int;
-pub const LUAL_NUMSIZES: libc::c_ulong = (::core::mem::size_of::<lua_Integer>() as libc::c_ulong)
-    .wrapping_mul(16 as c_int as libc::c_ulong)
-    .wrapping_add(::core::mem::size_of::<lua_Number>() as libc::c_ulong);
+pub const LUAL_NUMSIZES: c_ulong = (::core::mem::size_of::<lua_Integer>() as c_ulong)
+    .wrapping_mul(16 as c_int as c_ulong)
+    .wrapping_add(::core::mem::size_of::<lua_Number>() as c_ulong);
 
 pub const LLONG_MAX: c_longlong = __LONG_LONG_MAX__;
 pub const LLONG_MIN: c_longlong = -__LONG_LONG_MAX__ - 1 as c_longlong;
-pub const HUGE_VAL: libc::c_double = ::core::f64::INFINITY;
+pub const HUGE_VAL: c_double = ::core::f64::INFINITY;
 
 pub const LUA_MININTEGER: c_longlong = LLONG_MIN;
 pub const LUA_MAXINTEGER: c_longlong = LLONG_MAX;
@@ -94,7 +94,7 @@ unsafe extern "C" fn math_abs(L: *mut lua_State) -> c_int {
     if lua_isinteger(L, 1 as c_int) != 0 {
         let mut n = lua_tointeger(L, 1);
         if n < 0 as c_int as c_longlong {
-            n = (0 as libc::c_uint as libc::c_ulonglong).wrapping_sub(n as lua_Unsigned)
+            n = (0 as libc::c_uint as c_ulonglong).wrapping_sub(n as lua_Unsigned)
                 as lua_Integer;
         }
         lua_pushinteger(L, n);
@@ -159,8 +159,8 @@ unsafe extern "C" fn math_ceil(L: *mut lua_State) -> c_int {
 unsafe extern "C" fn math_fmod(L: *mut lua_State) -> c_int {
     if lua_isinteger(L, 1 as c_int) != 0 && lua_isinteger(L, 2 as c_int) != 0 {
         let d = lua_tointeger(L, 2);
-        if (d as lua_Unsigned).wrapping_add(1 as libc::c_uint as libc::c_ulonglong)
-            <= 1 as libc::c_uint as libc::c_ulonglong
+        if (d as lua_Unsigned).wrapping_add(1 as libc::c_uint as c_ulonglong)
+            <= 1 as libc::c_uint as c_ulonglong
         {
             lua_pushinteger(L, 0 as c_int as lua_Integer);
         } else {
@@ -184,7 +184,7 @@ unsafe extern "C" fn math_modf(L: *mut lua_State) -> c_int {
         lua_pushnumber(L, 0 as c_int as lua_Number);
     } else {
         let n = luaL_checknumber(L, 1 as c_int);
-        let ip = if n < 0 as c_int as libc::c_double {
+        let ip = if n < 0 as c_int as c_double {
             ceil(n)
         } else {
             floor(n)
@@ -444,8 +444,8 @@ static mut mathlib: [luaL_Reg; 28] = unsafe {
         {
             let init = luaL_Reg {
                 name: b"pi\0" as *const u8 as *const libc::c_char,
-                func: ::core::mem::transmute::<libc::intptr_t, lua_CFunction>(
-                    NULL as libc::intptr_t,
+                func: ::core::mem::transmute::<intptr_t, lua_CFunction>(
+                    NULL as intptr_t,
                 ),
             };
             init
@@ -453,8 +453,8 @@ static mut mathlib: [luaL_Reg; 28] = unsafe {
         {
             let init = luaL_Reg {
                 name: b"huge\0" as *const u8 as *const libc::c_char,
-                func: ::core::mem::transmute::<libc::intptr_t, lua_CFunction>(
-                    NULL as libc::intptr_t,
+                func: ::core::mem::transmute::<intptr_t, lua_CFunction>(
+                    NULL as intptr_t,
                 ),
             };
             init
@@ -462,8 +462,8 @@ static mut mathlib: [luaL_Reg; 28] = unsafe {
         {
             let init = luaL_Reg {
                 name: b"maxinteger\0" as *const u8 as *const libc::c_char,
-                func: ::core::mem::transmute::<libc::intptr_t, lua_CFunction>(
-                    NULL as libc::intptr_t,
+                func: ::core::mem::transmute::<intptr_t, lua_CFunction>(
+                    NULL as intptr_t,
                 ),
             };
             init
@@ -471,8 +471,8 @@ static mut mathlib: [luaL_Reg; 28] = unsafe {
         {
             let init = luaL_Reg {
                 name: b"mininteger\0" as *const u8 as *const libc::c_char,
-                func: ::core::mem::transmute::<libc::intptr_t, lua_CFunction>(
-                    NULL as libc::intptr_t,
+                func: ::core::mem::transmute::<intptr_t, lua_CFunction>(
+                    NULL as intptr_t,
                 ),
             };
             init
@@ -480,8 +480,8 @@ static mut mathlib: [luaL_Reg; 28] = unsafe {
         {
             let init = luaL_Reg {
                 name: NULL as *const libc::c_char,
-                func: ::core::mem::transmute::<libc::intptr_t, lua_CFunction>(
-                    NULL as libc::intptr_t,
+                func: ::core::mem::transmute::<intptr_t, lua_CFunction>(
+                    NULL as intptr_t,
                 ),
             };
             init
