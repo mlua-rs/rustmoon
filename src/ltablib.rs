@@ -19,9 +19,9 @@ use libc::{
 pub type IdxT = c_uint;
 pub type time_t = c_long;
 
-pub const TAB_R: libc::c_int = 1;
-pub const TAB_W: libc::c_int = 2;
-pub const TAB_L: libc::c_int = 4;
+pub const TAB_R: c_int = 1;
+pub const TAB_W: c_int = 2;
+pub const TAB_L: c_int = 4;
 
 extern "C" {
     fn clock() -> clock_t;
