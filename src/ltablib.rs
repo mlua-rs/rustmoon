@@ -1,56 +1,25 @@
 use crate::lapi::{
-    lua_createtable, lua_gettop, lua_pushinteger, lua_pushnil, lua_pushstring, lua_pushvalue,
-    lua_setfield,
+    lua_callk, lua_checkstack, lua_compare, lua_createtable, lua_geti, lua_getmetatable,
+    lua_gettop, lua_isstring, lua_pushinteger, lua_pushnil, lua_pushstring, lua_pushvalue,
+    lua_rawget, lua_rotate, lua_setfield, lua_seti, lua_settop, lua_toboolean, lua_type,
+    lua_typename,
 };
-use crate::lauxlib::{luaL_Buffer, luaL_Reg};
+use crate::lauxlib::{
+    luaL_Buffer, luaL_Reg, luaL_addlstring, luaL_addvalue, luaL_argerror, luaL_buffinit,
+    luaL_checkinteger, luaL_checktype, luaL_checkversion_, luaL_error, luaL_len, luaL_optinteger,
+    luaL_optlstring, luaL_pushresult, luaL_setfuncs,
+};
 use crate::lstate::lua_State;
-use crate::types::{lua_Integer, lua_KContext, lua_KFunction, lua_Number, lua_Unsigned};
+use crate::types::{lua_Integer, lua_KContext, lua_Number, lua_Unsigned};
 use libc::{
-    c_char, c_int, c_long, c_longlong, c_uint, c_ulong, c_ulonglong, c_void, clock_t, size_t,
+    c_char, c_int, c_long, c_longlong, c_uint, c_ulong, c_ulonglong, c_void, clock_t, memcpy,
+    size_t,
 };
 
 pub type IdxT = c_uint;
 pub type time_t = c_long;
 
 extern "C" {
-    fn memcpy(_: *mut c_void, _: *const c_void, _: c_ulong) -> *mut c_void;
-    fn lua_settop(L: *mut lua_State, idx: c_int);
-    fn lua_rotate(L: *mut lua_State, idx: c_int, n: c_int);
-    fn lua_checkstack(L: *mut lua_State, n: c_int) -> c_int;
-    fn lua_isstring(L: *mut lua_State, idx: c_int) -> c_int;
-    fn lua_type(L: *mut lua_State, idx: c_int) -> c_int;
-    fn lua_typename(L: *mut lua_State, tp: c_int) -> *const c_char;
-    fn lua_toboolean(L: *mut lua_State, idx: c_int) -> c_int;
-    fn lua_compare(L: *mut lua_State, idx1: c_int, idx2: c_int, op: c_int) -> c_int;
-    fn lua_geti(L: *mut lua_State, idx: c_int, n: lua_Integer) -> c_int;
-    fn lua_rawget(L: *mut lua_State, idx: c_int) -> c_int;
-    fn lua_getmetatable(L: *mut lua_State, objindex: c_int) -> c_int;
-    fn lua_seti(L: *mut lua_State, idx: c_int, n: lua_Integer);
-    fn lua_callk(
-        L: *mut lua_State,
-        nargs: c_int,
-        nresults: c_int,
-        ctx: lua_KContext,
-        k: lua_KFunction,
-    );
-    fn luaL_checkversion_(L: *mut lua_State, ver: lua_Number, sz: size_t);
-    fn luaL_argerror(L: *mut lua_State, arg: c_int, extramsg: *const c_char) -> c_int;
-    fn luaL_optlstring(
-        L: *mut lua_State,
-        arg: c_int,
-        def: *const c_char,
-        l: *mut size_t,
-    ) -> *const c_char;
-    fn luaL_addvalue(B: *mut luaL_Buffer);
-    fn luaL_checkinteger(L: *mut lua_State, arg: c_int) -> lua_Integer;
-    fn luaL_optinteger(L: *mut lua_State, arg: c_int, def: lua_Integer) -> lua_Integer;
-    fn luaL_checktype(L: *mut lua_State, arg: c_int, t: c_int);
-    fn luaL_error(L: *mut lua_State, fmt: *const c_char, _: ...) -> c_int;
-    fn luaL_buffinit(L: *mut lua_State, B: *mut luaL_Buffer);
-    fn luaL_len(L: *mut lua_State, idx: c_int) -> lua_Integer;
-    fn luaL_setfuncs(L: *mut lua_State, l: *const luaL_Reg, nup: c_int);
-    fn luaL_addlstring(B: *mut luaL_Buffer, s: *const c_char, l: size_t);
-    fn luaL_pushresult(B: *mut luaL_Buffer);
     fn clock() -> clock_t;
     fn time(_: *mut time_t) -> time_t;
 }
@@ -275,9 +244,9 @@ unsafe extern "C" fn l_randomizePivot() -> c_uint {
     memcpy(
         buff.as_mut_ptr() as *mut c_void,
         &mut c as *mut clock_t as *const c_void,
-        (::std::mem::size_of::<clock_t>() as c_ulong)
-            .wrapping_div(::std::mem::size_of::<c_uint>() as c_ulong)
-            .wrapping_mul(::std::mem::size_of::<c_uint>() as c_ulong),
+        (::std::mem::size_of::<clock_t>() as usize)
+            .wrapping_div(::std::mem::size_of::<c_uint>() as usize)
+            .wrapping_mul(::std::mem::size_of::<c_uint>() as usize),
     );
     memcpy(
         buff.as_mut_ptr().offset(
@@ -285,9 +254,9 @@ unsafe extern "C" fn l_randomizePivot() -> c_uint {
                 .wrapping_div(::std::mem::size_of::<c_uint>() as c_ulong) as isize,
         ) as *mut c_void,
         &mut t as *mut time_t as *const c_void,
-        (::std::mem::size_of::<time_t>() as c_ulong)
-            .wrapping_div(::std::mem::size_of::<c_uint>() as c_ulong)
-            .wrapping_mul(::std::mem::size_of::<c_uint>() as c_ulong),
+        (::std::mem::size_of::<time_t>() as usize)
+            .wrapping_div(::std::mem::size_of::<c_uint>() as usize)
+            .wrapping_mul(::std::mem::size_of::<c_uint>() as usize),
     );
     let mut i = 0 as c_int as c_uint;
     while (i as c_ulong)
