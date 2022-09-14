@@ -107,7 +107,7 @@ fn ispseudo(i: c_int) -> bool {
     return i <= LUA_REGISTRYINDEX;
 }
 
-unsafe extern "C" fn index2addr(L: *mut lua_State, mut idx: c_int) -> *mut TValue {
+pub unsafe extern "C" fn index2addr(L: *mut lua_State, mut idx: c_int) -> *mut TValue {
     let ci = (*L).ci;
     if idx > 0 as c_int {
         let o = ((*ci).func).offset(idx as isize);

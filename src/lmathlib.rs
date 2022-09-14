@@ -1,11 +1,12 @@
-use core::ffi::c_double;
 use std::convert::TryInto;
 use std::os::raw::c_int;
+use std::ptr;
 
+use core::ffi::c_double;
 use libc::{size_t, srand};
 
-use crate::lapi::{lua_createtable, lua_pushnumber, lua_setfield};
-use crate::lauxlib::luaL_Reg;
+use crate::lapi::{index2addr, lua_createtable, lua_pushnumber, lua_setfield};
+use crate::lauxlib::{luaL_Reg, luaL_newlib};
 use crate::lobject::TValue;
 use crate::lstate::lua_State;
 use crate::lvm::tointeger;
@@ -32,8 +33,6 @@ pub const LUA_MAXINTEGER: libc::c_longlong = LLONG_MAX;
 pub const LUA_OPLT: libc::c_int = 1 as libc::c_int;
 
 extern "C" {
-    pub fn index2addr(L: *mut lua_State, idx: libc::c_int) -> *mut TValue;
-    pub fn pushnumint(L: *mut lua_State, d: lua_Number);
     pub fn luaL_checkversion_(L: *mut lua_State, ver: lua_Number, sz: size_t);
     pub fn lua_pushinteger(L: *mut lua_State, n: lua_Integer);
     pub fn lua_gettop(L: *mut lua_State) -> libc::c_int;
@@ -69,6 +68,15 @@ extern "C" {
     pub fn log(x: c_double) -> c_double;
     pub fn log2(x: c_double) -> c_double;
     pub fn log10(x: c_double) -> c_double;
+}
+
+unsafe extern "C" fn pushnumint(L: *mut lua_State, d: lua_Number) {
+    let n: lua_Integer = d as lua_Integer;
+    if n != 0 {
+        lua_pushinteger(L, n);
+    } else {
+        lua_pushnumber(L, d);
+    };
 }
 
 #[inline(always)]
@@ -294,8 +302,100 @@ pub unsafe extern "C" fn math_randomseed(L: *mut lua_State) -> libc::c_int {
     return 0 as libc::c_int;
 }
 
+static mut mathlib: [luaL_Reg; 22] = [
+    luaL_Reg {
+        name: cstr!("abs"),
+        func: Some(math_abs),
+    },
+    luaL_Reg {
+        name: cstr!("acos"),
+        func: Some(math_acos),
+    },
+    luaL_Reg {
+        name: cstr!("asin"),
+        func: Some(math_asin),
+    },
+    luaL_Reg {
+        name: cstr!("atan"),
+        func: Some(math_atan),
+    },
+    luaL_Reg {
+        name: cstr!("ceil"),
+        func: Some(math_ceil),
+    },
+    luaL_Reg {
+        name: cstr!("cos"),
+        func: Some(math_cos),
+    },
+    luaL_Reg {
+        name: cstr!("deg"),
+        func: Some(math_deg),
+    },
+    luaL_Reg {
+        name: cstr!("exp"),
+        func: Some(math_exp),
+    },
+    luaL_Reg {
+        name: cstr!("floor"),
+        func: Some(math_floor),
+    },
+    luaL_Reg {
+        name: cstr!("fmod"),
+        func: Some(math_fmod),
+    },
+    luaL_Reg {
+        name: cstr!("ult"),
+        func: Some(math_ult),
+    },
+    luaL_Reg {
+        name: cstr!("log"),
+        func: Some(math_log),
+    },
+    luaL_Reg {
+        name: cstr!("max"),
+        func: Some(math_max),
+    },
+    luaL_Reg {
+        name: cstr!("min"),
+        func: Some(math_min),
+    },
+    luaL_Reg {
+        name: cstr!("modf"),
+        func: Some(math_modf),
+    },
+    luaL_Reg {
+        name: cstr!("rad"),
+        func: Some(math_rad),
+    },
+    luaL_Reg {
+        name: cstr!("randomseed"),
+        func: Some(math_randomseed),
+    },
+    luaL_Reg {
+        name: cstr!("pi"),
+        func: None,
+    },
+    luaL_Reg {
+        name: cstr!("huge"),
+        func: None,
+    },
+    luaL_Reg {
+        name: cstr!("maxinteger"),
+        func: None,
+    },
+    luaL_Reg {
+        name: cstr!("mininteger"),
+        func: None,
+    },
+    luaL_Reg {
+        name: ptr::null(),
+        func: None,
+    },
+];
+
 #[no_mangle]
 pub unsafe extern "C" fn luaopen_math(L: *mut lua_State) -> libc::c_int {
+    luaL_newlib(L, mathlib.as_ptr());
     luaL_checkversion_(
         L,
         LUA_VERSION_NUM as lua_Number,
