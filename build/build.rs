@@ -4,7 +4,6 @@ fn main() {
         .define("LUA_USE_CTYPE", None)
         .define("LUA_USE_POSIX", None)
         // Lua core
-        .file("build/lauxlib.c")
         .file("build/lcode.c")
         .file("build/lgc.c")
         .file("build/llex.c")
