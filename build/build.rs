@@ -16,7 +16,6 @@ fn main() {
         .file("build/lcorolib.c")
         .file("build/ldblib.c")
         .file("build/liolib.c")
-        .file("build/lmathlib.c")
         .file("build/loslib.c")
         .file("build/lstrlib.c")
         .file("build/ltablib.c")
