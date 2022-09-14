@@ -1,20 +1,35 @@
 use core::ffi::c_double;
+use std::convert::TryInto;
 use std::os::raw::c_int;
 
-use libc::srand;
+use libc::{size_t, srand};
 
-use crate::lapi::lua_pushnumber;
+use crate::lapi::{lua_createtable, lua_pushnumber, lua_setfield, lua_version};
+use crate::lauxlib::luaL_Reg;
 use crate::lobject::TValue;
 use crate::lstate::lua_State;
 use crate::lvm::tointeger;
 use crate::types::{lua_Integer, lua_Number, lua_Unsigned};
 
+pub const NULL: libc::c_int = 0 as libc::c_int;
 pub const PI: libc::c_double = 3.141592653589793238462643383279502884f64;
+pub const __LONG_LONG_MAX__: libc::c_longlong = 9223372036854775807;
 
-pub const LUA_OPLT: libc::c_int = 1 as libc::c_int;
+pub const RAND_MAX: libc::c_int = 2147483647 as libc::c_int;
+pub const L_RANDMAX: libc::c_int = RAND_MAX;
+
+pub const LUA_VERSION_NUM: libc::c_int = 503 as libc::c_int;
 pub const LUAL_NUMSIZES: libc::c_ulong = (::core::mem::size_of::<lua_Integer>() as libc::c_ulong)
     .wrapping_mul(16 as libc::c_int as libc::c_ulong)
     .wrapping_add(::core::mem::size_of::<lua_Number>() as libc::c_ulong);
+
+pub const LLONG_MAX: libc::c_longlong = __LONG_LONG_MAX__;
+pub const LLONG_MIN: libc::c_longlong = -__LONG_LONG_MAX__ - 1 as libc::c_longlong;
+pub const HUGE_VAL: libc::c_double = ::core::f64::INFINITY;
+
+pub const LUA_MININTEGER: libc::c_longlong = LLONG_MIN;
+pub const LUA_MAXINTEGER: libc::c_longlong = LLONG_MAX;
+pub const LUA_OPLT: libc::c_int = 1 as libc::c_int;
 
 extern "C" {
     pub fn index2addr(L: *mut lua_State, idx: libc::c_int) -> *mut TValue;
@@ -276,4 +291,71 @@ pub unsafe extern "C" fn math_max(L: *mut lua_State) -> libc::c_int {
 pub unsafe extern "C" fn math_randomseed(L: *mut lua_State) -> libc::c_int {
     srand(luaL_checknumber(L, 1 as libc::c_int) as lua_Integer as libc::c_uint);
     return 0 as libc::c_int;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn luaL_checkversion_(L: *mut lua_State, ver: lua_Number, sz: size_t) {
+    let v = lua_version(L);
+    if sz != LUAL_NUMSIZES.try_into().unwrap() {
+        luaL_error(
+            L,
+            b"core and library have incompatible numeric types\0" as *const u8
+                as *const libc::c_char,
+        );
+    }
+    if v != lua_version(NULL as *mut lua_State) {
+        luaL_error(
+            L,
+            b"multiple Lua VMs detected\0" as *const u8 as *const libc::c_char,
+        );
+    } else if *v != ver {
+        luaL_error(
+            L,
+            b"version mismatch: app. needs %f, Lua core provides %f\0" as *const u8
+                as *const libc::c_char,
+            ver,
+            *v,
+        );
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn luaopen_math(L: *mut lua_State) -> libc::c_int {
+    luaL_checkversion_(
+        L,
+        LUA_VERSION_NUM as lua_Number,
+        LUAL_NUMSIZES.try_into().unwrap(),
+    );
+    lua_createtable(
+        L,
+        0 as libc::c_int,
+        (::core::mem::size_of::<[luaL_Reg; 28]>() as libc::c_ulong)
+            .wrapping_div(::core::mem::size_of::<luaL_Reg>() as libc::c_ulong)
+            .wrapping_sub(1 as libc::c_int as libc::c_ulong) as libc::c_int,
+    );
+    lua_pushnumber(L, PI);
+    lua_setfield(
+        L,
+        -(2 as libc::c_int),
+        b"pi\0" as *const u8 as *const libc::c_char,
+    );
+    lua_pushnumber(L, HUGE_VAL);
+    lua_setfield(
+        L,
+        -(2 as libc::c_int),
+        b"huge\0" as *const u8 as *const libc::c_char,
+    );
+    lua_pushinteger(L, LUA_MAXINTEGER);
+    lua_setfield(
+        L,
+        -(2 as libc::c_int),
+        b"maxinteger\0" as *const u8 as *const libc::c_char,
+    );
+    lua_pushinteger(L, LUA_MININTEGER);
+    lua_setfield(
+        L,
+        -(2 as libc::c_int),
+        b"mininteger\0" as *const u8 as *const libc::c_char,
+    );
+    return 1 as libc::c_int;
 }
