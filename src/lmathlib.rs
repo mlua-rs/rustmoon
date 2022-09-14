@@ -4,7 +4,7 @@ use std::os::raw::c_int;
 
 use libc::{size_t, srand};
 
-use crate::lapi::{lua_createtable, lua_pushnumber, lua_setfield, lua_version};
+use crate::lapi::{lua_createtable, lua_pushnumber, lua_setfield};
 use crate::lauxlib::luaL_Reg;
 use crate::lobject::TValue;
 use crate::lstate::lua_State;
@@ -34,6 +34,7 @@ pub const LUA_OPLT: libc::c_int = 1 as libc::c_int;
 extern "C" {
     pub fn index2addr(L: *mut lua_State, idx: libc::c_int) -> *mut TValue;
     pub fn pushnumint(L: *mut lua_State, d: lua_Number);
+    pub fn luaL_checkversion_(L: *mut lua_State, ver: lua_Number, sz: size_t);
     pub fn lua_pushinteger(L: *mut lua_State, n: lua_Integer);
     pub fn lua_gettop(L: *mut lua_State) -> libc::c_int;
     pub fn luaL_checknumber(L: *mut lua_State, arg: libc::c_int) -> lua_Number;
@@ -291,32 +292,6 @@ pub unsafe extern "C" fn math_max(L: *mut lua_State) -> libc::c_int {
 pub unsafe extern "C" fn math_randomseed(L: *mut lua_State) -> libc::c_int {
     srand(luaL_checknumber(L, 1 as libc::c_int) as lua_Integer as libc::c_uint);
     return 0 as libc::c_int;
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn luaL_checkversion_(L: *mut lua_State, ver: lua_Number, sz: size_t) {
-    let v = lua_version(L);
-    if sz != LUAL_NUMSIZES.try_into().unwrap() {
-        luaL_error(
-            L,
-            b"core and library have incompatible numeric types\0" as *const u8
-                as *const libc::c_char,
-        );
-    }
-    if v != lua_version(NULL as *mut lua_State) {
-        luaL_error(
-            L,
-            b"multiple Lua VMs detected\0" as *const u8 as *const libc::c_char,
-        );
-    } else if *v != ver {
-        luaL_error(
-            L,
-            b"version mismatch: app. needs %f, Lua core provides %f\0" as *const u8
-                as *const libc::c_char,
-            ver,
-            *v,
-        );
-    }
 }
 
 #[no_mangle]
