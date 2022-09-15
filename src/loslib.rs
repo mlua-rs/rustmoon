@@ -163,7 +163,7 @@ unsafe fn checkoption(
 ) -> *const c_char {
     let mut option = LUA_STRFTIMEOPTIONS.as_ptr();
     let mut oplen: c_int = 1;
-    while *option as c_int != '\0' as i32 && oplen as c_long <= convlen {
+    while *option as c_int != '\0' as i32 && oplen as ptrdiff_t <= convlen {
         if *option as c_int == '|' as i32 {
             oplen += 1;
         } else if memcmp(
@@ -245,7 +245,7 @@ unsafe extern "C" fn os_date(L: *mut lua_State) -> c_int {
             } else {
                 let buff: *mut c_char = luaL_prepbuffsize(&mut b, 250);
                 s = s.offset(1);
-                s = checkoption(L, s, se.offset_from(s) as c_long, cc.as_mut_ptr().offset(1));
+                s = checkoption(L, s, se.offset_from(s) as ptrdiff_t, cc.as_mut_ptr().offset(1));
                 let reslen: usize = strftime(buff, 250, cc.as_mut_ptr(), stm);
                 b.n = (b.n as c_ulong).wrapping_add(reslen as u64) as usize;
             }
