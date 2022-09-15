@@ -820,6 +820,7 @@ unsafe extern "C" fn newbox(L: *mut lua_State, newsize: size_t) -> *mut libc::c_
 ** check whether buffer is using a userdata on the stack as a temporary
 ** buffer
 */
+#[inline(always)]
 unsafe fn buffonstack(B: *mut luaL_Buffer) -> bool {
     return (*B).b != (*B).initb.as_mut_ptr();
 }
