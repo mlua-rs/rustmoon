@@ -107,6 +107,17 @@ fn ispseudo(i: c_int) -> bool {
     return i <= LUA_REGISTRYINDEX;
 }
 
+#[inline(always)]
+pub unsafe fn lua_tointeger(L: *mut lua_State, idx: c_int) -> lua_Integer {
+    let mut NULL: c_int = 0;
+    return lua_tointegerx(L, idx, &mut NULL);
+}
+
+#[inline(always)]
+pub unsafe fn lua_isnoneornil(L: *mut lua_State, n: c_int) -> bool {
+    return lua_type(L, n) <= 0;
+}
+
 pub unsafe extern "C" fn index2addr(L: *mut lua_State, mut idx: c_int) -> *mut TValue {
     let ci = (*L).ci;
     if idx > 0 as c_int {

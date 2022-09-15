@@ -1,16 +1,14 @@
 use libc::{c_double, c_int, c_longlong, c_ulong, c_ulonglong, intptr_t, srand};
 
 use crate::lapi::{
-    index2addr, lua_compare, lua_gettop, lua_isinteger, lua_pushboolean, lua_pushinteger,
-    lua_pushnil, lua_pushnumber, lua_pushvalue, lua_setfield, lua_tointegerx, lua_type,
+    lua_compare, lua_gettop, lua_isinteger, lua_isnoneornil, lua_pushboolean, lua_pushinteger,
+    lua_pushnil, lua_pushnumber, lua_pushvalue, lua_setfield, lua_tointeger, lua_tointegerx,
 };
 use crate::lauxlib::{
     luaL_Reg, luaL_argerror, luaL_checkany, luaL_checkinteger, luaL_checknumber, luaL_newlib,
     luaL_optnumber,
 };
-use crate::lobject::TValue;
 use crate::lstate::lua_State;
-use crate::lvm::tointeger;
 use crate::types::{lua_CFunction, lua_Integer, lua_Number, lua_Unsigned};
 
 pub const NULL: c_int = 0 as c_int;
@@ -62,22 +60,6 @@ unsafe extern "C" fn pushnumint(L: *mut lua_State, d: lua_Number) {
     } else {
         lua_pushnumber(L, d);
     };
-}
-
-#[inline(always)]
-pub unsafe fn lua_tointeger(L: *mut lua_State, idx: c_int) -> lua_Integer {
-    let mut res: lua_Integer = 0;
-    let o: *const TValue = index2addr(L, idx);
-    let isnum = tointeger(o, &mut res);
-    if isnum == 0 {
-        res = 0 as c_int as lua_Integer;
-    }
-    return res;
-}
-
-#[inline(always)]
-pub unsafe fn lua_isnoneornil(L: *mut lua_State, n: c_int) -> bool {
-    return lua_type(L, n) <= 0;
 }
 
 unsafe extern "C" fn math_abs(L: *mut lua_State) -> c_int {
