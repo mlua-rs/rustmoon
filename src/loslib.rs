@@ -14,6 +14,9 @@ use libc::{c_char, c_double, c_int, c_long, c_longlong, c_ulong, c_void, clock_t
   system, mkstemp, memcmp, strcmp, strcpy, difftime, mktime, time, gmtime_r, localtime_r, remove, rename, close,
 };
 
+use crate::lstate::{lua_close};
+use crate::lapi::{lua_tointegerx, lua_pushnumber, lua_pushfstring, lua_pushboolean, lua_getfield};
+
 pub const L_MAXDATEFIELD: libc::c_int = libc::INT_MAX / 2;
 pub const LUA_STRFTIMEOPTIONS: [libc::c_char; 78] = unsafe {
     *::core::mem::transmute::<&[u8; 78], &[libc::c_char; 78]>(
@@ -24,12 +27,6 @@ pub const LUA_STRFTIMEOPTIONS: [libc::c_char; 78] = unsafe {
 extern "C" {
     fn clock() -> clock_t;
     fn strftime(_: *mut c_char, _: size_t, _: *const c_char, _: *const tm) -> size_t;
-    fn lua_close(L: *mut lua_State);
-    fn lua_tointegerx(L: *mut lua_State, idx: c_int, isnum: *mut c_int) -> lua_Integer;
-    fn lua_pushnumber(L: *mut lua_State, n: lua_Number);
-    fn lua_pushfstring(L: *mut lua_State, fmt: *const c_char, _: ...) -> *const c_char;
-    fn lua_pushboolean(L: *mut lua_State, b: c_int);
-    fn lua_getfield(L: *mut lua_State, idx: c_int, k: *const c_char) -> c_int;
     fn luaL_checklstring(L: *mut lua_State, arg: c_int, l: *mut size_t) -> *const c_char;
     fn luaL_fileresult(L: *mut lua_State, stat: c_int, fname: *const c_char) -> c_int;
     fn luaL_execresult(L: *mut lua_State, stat: c_int) -> c_int;
