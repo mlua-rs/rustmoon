@@ -62,7 +62,7 @@ static void pushnumint (lua_State *L, lua_Number d) {
     lua_pushnumber(L, d);  /* result is float */
 }
 
-static int math_fmod (lua_State *L) {
+extern int math_fmod (lua_State *L) {
   if (lua_isinteger(L, 1) && lua_isinteger(L, 2)) {
     lua_Integer d = lua_tointeger(L, 2);
     if ((lua_Unsigned)d + 1u <= 1u) {  /* special cases: -1 or 0 */
@@ -78,7 +78,7 @@ static int math_fmod (lua_State *L) {
   return 1;
 }
 
-static int math_floor (lua_State *L) {
+extern int math_floor (lua_State *L) {
   if (lua_isinteger(L, 1))
     lua_settop(L, 1);  /* integer is its own floor */
   else {
@@ -89,7 +89,7 @@ static int math_floor (lua_State *L) {
 }
 
 
-static int math_ceil (lua_State *L) {
+extern int math_ceil (lua_State *L) {
   if (lua_isinteger(L, 1))
     lua_settop(L, 1);  /* integer is its own ceil */
   else {
@@ -105,7 +105,7 @@ static int math_ceil (lua_State *L) {
 ** (which is not compatible with 'float*') when lua_Number is not
 ** 'double'.
 */
-static int math_modf (lua_State *L) {
+extern int math_modf (lua_State *L) {
   if (lua_isinteger(L ,1)) {
     lua_settop(L, 1);  /* number is its own integer part */
     lua_pushnumber(L, 0);  /* no fractional part */
@@ -177,19 +177,13 @@ extern int math_type (lua_State *L) {
 */
 #if defined(LUA_COMPAT_MATHLIB)
 
-static int math_cosh (lua_State *L);
-
-static int math_sinh (lua_State *L);
-
-static int math_tanh (lua_State *L);
-
-static int math_pow (lua_State *L);
-
-static int math_frexp (lua_State *L);
-
-static int math_ldexp (lua_State *L);
-
-static int math_log10 (lua_State *L);
+extern int math_cosh (lua_State *L);
+extern int math_sinh (lua_State *L);
+extern int math_tanh (lua_State *L);
+extern int math_pow (lua_State *L);
+extern int math_frexp (lua_State *L);
+extern int math_ldexp (lua_State *L);
+extern int math_log10 (lua_State *L);
 
 #endif
 /* }================================================================== */
@@ -237,21 +231,3 @@ static const luaL_Reg mathlib[] = {
   {"mininteger", NULL},
   {NULL, NULL}
 };
-
-
-/*
-** Open math library
-*/
-LUAMOD_API int luaopen_math (lua_State *L) {
-  luaL_newlib(L, mathlib);
-  lua_pushnumber(L, PI);
-  lua_setfield(L, -2, "pi");
-  lua_pushnumber(L, (lua_Number)HUGE_VAL);
-  lua_setfield(L, -2, "huge");
-  lua_pushinteger(L, LUA_MAXINTEGER);
-  lua_setfield(L, -2, "maxinteger");
-  lua_pushinteger(L, LUA_MININTEGER);
-  lua_setfield(L, -2, "mininteger");
-  return 1;
-}
-
