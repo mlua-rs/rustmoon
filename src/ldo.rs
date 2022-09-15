@@ -67,14 +67,17 @@ pub unsafe fn luaD_checkstackaux(
 }
 
 /* In general, 'pre'/'pos' are empty (nothing to save) */
+#[inline(always)]
 pub unsafe fn luaD_checkstack(L: *mut lua_State, n: i32) {
     luaD_checkstackaux(L, n, || (), || ());
 }
 
+#[inline(always)]
 pub unsafe fn savestack(L: *mut lua_State, p: *const TValue) -> ptrdiff_t {
     (p as *const c_char).offset_from((*L).stack as *const c_char)
 }
 
+#[inline(always)]
 pub unsafe fn restorestack(L: *mut lua_State, n: ptrdiff_t) -> *mut TValue {
     ((*L).stack as *mut c_char).offset(n) as *mut TValue
 }
@@ -511,7 +514,7 @@ unsafe fn checkstackp(L: *mut lua_State, n: i32, p: *mut *mut TValue) {
 ** entry, fills in the relevant information, calls hook if needed.
 ** If function is a C function, does the call, too. (Otherwise, leave
 ** the execution ('luaV_execute') to the caller, to allow stackless
-** calls.) Returns true iff function has been executed (C function).
+** calls.) Returns true if function has been executed (C function).
 */
 #[no_mangle]
 pub unsafe extern "C" fn luaD_precall(

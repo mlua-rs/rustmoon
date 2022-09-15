@@ -111,6 +111,17 @@ pub struct lua_TValue {
     pub tt_: c_int,
 }
 
+impl lua_TValue {
+    pub const fn new() -> Self {
+        lua_TValue {
+            value_: Value {
+                gc: ptr::null_mut(),
+            },
+            tt_: 0,
+        }
+    }
+}
+
 /* macro defining a nil value */
 // #define NILCONSTANT	{NULL}, LUA_TNIL
 
@@ -140,82 +151,102 @@ pub unsafe fn ttnov(o: *const TValue) -> c_int {
 /*
  * Macros to test type
  */
+#[inline(always)]
 pub unsafe fn checktag(o: *const TValue, t: c_int) -> bool {
     rttype(o) == t
 }
 
+#[inline(always)]
 pub unsafe fn checktype(o: *const TValue, t: c_int) -> bool {
     ttnov(o) == t
 }
 
+#[inline(always)]
 pub unsafe fn ttisnumber(o: *const TValue) -> bool {
     checktype(o, LUA_TNUMBER)
 }
 
+#[inline(always)]
 pub unsafe fn ttisfloat(o: *const TValue) -> bool {
     checktag(o, LUA_TNUMFLT)
 }
 
+#[inline(always)]
 pub unsafe fn ttisinteger(o: *const TValue) -> bool {
     checktag(o, LUA_TNUMINT)
 }
 
+#[inline(always)]
 pub unsafe fn ttisnil(o: *const TValue) -> bool {
     checktag(o, LUA_TNIL)
 }
 
+#[inline(always)]
 pub unsafe fn ttisboolean(o: *const TValue) -> bool {
     checktag(o, LUA_TBOOLEAN)
 }
 
+#[inline(always)]
 pub unsafe fn ttislightuserdata(o: *const TValue) -> bool {
     checktag(o, LUA_TLIGHTUSERDATA)
 }
 
+#[inline(always)]
 pub unsafe fn ttisstring(o: *const TValue) -> bool {
     checktype(o, LUA_TSTRING)
 }
 
+#[inline(always)]
 pub unsafe fn ttisshrstring(o: *const TValue) -> bool {
     checktag(o, ctb(LUA_TSHRSTR))
 }
 
+#[inline(always)]
 pub unsafe fn ttislngstring(o: *const TValue) -> bool {
     checktag(o, ctb(LUA_TLNGSTR))
 }
 
+#[inline(always)]
 pub unsafe fn ttistable(o: *const TValue) -> bool {
     checktag(o, ctb(LUA_TTABLE))
 }
 
+#[inline(always)]
 pub unsafe fn ttisfunction(o: *const TValue) -> bool {
     checktype(o, LUA_TFUNCTION)
 }
 
+#[inline(always)]
 pub unsafe fn ttisclosure(o: *const TValue) -> bool {
     (rttype(o) & 0x1F) == LUA_TFUNCTION
 }
 
+#[inline(always)]
 pub unsafe fn ttisCclosure(o: *const TValue) -> bool {
     checktag(o, ctb(LUA_TCCL))
 }
 
+#[inline(always)]
 pub unsafe fn ttisLclosure(o: *const TValue) -> bool {
     checktag(o, ctb(LUA_TLCL))
 }
 
+#[inline(always)]
 pub unsafe fn ttislcf(o: *const TValue) -> bool {
     checktag(o, LUA_TLCF)
 }
 
+#[inline(always)]
 pub unsafe fn ttisfulluserdata(o: *const TValue) -> bool {
     checktag(o, ctb(LUA_TUSERDATA))
 }
 
+#[inline(always)]
 pub unsafe fn ttisthread(o: *const TValue) -> bool {
     checktag(o, ctb(LUA_TTHREAD))
 }
 
+#[inline(always)]
 pub unsafe fn ttisdeadkey(o: *const TValue) -> bool {
     checktag(o, LUA_TDEADKEY)
 }
@@ -224,16 +255,19 @@ pub unsafe fn ttisdeadkey(o: *const TValue) -> bool {
  * Macros to access values
  */
 
+#[inline(always)]
 pub unsafe fn ivalue(o: *const TValue) -> lua_Integer {
     debug_assert!(ttisinteger(o));
     (*o).value_.i
 }
 
+#[inline(always)]
 pub unsafe fn fltvalue(o: *const TValue) -> lua_Number {
     debug_assert!(ttisfloat(o));
     (*o).value_.n
 }
 
+#[inline(always)]
 pub unsafe fn nvalue(o: *const TValue) -> lua_Number {
     debug_assert!(ttisnumber(o));
     if ttisinteger(o) {
@@ -243,6 +277,7 @@ pub unsafe fn nvalue(o: *const TValue) -> lua_Number {
     }
 }
 
+#[inline(always)]
 pub unsafe fn gcvalue(o: *const TValue) -> *mut GCObject {
     debug_assert!(iscollectable(o));
     (*o).value_.gc
@@ -253,31 +288,37 @@ pub unsafe fn pvalue(o: *const TValue) -> *mut c_void {
     (*o).value_.p
 }
 
+#[inline(always)]
 pub unsafe fn tsvalue(o: *const TValue) -> *mut TString {
     debug_assert!(ttisstring(o));
     gco2ts((*o).value_.gc)
 }
 
+#[inline(always)]
 pub unsafe fn uvalue(o: *const TValue) -> *mut Udata {
     debug_assert!(ttisfulluserdata(o));
     gco2u((*o).value_.gc)
 }
 
+#[inline(always)]
 pub unsafe fn clvalue(o: *const TValue) -> *mut Closure {
     debug_assert!(ttisclosure(o));
     gco2cl((*o).value_.gc)
 }
 
+#[inline(always)]
 pub unsafe fn clLvalue(o: *const TValue) -> *mut LClosure {
     debug_assert!(ttisLclosure(o));
     gco2lcl((*o).value_.gc)
 }
 
+#[inline(always)]
 pub unsafe fn clCvalue(o: *const TValue) -> *mut CClosure {
     debug_assert!(ttisCclosure(o));
     gco2ccl((*o).value_.gc)
 }
 
+#[inline(always)]
 pub unsafe fn fvalue(o: *const TValue) -> lua_CFunction {
     debug_assert!(ttislcf(o));
     (*o).value_.f
@@ -288,36 +329,43 @@ pub unsafe fn hvalue(o: *const TValue) -> *mut Table {
     gco2t((*o).value_.gc)
 }
 
+#[inline(always)]
 pub unsafe fn bvalue(o: *const TValue) -> bool {
     debug_assert!(ttisboolean(o));
     (*o).value_.b != 0
 }
 
+#[inline(always)]
 pub unsafe fn thvalue(o: *const TValue) -> *mut lua_State {
     debug_assert!(ttisthread(o));
     gco2th((*o).value_.gc)
 }
 
 /* a dead value may get the 'gc' field, but cannot access its contents */
+#[inline(always)]
 pub unsafe fn deadvalue(o: *const TValue) -> *mut c_void {
     debug_assert!(ttisdeadkey(o));
     (*o).value_.gc as *mut c_void
 }
 
+#[inline(always)]
 pub unsafe fn l_isfalse(o: *const TValue) -> bool {
     ttisnil(o) || (ttisboolean(o) && !bvalue(o))
 }
 
+#[inline(always)]
 pub unsafe fn iscollectable(o: *const TValue) -> bool {
     (*o).tt_ & BIT_ISCOLLECTABLE != 0
 }
 
 /* Macros for internal tests */
 
+#[inline(always)]
 pub unsafe fn righttt(obj: *const TValue) -> bool {
     ttype(obj) == (*gcvalue(obj)).tt as c_int
 }
 
+#[inline(always)]
 pub unsafe fn checkliveness(L: *mut lua_State, obj: *const TValue) {
     debug_assert!(
         !iscollectable(obj) || (righttt(obj) && (L.is_null() || !isdead((*L).l_G, gcvalue(obj))))
@@ -355,62 +403,73 @@ pub unsafe fn setnilvalue(obj: *mut TValue) {
     (*obj).tt_ = LUA_TNIL;
 }
 
+#[inline(always)]
 pub unsafe fn setfvalue(obj: *mut TValue, x: lua_CFunction) {
     (*obj).value_.f = x;
     (*obj).tt_ = LUA_TLCF;
 }
 
+#[inline(always)]
 pub unsafe fn setpvalue(obj: *mut TValue, x: *mut c_void) {
     (*obj).value_.p = x;
     (*obj).tt_ = LUA_TLIGHTUSERDATA;
 }
 
+#[inline(always)]
 pub unsafe fn setbvalue(obj: *mut TValue, x: bool) {
     (*obj).value_.b = x as c_int;
     (*obj).tt_ = LUA_TBOOLEAN;
 }
 
+#[inline(always)]
 pub unsafe fn setgcovalue(obj: *mut TValue, x: *mut GCObject) {
     (*obj).value_.gc = x;
     (*obj).tt_ = ctb((*x).tt as c_int) as c_int;
 }
 
-pub unsafe fn setsvalue(L: *mut lua_State, obj: *mut TValue, x: *mut TString) {
+#[inline(always)]
+pub unsafe fn setsvalue(L: *mut lua_State, obj: *mut TValue, x: *const TString) {
     (*obj).value_.gc = obj2gco!(x);
     (*obj).tt_ = ctb((*x).tt as c_int) as c_int;
     checkliveness(L, obj);
 }
 
+#[inline(always)]
 pub unsafe fn setuvalue(L: *mut lua_State, obj: *mut TValue, x: *mut Udata) {
     (*obj).value_.gc = obj2gco!(x);
     (*obj).tt_ = ctb(LUA_TUSERDATA) as c_int;
     checkliveness(L, obj);
 }
 
+#[inline(always)]
 pub unsafe fn setthvalue(L: *mut lua_State, obj: *mut TValue, x: *mut lua_State) {
     (*obj).value_.gc = obj2gco!(x);
     (*obj).tt_ = ctb(LUA_TTHREAD) as c_int;
     checkliveness(L, obj);
 }
 
+#[inline(always)]
 pub unsafe fn setclLvalue(L: *mut lua_State, obj: *mut TValue, x: *mut LClosure) {
     (*obj).value_.gc = obj2gco!(x);
     (*obj).tt_ = ctb(LUA_TLCL) as c_int;
     checkliveness(L, obj);
 }
 
+#[inline(always)]
 pub unsafe fn setclCvalue(L: *mut lua_State, obj: *mut TValue, x: *mut CClosure) {
     (*obj).value_.gc = obj2gco!(x);
     (*obj).tt_ = ctb(LUA_TCCL) as c_int;
     checkliveness(L, obj);
 }
 
+#[inline(always)]
 pub unsafe fn sethvalue(L: *mut lua_State, obj: *mut TValue, x: *mut Table) {
     (*obj).value_.gc = obj2gco!(x);
     (*obj).tt_ = ctb(LUA_TTABLE) as c_int;
     checkliveness(L, obj);
 }
 
+#[inline(always)]
 pub unsafe fn setdeadvalue(obj: *mut TValue) {
     (*obj).tt_ = LUA_TDEADKEY;
 }
@@ -466,7 +525,7 @@ pub union UTString {
 ** Get the actual string (array of bytes) from a 'TString'.
 ** (Access to 'extra' ensures that value is really a 'TString'.)
 */
-pub unsafe fn getstr(ts: *mut TString) -> *mut c_char {
+pub unsafe fn getstr(ts: *const TString) -> *mut c_char {
     (ts as *mut c_char).add(size_of::<UTString>())
 }
 
@@ -629,10 +688,12 @@ pub union Closure {
     pub l: LClosure,
 }
 
+#[inline(always)]
 pub unsafe fn isLfunction(o: *const TValue) -> bool {
     ttisLclosure(o)
 }
 
+#[inline(always)]
 pub unsafe fn getproto(o: *const TValue) -> *mut Proto {
     (*clLvalue(o)).p
 }
@@ -680,6 +741,7 @@ pub struct Table {
 }
 
 /* copy a value into a key without messing up field 'next' */
+#[inline(always)]
 pub unsafe fn setnodekey(L: *mut lua_State, key: *mut TKey, obj: *const TValue) {
     (*key).nk.value_ = (*obj).value_;
     (*key).nk.tt_ = (*obj).tt_;
@@ -1042,6 +1104,7 @@ pub unsafe extern "C" fn luaO_tostring(L: *mut lua_State, obj: StkId) {
     );
 }
 
+#[inline(always)]
 unsafe extern "C" fn pushstr(L: *mut lua_State, str: *const c_char, l: size_t) {
     setsvalue(L, (*L).top, luaS_newlstr(L, str, l));
     luaD_inctop(L);

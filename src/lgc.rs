@@ -145,9 +145,19 @@ pub unsafe fn luaC_white(g: *mut global_State) -> lu_byte {
 ** GC cycle on every opportunity)
 */
 
-// #define luaC_condGC(L,pre,pos) \
-// 	{ if (G(L)->GCdebt > 0) { pre; luaC_step(L); pos;}; \
-// 	  condchangemem(L,pre,pos); }
+pub unsafe fn luaC_condGC(L: *mut lua_State, mut pre: impl FnMut(), mut pos: impl FnMut()) {
+    if (*(*L).l_G).GCdebt > 0 {
+        pre();
+        luaC_step(L);
+        pos();
+    }
+    #[cfg(debug_assertions)]
+    if env::var("LUA_HARDMEMTESTS").as_deref() == Ok("1") && (*(*L).l_G).gcrunning != 0 {
+        pre();
+        luaC_fullgc(L, 0);
+        pos();
+    }
+}
 
 /* more often than not, 'pre'/'pos' are empty */
 pub unsafe fn luaC_checkGC(L: *mut lua_State) {
@@ -176,6 +186,7 @@ pub unsafe fn luaC_objbarrier(L: *mut lua_State, p: *mut GCObject, o: *mut GCObj
     }
 }
 
+#[inline(always)]
 pub unsafe fn luaC_upvalbarrier(L: *mut lua_State, uv: *mut UpVal) {
     if iscollectable((*uv).v) && !upisopen(uv) {
         luaC_upvalbarrier_(L, uv)

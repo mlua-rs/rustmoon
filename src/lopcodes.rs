@@ -334,6 +334,16 @@ pub static mut luaP_opmodes: [lu_byte; NUM_OPCODES] = [
     opmode!(0, 0, OpArgU, OpArgU, iAx),   /* OP_EXTRAARG */
 ];
 
+#[inline(always)]
+pub unsafe fn getBMode(m: OpCode) -> OpArgMask {
+    (luaP_opmodes[m as usize] >> 4) & 3
+}
+
+#[inline(always)]
+pub unsafe fn getCMode(m: OpCode) -> OpArgMask {
+    (luaP_opmodes[m as usize] >> 2) & 3
+}
+
 /* opcode names */
 pub const luaP_opnames: [*const c_char; NUM_OPCODES + 1] = [
     cstr!("MOVE"),

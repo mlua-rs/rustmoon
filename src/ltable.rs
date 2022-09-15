@@ -677,7 +677,7 @@ pub unsafe extern "C" fn luaH_getint(t: *mut Table, key: lua_Integer) -> *const 
 ** search function for short strings
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaH_getshortstr(t: *mut Table, key: *mut TString) -> *const TValue {
+pub unsafe extern "C" fn luaH_getshortstr(t: *mut Table, key: *const TString) -> *const TValue {
     let mut n = hashstr(t, key);
     debug_assert!((*key).tt == LUA_TSHRSTR as u8);
     loop {
@@ -720,7 +720,7 @@ unsafe extern "C" fn getgeneric(t: *mut Table, key: *const TValue) -> *const TVa
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn luaH_getstr(t: *mut Table, key: *mut TString) -> *const TValue {
+pub unsafe extern "C" fn luaH_getstr(t: *mut Table, key: *const TString) -> *const TValue {
     if (*key).tt == LUA_TSHRSTR as u8 {
         return luaH_getshortstr(t, key);
     } else {

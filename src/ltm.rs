@@ -14,7 +14,7 @@ use crate::lobject::{
     getstr, hvalue, l_isfalse, luaO_nilobject_, setobj, tsvalue, ttisfulluserdata, ttisnil,
     ttisstring, ttistable, ttnov, uvalue, StkId, TString, TValue, Table, LUA_TOTALTAGS,
 };
-use crate::lstate::{isLua, lua_State};
+use crate::lstate::{global_State, isLua, lua_State};
 use crate::lstring::luaS_new;
 use crate::ltable::luaH_getshortstr;
 use crate::lvm::tonumber;
@@ -52,10 +52,20 @@ pub const TM_CONCAT: TMS = 22;
 pub const TM_CALL: TMS = 23;
 pub const TM_N: usize = 24; /* number of elements in the enum */
 
-// #define gfasttm(g,et,e) ((et) == NULL ? NULL : \
-//   ((et)->flags & (1u<<(e))) ? NULL : luaT_gettm(et, e, (g)->tmname[e]))
+pub unsafe fn gfasttm(g: *mut global_State, et: *mut Table, e: TMS) -> *const TValue {
+    if et.is_null() {
+        return ptr::null();
+    }
+    if (*et).flags as u32 & (1 << e) != 0 {
+        ptr::null()
+    } else {
+        luaT_gettm(et, e, (*g).tmname[e as usize])
+    }
+}
 
-// #define fasttm(l,et,e)	gfasttm(G(l), et, e)
+pub unsafe fn fasttm(L: *mut lua_State, et: *mut Table, e: TMS) -> *const TValue {
+    gfasttm((*L).l_G, et, e)
+}
 
 unsafe fn ttypename(i: usize) -> *const c_char {
     luaT_typenames_[i + 1]

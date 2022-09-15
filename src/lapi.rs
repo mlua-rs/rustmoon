@@ -35,17 +35,20 @@ use crate::types::{
     LUA_TTABLE, LUA_VERSION_NUM,
 };
 
+#[inline(always)]
 pub(crate) unsafe fn api_incr_top(L: *mut lua_State) {
     (*L).top = (*L).top.add(1);
     debug_assert!((*L).top <= (*(*L).ci).top, "stack overflow");
 }
 
+#[inline(always)]
 pub(crate) unsafe fn adjustresults(L: *mut lua_State, nres: i32) {
     if nres == LUA_MULTRET && (*(*L).ci).top < (*L).top {
         (*(*L).ci).top = (*L).top;
     }
 }
 
+#[inline(always)]
 pub(crate) unsafe fn api_checknelems(L: *mut lua_State, n: i32) {
     debug_assert!(
         (n as isize) < (*L).top.offset_from((*(*L).ci).func),
@@ -66,47 +69,58 @@ pub const fn lua_upvalueindex(i: c_int) -> c_int {
     LUA_REGISTRYINDEX - i
 }
 
+#[inline(always)]
 pub unsafe fn lua_pop(L: *mut lua_State, n: c_int) {
     lua_settop(L, -n - 1)
 }
 
+#[inline(always)]
 pub unsafe fn lua_newtable(L: *mut lua_State) {
     lua_createtable(L, 0, 0)
 }
 
+#[inline(always)]
 pub unsafe fn lua_pushcfunction(L: *mut lua_State, f: lua_CFunction) {
     lua_pushcclosure(L, f, 0)
 }
 
+#[inline(always)]
 pub unsafe fn lua_pushglobaltable(L: *mut lua_State) {
     lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
 }
 
+#[inline(always)]
 pub unsafe fn lua_tostring(L: *mut lua_State, idx: c_int) -> *const c_char {
     lua_tolstring(L, idx, ptr::null_mut())
 }
 
+#[inline(always)]
 pub unsafe fn lua_isfunction(L: *mut lua_State, n: c_int) -> c_int {
     (lua_type(L, n) == LUA_TFUNCTION) as c_int
 }
 
+#[inline(always)]
 pub unsafe fn lua_isnil(L: *mut lua_State, n: c_int) -> c_int {
     (lua_type(L, n) == LUA_TNIL) as c_int
 }
 
+#[inline(always)]
 pub unsafe fn lua_insert(L: *mut lua_State, idx: c_int) {
     lua_rotate(L, idx, 1)
 }
 
+#[inline(always)]
 pub unsafe fn lua_remove(L: *mut lua_State, idx: c_int) {
     lua_rotate(L, idx, -1);
     lua_pop(L, 1);
 }
 
+#[inline(always)]
 pub unsafe fn lua_call(L: *mut lua_State, n: c_int, r: c_int) {
     lua_callk(L, n, r, 0, None)
 }
 
+#[inline(always)]
 pub unsafe fn lua_pcall(L: *mut lua_State, n: c_int, r: c_int, f: c_int) -> c_int {
     lua_pcallk(L, n, r, f, 0, None)
 }
