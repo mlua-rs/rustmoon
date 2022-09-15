@@ -821,7 +821,7 @@ unsafe extern "C" fn newbox(L: *mut lua_State, newsize: size_t) -> *mut libc::c_
 ** buffer
 */
 unsafe fn buffonstack(B: *mut luaL_Buffer) -> bool {
-    return *(*B).b != (*B).initb[0];
+    return (*B).b != (*B).initb.as_mut_ptr();
 }
 
 /*
