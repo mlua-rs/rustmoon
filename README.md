@@ -13,7 +13,8 @@
  * Send Alex (aorlenko/khvzak) your github username to be added to the repo to push branches (so you don't have to work from a fork).
  * Please don't push to master unless the tests pass!
  * Not everything needs porting. E.g. rust supplies printf already, so you don't need to port this
- * Note `cstr` from `macros.rs` lua uses C strings (0 byte terminated) rust doesn't, this macro helps with that.
+ * Note `cstr!` from `macros.rs`, lua uses C strings (0 byte terminated) rust doesn't, this macro helps with that.
+   * You can replace byte terminated strings with this macro in vscode using the following find and replace regex: `b(".*)\\0" as \*const u8 as \*const c_char` and `cstr!($1")`
 
 # Project tracking
 
