@@ -16,6 +16,7 @@ use libc::{c_char, c_double, c_int, c_long, c_longlong, c_ulong, c_void, clock_t
 
 use crate::lstate::{lua_close};
 use crate::lapi::{lua_tointegerx, lua_pushnumber, lua_pushfstring, lua_pushboolean, lua_getfield};
+use crate::lauxlib::{luaL_checklstring, luaL_fileresult, luaL_execresult, luaL_prepbuffsize};
 
 pub const L_MAXDATEFIELD: libc::c_int = libc::INT_MAX / 2;
 pub const LUA_STRFTIMEOPTIONS: [libc::c_char; 78] = unsafe {
@@ -27,10 +28,6 @@ pub const LUA_STRFTIMEOPTIONS: [libc::c_char; 78] = unsafe {
 extern "C" {
     fn clock() -> clock_t;
     fn strftime(_: *mut c_char, _: size_t, _: *const c_char, _: *const tm) -> size_t;
-    fn luaL_checklstring(L: *mut lua_State, arg: c_int, l: *mut size_t) -> *const c_char;
-    fn luaL_fileresult(L: *mut lua_State, stat: c_int, fname: *const c_char) -> c_int;
-    fn luaL_execresult(L: *mut lua_State, stat: c_int) -> c_int;
-    fn luaL_prepbuffsize(B: *mut luaL_Buffer, sz: size_t) -> *mut c_char;
 }
 pub type time_t = c_long;
 #[derive(Copy, Clone)]
