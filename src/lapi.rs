@@ -3,6 +3,7 @@
 */
 
 use libc::{c_char, c_int, c_long, c_uint, c_ulong, c_ushort, c_void, ptrdiff_t, size_t};
+use std::ffi::CString;
 use std::ptr;
 
 use crate::ldebug::luaG_errormsg;
@@ -31,7 +32,7 @@ use crate::lzio::{luaZ_init, ZIO};
 use crate::types::{
     lua_Alloc, lua_CFunction, lua_Integer, lua_KContext, lua_KFunction, lua_Number, lua_Reader,
     lua_Writer, LUA_MULTRET, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS, LUA_TFUNCTION, LUA_TNIL,
-    LUA_VERSION_NUM,
+    LUA_TTABLE, LUA_VERSION_NUM,
 };
 
 pub(crate) unsafe fn api_incr_top(L: *mut lua_State) {
@@ -50,6 +51,15 @@ pub(crate) unsafe fn api_checknelems(L: *mut lua_State, n: i32) {
         (n as isize) < (*L).top.offset_from((*(*L).ci).func),
         "not enough elements in the stack"
     );
+}
+
+pub unsafe fn lua_istable(L: *mut lua_State, n: c_int) -> bool {
+    return lua_type(L, n) == LUA_TTABLE;
+}
+
+pub unsafe fn lua_pushliteral(L: *mut lua_State, s: &str) {
+    let cstr = CString::new(s).unwrap().into_raw();
+    lua_pushstring(L, cstr);
 }
 
 pub const fn lua_upvalueindex(i: c_int) -> c_int {
@@ -109,8 +119,7 @@ fn ispseudo(i: c_int) -> bool {
 
 #[inline(always)]
 pub unsafe fn lua_tointeger(L: *mut lua_State, idx: c_int) -> lua_Integer {
-    let mut NULL: c_int = 0;
-    return lua_tointegerx(L, idx, &mut NULL);
+    return lua_tointegerx(L, idx, ptr::null_mut());
 }
 
 #[inline(always)]

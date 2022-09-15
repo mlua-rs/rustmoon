@@ -2,25 +2,14 @@ use crate::lapi::{
     lua_createtable, lua_gettop, lua_pushcclosure, lua_pushfstring, lua_pushinteger,
     lua_pushlstring, lua_pushnil, lua_pushvalue, lua_setfield, lua_tointegerx,
 };
-use crate::lauxlib::{luaL_Buffer, luaL_Reg};
+use crate::lauxlib::{
+    luaL_Buffer, luaL_Reg, luaL_addvalue, luaL_argerror, luaL_buffinit, luaL_checkinteger,
+    luaL_checklstring, luaL_checkstack, luaL_checkversion_, luaL_error, luaL_optinteger,
+    luaL_pushresult, luaL_setfuncs,
+};
 use crate::lstate::lua_State;
 use crate::types::{lua_Integer, lua_Number};
 use libc::{c_char, c_int, c_long, c_longlong, c_uchar, c_uint, c_ulong, size_t};
-
-extern "C" {
-    // auxlib
-    pub fn luaL_error(L: *mut lua_State, fmt: *const c_char, args: ...) -> c_int;
-    pub fn luaL_optinteger(L: *mut lua_State, arg: c_int, def: lua_Integer) -> lua_Integer;
-    pub fn luaL_checklstring(L: *mut lua_State, arg: c_int, len: *mut size_t) -> *const c_char;
-    pub fn luaL_argerror(L: *mut lua_State, arg: c_int, extramsg: *const c_char) -> c_int;
-    pub fn luaL_checkstack(L: *mut lua_State, space: c_int, msg: *const c_char);
-    pub fn luaL_buffinit(L: *mut lua_State, B: *mut luaL_Buffer);
-    pub fn luaL_addvalue(B: *mut luaL_Buffer);
-    pub fn luaL_pushresult(B: *mut luaL_Buffer);
-    pub fn luaL_checkinteger(L: *mut lua_State, arg: c_int) -> lua_Integer;
-    pub fn luaL_setfuncs(L: *mut lua_State, l: *const luaL_Reg, nup: c_int);
-    pub fn luaL_checkversion_(L: *mut lua_State, ver: lua_Number, sz: size_t);
-}
 
 /* from strlib */
 /* translate a relative string position: negative means back from end */
