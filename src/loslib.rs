@@ -10,13 +10,16 @@ use crate::lauxlib::{
     luaL_pushresult, luaL_setfuncs,
 };
 
-use libc::{c_char, c_double, c_int, c_long, c_longlong, c_ulong, c_void, clock_t, memcpy, size_t, setlocale, exit, getenv,
-  system, mkstemp, memcmp, strcmp, strcpy, difftime, time, remove, rename, close,
+use libc::{
+    c_char, c_int, c_long, c_longlong, c_ulong, c_void, clock_t, close, difftime, exit, getenv,
+    memcmp, memcpy, mkstemp, ptrdiff_t, remove, rename, setlocale, size_t, strcmp, strcpy, system,
+    time,
 };
 
-use crate::lstate::{lua_close};
-use crate::lapi::{lua_tointegerx, lua_pushnumber, lua_pushfstring, lua_pushboolean, lua_getfield};
-use crate::lauxlib::{luaL_checklstring, luaL_fileresult, luaL_execresult, luaL_prepbuffsize};
+use crate::lapi::{lua_getfield, lua_pushboolean, lua_pushfstring, lua_pushnumber, lua_tointegerx};
+use crate::lauxlib::{luaL_checklstring, luaL_execresult, luaL_fileresult, luaL_prepbuffsize};
+use crate::lstate::lua_close;
+use crate::types::{lua_Integer, lua_Number};
 
 pub const L_MAXDATEFIELD: libc::c_int = libc::INT_MAX / 2;
 pub const LUA_STRFTIMEOPTIONS: [libc::c_char; 78] = unsafe {
@@ -48,10 +51,6 @@ pub struct tm {
     pub tm_gmtoff: c_long,
     pub tm_zone: *mut c_char,
 }
-pub type ptrdiff_t = c_long;
-pub type lua_Number = c_double;
-pub type lua_Integer = c_longlong;
-pub type lua_CFunction = Option<unsafe extern "C" fn(*mut lua_State) -> c_int>;
 
 unsafe fn l_checktime(L: *mut lua_State, arg: c_int) -> time_t {
     let t: lua_Integer = luaL_checkinteger(L, arg);
