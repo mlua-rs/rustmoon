@@ -1,15 +1,17 @@
 use libc::{c_double, c_int, c_longlong, c_ulong, c_ulonglong, intptr_t, srand};
+use rand::prelude::*;
 
 use crate::lapi::{
     lua_compare, lua_gettop, lua_isinteger, lua_isnoneornil, lua_pushboolean, lua_pushinteger,
-    lua_pushnil, lua_pushnumber, lua_pushvalue, lua_setfield, lua_tointeger, lua_tointegerx,
+    lua_pushnil, lua_pushnumber, lua_pushstring, lua_pushvalue, lua_setfield, lua_settop,
+    lua_tointeger, lua_tointegerx, lua_type,
 };
 use crate::lauxlib::{
     luaL_Reg, luaL_argerror, luaL_checkany, luaL_checkinteger, luaL_checknumber, luaL_newlib,
     luaL_optnumber,
 };
 use crate::lstate::lua_State;
-use crate::types::{lua_CFunction, lua_Integer, lua_Number, lua_Unsigned};
+use crate::types::{lua_CFunction, lua_Integer, lua_Number, lua_Unsigned, LUA_TNUMBER};
 
 pub const NULL: c_int = 0 as c_int;
 pub const PI: c_double = 3.141592653589793238462643383279502884f64;
@@ -32,9 +34,6 @@ pub const LUA_MAXINTEGER: c_longlong = LLONG_MAX;
 pub const LUA_OPLT: c_int = 1 as c_int;
 
 extern "C" {
-    pub fn lua_pushstring(L: *mut lua_State, s: *const libc::c_char) -> *const libc::c_char;
-    pub fn lua_settop(L: *mut lua_State, idx: c_int);
-
     pub fn sin(x: c_double) -> c_double;
     pub fn cos(x: c_double) -> c_double;
     pub fn tan(x: c_double) -> c_double;
@@ -51,15 +50,150 @@ extern "C" {
     pub fn log(x: c_double) -> c_double;
     pub fn log2(x: c_double) -> c_double;
     pub fn log10(x: c_double) -> c_double;
+    pub fn rand() -> c_double;
+
+    pub fn luaL_error(L: *mut lua_State, fmt: *const libc::c_char, args: ...) -> c_int;
 }
 
+/* ** (The range comparisons are tricky because of rounding. The tests
+** here assume a two-complement representation, where MININTEGER always
+** has an exact representation as a float; MAXINTEGER may not have one,
+** and therefore its conversion to float may have an ill-defined value.)
+*/
+
+#[inline(always)]
+unsafe extern "C" fn lua_numbertointeger(n: lua_Number, p: *mut lua_Integer) -> bool {
+    if n >= LUA_MININTEGER as f64 && n < -(LUA_MININTEGER as f64) {
+        (*p) = n as lua_Integer;
+        return true;
+    }
+    return false;
+}
+
+// FIXME static
+#[no_mangle]
 unsafe extern "C" fn pushnumint(L: *mut lua_State, d: lua_Number) {
-    let n: lua_Integer = d as lua_Integer;
-    if n != 0 {
-        lua_pushinteger(L, n);
+    let n: *mut lua_Integer = Box::into_raw(Box::new(0));
+    if lua_numbertointeger(d, n) {
+        lua_pushinteger(L, *n);
     } else {
         lua_pushnumber(L, d);
     };
+}
+
+unsafe extern "C" fn math_floor(L: *mut lua_State) -> c_int {
+    if lua_isinteger(L, 1 as libc::c_int) != 0 {
+        lua_settop(L, 1 as libc::c_int);
+    } else {
+        let d = floor(luaL_checknumber(L, 1 as libc::c_int));
+        pushnumint(L, d);
+    }
+    return 1;
+}
+
+unsafe extern "C" fn math_ceil(L: *mut lua_State) -> c_int {
+    if lua_isinteger(L, 1 as libc::c_int) != 0 {
+        lua_settop(L, 1 as libc::c_int);
+    } else {
+        let d = ceil(luaL_checknumber(L, 1 as libc::c_int));
+        pushnumint(L, d);
+    }
+    return 1;
+}
+
+unsafe extern "C" fn math_type(L: *mut lua_State) -> c_int {
+    if lua_type(L, 1 as libc::c_int) == LUA_TNUMBER {
+        if lua_isinteger(L, 1 as libc::c_int) != 0 {
+            lua_pushstring(L, cstr!("integer"));
+        } else {
+            lua_pushstring(L, cstr!("float"));
+        }
+    } else {
+        luaL_checkany(L, 1 as libc::c_int);
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+/*
+** next function does not use 'modf', avoiding problems with 'double*'
+** (which is not compatible with 'float*') when lua_Number is not
+** 'double'.
+*/
+
+unsafe extern "C" fn math_modf(L: *mut lua_State) -> c_int {
+    if lua_isinteger(L, 1) != 0 {
+        lua_settop(L, 1);
+        lua_pushnumber(L, 0.0);
+    } else {
+        let n = luaL_checknumber(L, 1);
+        let ip: f64 = if n < 0.0 { ceil(n) } else { floor(n) };
+        pushnumint(L, ip);
+        lua_pushnumber(L, if n == ip { 0.0 } else { n - ip });
+    }
+    return 2;
+}
+
+unsafe extern "C" fn math_fmod(L: *mut lua_State) -> libc::c_int {
+    if lua_isinteger(L, 1) != 0 && lua_isinteger(L, 2 as libc::c_int) != 0 {
+        let d = lua_tointeger(L, 2);
+        if d == 0 {
+            luaL_argerror(L, 2, cstr!("zero"));
+        }
+        if (d as lua_Unsigned).wrapping_add(1) <= 1 {
+            lua_pushinteger(L, 0 as libc::c_int as lua_Integer);
+        } else {
+            lua_pushinteger(L, lua_tointeger(L, 1) % d);
+        }
+    } else {
+        lua_pushnumber(L, fmod(luaL_checknumber(L, 1), luaL_checknumber(L, 2)));
+    }
+    return 1;
+}
+
+/*
+** This function uses 'double' (instead of 'lua_Number') to ensure that
+** all bits from 'l_rand' can be represented, and that 'RANDMAX + 1.0'
+** will keep full precision (ensuring that 'r' is always less than 1.0.)
+*/
+unsafe extern "C" fn math_random(L: *mut lua_State) -> libc::c_int {
+    let low: lua_Integer;
+    let up: lua_Integer;
+    let mut r = rand::thread_rng().gen();
+    match lua_gettop(L) {
+        0 => {
+            lua_pushnumber(L, r);
+            return 1 as libc::c_int;
+        }
+        1 => {
+            low = 1 as libc::c_int as lua_Integer;
+            up = luaL_checkinteger(L, 1 as libc::c_int);
+        }
+        2 => {
+            low = luaL_checkinteger(L, 1 as libc::c_int);
+            up = luaL_checkinteger(L, 2 as libc::c_int);
+        }
+        _ => {
+            return luaL_error(
+                L,
+                b"wrong number of arguments\0" as *const u8 as *const libc::c_char,
+            );
+        }
+    }
+
+    /* random integer in the interval [low, up] */
+    if !(low <= up) {
+        luaL_argerror(L, 1, cstr!("interval is empty"));
+        return 0;
+    }
+    if !(low >= 0 || up <= LUA_MAXINTEGER + low) {
+        luaL_argerror(L, 1, cstr!("interval too large"));
+        return 0;
+    }
+
+    r *= (up - low) as libc::c_double + 1.0f64;
+    lua_pushinteger(L, r as lua_Integer + low);
+    return 1 as libc::c_int;
 }
 
 unsafe extern "C" fn math_abs(L: *mut lua_State) -> c_int {
@@ -444,13 +578,4 @@ pub unsafe extern "C" fn luaopen_math(L: *mut lua_State) -> c_int {
         b"mininteger\0" as *const u8 as *const libc::c_char,
     );
     return 1 as c_int;
-}
-
-extern "C" {
-    pub fn math_ceil(L: *mut lua_State) -> libc::c_int;
-    pub fn math_floor(L: *mut lua_State) -> libc::c_int;
-    pub fn math_modf(L: *mut lua_State) -> libc::c_int;
-    pub fn math_fmod(L: *mut lua_State) -> c_int;
-    pub fn math_type(L: *mut lua_State) -> c_int;
-    pub fn math_random(L: *mut lua_State) -> c_int;
 }
