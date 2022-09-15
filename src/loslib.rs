@@ -245,7 +245,12 @@ unsafe extern "C" fn os_date(L: *mut lua_State) -> c_int {
             } else {
                 let buff: *mut c_char = luaL_prepbuffsize(&mut b, 250);
                 s = s.offset(1);
-                s = checkoption(L, s, se.offset_from(s) as ptrdiff_t, cc.as_mut_ptr().offset(1));
+                s = checkoption(
+                    L,
+                    s,
+                    se.offset_from(s) as ptrdiff_t,
+                    cc.as_mut_ptr().offset(1),
+                );
                 let reslen: usize = strftime(buff, 250, cc.as_mut_ptr(), stm);
                 b.n = (b.n as c_ulong).wrapping_add(reslen as u64) as usize;
             }
