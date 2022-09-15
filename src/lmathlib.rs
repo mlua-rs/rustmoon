@@ -1,4 +1,4 @@
-use libc::{size_t, srand, c_int, c_double, c_longlong, intptr_t, c_ulong, c_double};
+use libc::{size_t, srand, c_int, c_double, c_longlong, intptr_t, c_ulong, c_ulonglong};
 
 use crate::lapi::{lua_pushnumber, lua_setfield, index2addr};
 use crate::lauxlib::{luaL_Reg, luaL_newlib};
