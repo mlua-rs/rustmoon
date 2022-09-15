@@ -11,7 +11,7 @@ use crate::lauxlib::{
 };
 
 use libc::{c_char, c_double, c_int, c_long, c_longlong, c_ulong, c_void, clock_t, memcpy, size_t, setlocale, exit, getenv,
-  system, mkstemp, memcmp, strcmp, strcpy, difftime, mktime, time, gmtime_r, localtime_r, remove, rename, close,
+  system, mkstemp, memcmp, strcmp, strcpy, difftime, time, remove, rename, close,
 };
 
 use crate::lstate::{lua_close};
@@ -28,6 +28,9 @@ pub const LUA_STRFTIMEOPTIONS: [libc::c_char; 78] = unsafe {
 extern "C" {
     fn clock() -> clock_t;
     fn strftime(_: *mut c_char, _: size_t, _: *const c_char, _: *const tm) -> size_t;
+    fn gmtime_r(_: *const time_t, _: *mut tm) -> *mut tm;
+    fn localtime_r(_: *const time_t, _: *mut tm) -> *mut tm;
+    fn mktime(_: *mut tm) -> time_t;
 }
 pub type time_t = c_long;
 #[derive(Copy, Clone)]
@@ -167,7 +170,7 @@ unsafe fn checkoption(
         } else if memcmp(
             conv as *const c_void,
             option as *const c_void,
-            oplen as c_ulong,
+            oplen as size_t,
         ) == 0
         {
             memcpy(buff as *mut c_void, conv as *const c_void, oplen as usize);
