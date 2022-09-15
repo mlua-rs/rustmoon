@@ -3,7 +3,8 @@ use rand::prelude::*;
 
 use crate::lapi::{
     lua_compare, lua_gettop, lua_isinteger, lua_isnoneornil, lua_pushboolean, lua_pushinteger,
-    lua_pushnil, lua_pushnumber, lua_pushvalue, lua_setfield, lua_tointeger, lua_tointegerx, lua_settop, lua_type, lua_pushstring
+    lua_pushnil, lua_pushnumber, lua_pushstring, lua_pushvalue, lua_setfield, lua_settop,
+    lua_tointeger, lua_tointegerx, lua_type,
 };
 use crate::lauxlib::{
     luaL_Reg, luaL_argerror, luaL_checkany, luaL_checkinteger, luaL_checknumber, luaL_newlib,
@@ -51,11 +52,7 @@ extern "C" {
     pub fn log10(x: c_double) -> c_double;
     pub fn rand() -> c_double;
 
-    pub fn luaL_error(
-        L: *mut lua_State,
-        fmt: *const libc::c_char,
-        args: ...
-    ) -> c_int;
+    pub fn luaL_error(L: *mut lua_State, fmt: *const libc::c_char, args: ...) -> c_int;
 }
 
 /* ** (The range comparisons are tricky because of rounding. The tests
@@ -130,11 +127,7 @@ unsafe extern "C" fn math_modf(L: *mut lua_State) -> c_int {
         lua_pushnumber(L, 0.0);
     } else {
         let n = luaL_checknumber(L, 1);
-        let ip: f64 = if n < 0.0 {
-            ceil(n)
-        } else {
-            floor(n)
-        };
+        let ip: f64 = if n < 0.0 { ceil(n) } else { floor(n) };
         pushnumint(L, ip);
         lua_pushnumber(L, if n == ip { 0.0 } else { n - ip });
     }
@@ -153,13 +146,7 @@ unsafe extern "C" fn math_fmod(L: *mut lua_State) -> libc::c_int {
             lua_pushinteger(L, lua_tointeger(L, 1) % d);
         }
     } else {
-        lua_pushnumber(
-            L,
-            fmod(
-                luaL_checknumber(L, 1),
-                luaL_checknumber(L, 2),
-            ),
-        );
+        lua_pushnumber(L, fmod(luaL_checknumber(L, 1), luaL_checknumber(L, 2)));
     }
     return 1;
 }
@@ -592,4 +579,3 @@ pub unsafe extern "C" fn luaopen_math(L: *mut lua_State) -> c_int {
     );
     return 1 as c_int;
 }
-
