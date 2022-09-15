@@ -43,14 +43,15 @@ impl Mbuffer {
 pub const EOZ: c_int = -1; /* end of stream */
 
 pub unsafe fn zgetc(z: *mut Zio) -> c_int {
-    if (*z).n > 0 {
-        (*z).n -= 1;
-        let p = *(*z).p;
-        (*z).p = (*z).p.add(1);
-        p as c_int
+    let n = (*z).n;
+    (*z).n = ((*z).n).wrapping_sub(1);
+    return if n > 0 {
+        let p = (*z).p;
+        (*z).p = ((*z).p).offset(1);
+        return *p as libc::c_uchar as libc::c_int // This cast through uchar is ESSENTIAL :)
     } else {
         luaZ_fill(z)
-    }
+    };
 }
 
 pub unsafe fn luaZ_resizebuffer(L: *mut lua_State, buff: *mut Mbuffer, size: usize) {
@@ -85,7 +86,7 @@ pub unsafe extern "C" fn luaZ_fill(z: *mut ZIO) -> c_int {
     if buff.is_null() || size == 0 {
         return EOZ;
     }
-    (*z).n = size - 1; /* discount char being returned */
+    (*z).n = size.wrapping_sub(1); /* discount char being returned */
     (*z).p = buff;
     let fresh0 = (*z).p;
     (*z).p = ((*z).p).offset(1);
@@ -113,4 +114,29 @@ pub unsafe extern "C" fn luaZ_read(z: *mut ZIO, mut b: *mut c_void, mut n: size_
         n -= m;
     }
     return 0;
+}
+
+#[inline(always)]
+pub unsafe fn luaZ_buffer(buff: *mut Mbuffer) -> *mut c_char {
+    return (*buff).buffer;
+}
+
+#[inline(always)]
+pub unsafe fn luaZ_buffremove(buff: *mut Mbuffer, i: size_t) {
+    (*buff).n -= i;
+}
+
+#[inline(always)]
+pub unsafe fn luaZ_sizebuffer(buff: *mut Mbuffer) -> size_t {
+    return (*buff).buffsize;
+}
+
+#[inline(always)]
+pub unsafe fn luaZ_bufflen(buff: *mut Mbuffer) -> size_t {
+    return (*buff).n;
+}
+
+#[inline(always)]
+pub unsafe fn luaZ_resetbuffer(buff: *mut Mbuffer) {
+    (*buff).n = 0;
 }

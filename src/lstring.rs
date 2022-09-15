@@ -29,14 +29,17 @@ pub unsafe fn sizeudata(u: *const Udata) -> usize {
     sizeludata((*u).len)
 }
 
-pub unsafe fn luaS_newliteral(L: *mut lua_State, s: &str) -> *mut TString {
-    luaS_newlstr(L, s.as_ptr() as *const c_char, s.len())
+pub unsafe fn luaS_newliteral(L: *mut lua_State, s: *const c_char) -> *mut TString {
+    luaS_newlstr(L, s, strlen(s))
 }
 
 /*
 ** test whether a string is a reserved word
 */
-// #define isreserved(s)	((s)->tt == LUA_TSHRSTR && (s)->extra > 0)
+#[inline(always)]
+pub unsafe fn isreserved(s: *const TString) -> bool {
+    (*s).tt as c_int == LUA_TSHRSTR && (*s).extra > 0
+}
 
 /*
 ** equality for short strings, which are always internalized
@@ -46,7 +49,7 @@ pub unsafe fn eqshrstr(a: *const TString, b: *const TString) -> bool {
     a == b
 }
 
-static MEMERRMSG: &str = "not enough memory";
+pub const MEMERRMSG: *const c_char = cstr!("not enough memory");
 
 /*
 ** Lua will use at most ~(2^LUAI_HASHLIMIT) bytes from a string to

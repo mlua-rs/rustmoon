@@ -219,6 +219,30 @@ const fn hasmultret(k: expkind) -> bool {
 //     };
 // }
 
+/* semantic error */
+/* static l_noret semerror (LexState *ls, const char *msg) {
+  ls->t.token = 0;  /* remove "near <token>" from final message */
+  luaX_syntaxerror(ls, msg);
+}*/
+
+/*
+  static l_noret error_expected (LexState *ls, int token) {
+    luaX_syntaxerror(ls,
+        luaO_pushfstring(ls->L, "%s expected", luaX_token2str(ls, token)));
+  }
+*/
+/*
+pub unsafe extern "C" fn error_expected(mut ls: *mut LexState, mut token: libc::c_int) -> ! {
+    luaX_syntaxerror(
+        ls,
+        luaO_pushfstring(
+            (*ls).L,
+            b"%s expected\0" as *const u8 as *const libc::c_char,
+            luaX_token2str(ls, token),
+        ),
+    );
+}*/
+
 extern "C" {
     pub fn luaY_parser(
         L: *mut lua_State,
