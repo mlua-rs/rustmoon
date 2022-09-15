@@ -10,7 +10,9 @@ use crate::lauxlib::{
     luaL_pushresult, luaL_setfuncs,
 };
 
-use libc::{c_char, c_double, c_int, c_long, c_longlong, c_ulong, c_void, clock_t, memcpy, size_t};
+use libc::{c_char, c_double, c_int, c_long, c_longlong, c_ulong, c_void, clock_t, memcpy, size_t, setlocale, exit, getenv,
+  system, mkstemp, memcmp, strcmp, strcpy, difftime, mktime, time, gmtime_r, localtime_r, remove, rename, close,
+};
 
 pub const L_MAXDATEFIELD: libc::c_int = libc::INT_MAX / 2;
 pub const LUA_STRFTIMEOPTIONS: [libc::c_char; 78] = unsafe {
@@ -20,21 +22,8 @@ pub const LUA_STRFTIMEOPTIONS: [libc::c_char; 78] = unsafe {
 };
 
 extern "C" {
-    fn setlocale(_: c_int, _: *const c_char) -> *mut c_char;
-    fn exit(_: c_int) -> !;
-    fn getenv(_: *const c_char) -> *mut c_char;
-    fn system(_: *const c_char) -> c_int;
-    fn mkstemp(_: *mut c_char) -> c_int;
-    fn memcmp(_: *const c_void, _: *const c_void, _: c_ulong) -> c_int;
-    fn strcmp(_: *const c_char, _: *const c_char) -> c_int;
-    fn strcpy(_: *mut c_char, _: *const c_char) -> *mut c_char;
     fn clock() -> clock_t;
-    fn difftime(_: time_t, _: time_t) -> c_double;
-    fn mktime(_: *mut tm) -> time_t;
     fn strftime(_: *mut c_char, _: size_t, _: *const c_char, _: *const tm) -> size_t;
-    fn time(_: *mut time_t) -> time_t;
-    fn gmtime_r(_: *const time_t, _: *mut tm) -> *mut tm;
-    fn localtime_r(_: *const time_t, _: *mut tm) -> *mut tm;
     fn lua_close(L: *mut lua_State);
     fn lua_tointegerx(L: *mut lua_State, idx: c_int, isnum: *mut c_int) -> lua_Integer;
     fn lua_pushnumber(L: *mut lua_State, n: lua_Number);
@@ -42,12 +31,9 @@ extern "C" {
     fn lua_pushboolean(L: *mut lua_State, b: c_int);
     fn lua_getfield(L: *mut lua_State, idx: c_int, k: *const c_char) -> c_int;
     fn luaL_checklstring(L: *mut lua_State, arg: c_int, l: *mut size_t) -> *const c_char;
-    fn remove(_: *const c_char) -> c_int;
-    fn rename(__old: *const c_char, __new: *const c_char) -> c_int;
     fn luaL_fileresult(L: *mut lua_State, stat: c_int, fname: *const c_char) -> c_int;
     fn luaL_execresult(L: *mut lua_State, stat: c_int) -> c_int;
     fn luaL_prepbuffsize(B: *mut luaL_Buffer, sz: size_t) -> *mut c_char;
-    fn close(_: c_int) -> c_int;
 }
 pub type time_t = c_long;
 #[derive(Copy, Clone)]
