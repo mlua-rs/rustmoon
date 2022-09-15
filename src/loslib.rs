@@ -14,10 +14,9 @@ use libc::{c_char, c_double, c_int, c_long, c_longlong, c_ulong, c_void, clock_t
 
 pub const L_MAXDATEFIELD: libc::c_int = libc::INT_MAX / 2;
 pub const LUA_STRFTIMEOPTIONS: [libc::c_char; 78] = unsafe {
-    *::core::mem::transmute::<
-        &[u8; 78],
-        &[libc::c_char; 78],
-    >(b"aAbBcCdDeFgGhHIjmMnprRStTuUVwWxXyYzZ%||EcECExEXEyEYOdOeOHOIOmOMOSOuOUOVOwOWOy\0")
+    *::core::mem::transmute::<&[u8; 78], &[libc::c_char; 78]>(
+        b"aAbBcCdDeFgGhHIjmMnprRStTuUVwWxXyYzZ%||EcECExEXEyEYOdOeOHOIOmOMOSOuOUOVOwOWOy\0",
+    )
 };
 
 extern "C" {
