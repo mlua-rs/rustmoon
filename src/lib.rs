@@ -23,6 +23,7 @@ pub(crate) mod libs;
 pub(crate) mod linit;
 pub(crate) mod llex;
 pub(crate) mod llimits;
+pub(crate) mod lmathlib;
 pub(crate) mod lmem;
 pub(crate) mod loadlib;
 pub(crate) mod lopcodes;
