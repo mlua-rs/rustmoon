@@ -30,6 +30,7 @@ pub(crate) mod lopcodes;
 pub(crate) mod lparser;
 pub(crate) mod lstring;
 pub(crate) mod ltable;
+pub(crate) mod ltablib;
 pub(crate) mod ltm;
 pub(crate) mod lundump;
 pub(crate) mod lutf8lib;
