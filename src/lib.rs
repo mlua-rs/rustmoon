@@ -14,6 +14,7 @@ pub(crate) mod lstate;
 #[macro_use]
 pub(crate) mod lobject;
 
+pub(crate) mod lbaselib;
 pub(crate) mod ldebug;
 pub(crate) mod ldo;
 pub(crate) mod ldump;

@@ -8,7 +8,6 @@ fn main() {
         .file("build/lgc.c")
         .file("build/lparser.c")
         // Non core libs
-        .file("build/lbaselib.c")
         .file("build/lbitlib.c")
         .file("build/lcorolib.c")
         .file("build/ldblib.c")
