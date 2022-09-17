@@ -6,7 +6,6 @@ fn main() {
         // Lua core
         .file("build/lcode.c")
         .file("build/lgc.c")
-        .file("build/llex.c")
         .file("build/lparser.c")
         // Non core libs
         .file("build/lbaselib.c")

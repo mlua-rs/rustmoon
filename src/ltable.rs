@@ -81,8 +81,11 @@ pub unsafe fn allocsizenode(t: *const Table) -> usize {
 }
 
 /* returns the key, given the value of a table entry */
-// #define keyfromval(v) \
-//   (gkey(cast(Node *, cast(char *, (v)) - offsetof(Node, i_val))))
+pub unsafe fn keyfromval(o: *mut TValue) -> *const TValue {
+    return &mut (*((o as *mut libc::c_char).offset(-(0 as libc::c_ulong as isize)) as *mut Node))
+        .i_key
+        .tvk as *mut TValue as *const TValue;
+}
 
 /*
 ** Maximum size of array part (MAXASIZE) is 2^MAXABITS. MAXABITS is

@@ -109,7 +109,11 @@ unsafe extern "C" fn seterrorobj(L: *mut lua_State, errcode: c_int, oldtop: StkI
             setsvalue(L, oldtop, (*(*L).l_G).memerrmsg); /* reuse preregistered msg. */
         }
         LUA_ERRERR => {
-            setsvalue(L, oldtop, luaS_newliteral(L, "error in error handling"));
+            setsvalue(
+                L,
+                oldtop,
+                luaS_newliteral(L, cstr!("error in error handling")),
+            );
         }
         _ => {
             setobj(L, oldtop, (*L).top.sub(1)); /* error message on current top */
