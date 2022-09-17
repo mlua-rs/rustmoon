@@ -48,7 +48,7 @@ pub unsafe fn zgetc(z: *mut Zio) -> c_int {
     return if n > 0 {
         let p = (*z).p;
         (*z).p = ((*z).p).offset(1);
-        return *p as libc::c_uchar as libc::c_int // This cast through uchar is ESSENTIAL :)
+        return *p as libc::c_uchar as libc::c_int; // This cast through uchar is ESSENTIAL :)
     } else {
         luaZ_fill(z)
     };

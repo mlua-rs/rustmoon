@@ -4,19 +4,20 @@
 
 use std::ptr;
 
-use libc::{c_char, c_int, isdigit, isxdigit, size_t, INT_MAX, c_ulong, isspace, isalpha};
+use libc::{c_char, c_int, c_ulong, isalpha, isdigit, isspace, isxdigit, size_t, INT_MAX};
 
 use crate::ldebug::luaG_addinfo;
 use crate::ldo::luaD_throw;
 use crate::lgc::{luaC_checkGC, luaC_fix};
 use crate::llimits::{lu_byte, LUA_MINBUFFER};
 use crate::lobject::{
-    fltvalue, ivalue, luaO_hexavalue, luaO_pushfstring, luaO_str2num, setbvalue, setsvalue,
-    tsvalue, ttisfloat, ttisinteger, ttisnil, GCObject, TString, TValue, Table, Value, luaO_utf8esc, UTF8BUFFSZ,
+    fltvalue, ivalue, luaO_hexavalue, luaO_pushfstring, luaO_str2num, luaO_utf8esc, setbvalue,
+    setsvalue, tsvalue, ttisfloat, ttisinteger, ttisnil, GCObject, TString, TValue, Table, Value,
+    UTF8BUFFSZ,
 };
 use crate::lparser::{Dyndata, FuncState};
 use crate::lstate::lua_State;
-use crate::lstring::{luaS_new, luaS_newliteral, luaS_newlstr, isreserved};
+use crate::lstring::{isreserved, luaS_new, luaS_newliteral, luaS_newlstr};
 use crate::ltable::{keyfromval, luaH_set};
 use crate::lzio::{
     luaZ_buffer, luaZ_bufflen, luaZ_buffremove, luaZ_resetbuffer, luaZ_resizebuffer,
@@ -132,7 +133,6 @@ unsafe fn next(ls: *mut LexState) {
     (*ls).current = zgetc((*ls).z);
 }
 
-
 #[inline(always)]
 unsafe fn save_and_next(ls: *mut LexState) {
     save(ls, (*ls).current);
@@ -145,11 +145,7 @@ unsafe fn save(ls: *mut LexState, c: c_int) {
     let currentLen: size_t = luaZ_bufflen(b);
     if currentLen.wrapping_add(1) > currentSize {
         if currentSize >= (MAX_SIZE as size_t / 2) {
-            lexerror(
-                ls,
-                cstr!("lexical element too long"),
-                0,
-            );
+            lexerror(ls, cstr!("lexical element too long"), 0);
         }
         luaZ_resizebuffer((*ls).L, b, currentSize.wrapping_mul(2));
     }
@@ -345,11 +341,7 @@ unsafe fn skip_sep(ls: *mut LexState) -> size_t {
     };
 }
 
-unsafe fn read_long_string(
-    ls: *mut LexState,
-    mut seminfo: *mut SemInfo,
-    sep: size_t,
-) {
+unsafe fn read_long_string(ls: *mut LexState, mut seminfo: *mut SemInfo, sep: size_t) {
     let line = (*ls).linenumber; /* initial line (for error message) */
     save_and_next(ls); /* skip 2nd '[' */
     if currIsNewline(ls) {
@@ -408,16 +400,9 @@ unsafe fn read_long_string(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn luaX_token2str(
-    ls: *mut LexState,
-    token: c_int,
-) -> *const c_char {
+pub unsafe extern "C" fn luaX_token2str(ls: *mut LexState, token: c_int) -> *const c_char {
     if token < FIRST_RESERVED {
-        return luaO_pushfstring(
-            (*ls).L,
-            cstr!("'%c'"),
-            token,
-        );
+        return luaO_pushfstring((*ls).L, cstr!("'%c'"), token);
     } else {
         let s = luaX_tokens[(token - FIRST_RESERVED) as usize];
         if token < TK_EOS as c_int {
@@ -432,29 +417,16 @@ unsafe fn txtToken(ls: *mut LexState, token: c_int) -> *const c_char {
     match token {
         292 | 293 | 290 | 291 => {
             save(ls, '\0' as i32);
-            return luaO_pushfstring(
-                (*ls).L,
-                cstr!("'%s'"),
-                luaZ_buffer((*ls).buff),
-            );
+            return luaO_pushfstring((*ls).L, cstr!("'%s'"), luaZ_buffer((*ls).buff));
         }
         _ => return luaX_token2str(ls, token),
     };
 }
 
-unsafe fn lexerror(
-    ls: *mut LexState,
-    mut msg: *const c_char,
-    token: c_int,
-) {
+unsafe fn lexerror(ls: *mut LexState, mut msg: *const c_char, token: c_int) {
     msg = luaG_addinfo((*ls).L, msg, (*ls).source, (*ls).linenumber);
     if token != 0 {
-        luaO_pushfstring(
-            (*ls).L,
-            cstr!("%s near %s"),
-            msg,
-            txtToken(ls, token),
-        );
+        luaO_pushfstring((*ls).L, cstr!("%s near %s"), msg, txtToken(ls, token));
     }
     luaD_throw((*ls).L, LUA_ERRSYNTAX);
 }
@@ -493,7 +465,7 @@ unsafe fn readhexaesc(ls: *mut LexState) -> c_int {
 unsafe fn readutf8esc(ls: *mut LexState) -> c_ulong {
     let mut r: c_ulong;
     let mut i: c_int = 4; /* chars to be removed: '\', 'u', '{', and first digit */
-    save_and_next(ls);  /* skip 'u' */
+    save_and_next(ls); /* skip 'u' */
     esccheck(
         ls,
         ((*ls).current == '{' as i32) as c_int,
@@ -503,8 +475,7 @@ unsafe fn readutf8esc(ls: *mut LexState) -> c_ulong {
     save_and_next(ls);
     while isxdigit((*ls).current) != 0 {
         i += 1;
-        r = (r << 4)
-            .wrapping_add(luaO_hexavalue((*ls).current) as c_ulong);
+        r = (r << 4).wrapping_add(luaO_hexavalue((*ls).current) as c_ulong);
         esccheck(
             ls,
             (r <= 0x10ffff as c_ulong) as c_int,
@@ -517,8 +488,8 @@ unsafe fn readutf8esc(ls: *mut LexState) -> c_ulong {
         ((*ls).current == '}' as i32) as c_int,
         cstr!("missing '}'"),
     );
-    next(ls);  /* skip '}' */
-    luaZ_buffremove((*ls).buff, i as size_t);  /* remove saved chars from buffer */
+    next(ls); /* skip '}' */
+    luaZ_buffremove((*ls).buff, i as size_t); /* remove saved chars from buffer */
     return r;
 }
 
@@ -540,90 +511,96 @@ unsafe fn readdecesc(ls: *mut LexState) -> c_int {
         save_and_next(ls);
         i += 1;
     }
-    esccheck(ls, (r <= UCHAR_MAX) as c_int, cstr!("decimal escape too large"));
-    luaZ_buffremove((*ls).buff, i as size_t);  /* remove read digits from buffer */
+    esccheck(
+        ls,
+        (r <= UCHAR_MAX) as c_int,
+        cstr!("decimal escape too large"),
+    );
+    luaZ_buffremove((*ls).buff, i as size_t); /* remove read digits from buffer */
     return r;
 }
 
-unsafe fn read_string(
-    ls: *mut LexState,
-    del: c_int,
-    mut seminfo: *mut SemInfo,
-) {
-    save_and_next(ls);  /* keep delimiter (for error messages) */
+unsafe fn read_string(ls: *mut LexState, del: c_int, mut seminfo: *mut SemInfo) {
+    save_and_next(ls); /* keep delimiter (for error messages) */
     while (*ls).current != del {
         let mut read_save: bool = false;
         match (*ls).current {
             EOZ => {
-                lexerror(
-                    ls,
-                    cstr!("unfinished string"),
-                    TK_EOS as c_int,
-                );
+                lexerror(ls, cstr!("unfinished string"), TK_EOS as c_int);
                 break;
             }
-            10 | 13 => { // \n \r
-                lexerror(
-                    ls,
-                    cstr!("unfinished string"),
-                    TK_STRING as c_int,
-                );
+            10 | 13 => {
+                // \n \r
+                lexerror(ls, cstr!("unfinished string"), TK_STRING as c_int);
                 break;
             }
-            92 => { /* \ - escape sequences */
+            92 => {
+                /* \ - escape sequences */
                 let c: c_int;
-                save_and_next(ls);  /* keep '\\' for error messages */
+                save_and_next(ls); /* keep '\\' for error messages */
                 match (*ls).current {
-                    97 => { // \a
+                    97 => {
+                        // \a
                         c = '\u{7}' as i32;
                         read_save = true;
                     }
-                    98 => { // \b
+                    98 => {
+                        // \b
                         c = '\u{8}' as i32;
                         read_save = true;
                     }
-                    102 => { // \f
+                    102 => {
+                        // \f
                         c = '\u{c}' as i32;
                         read_save = true;
                     }
-                    110 => { // \n
+                    110 => {
+                        // \n
                         c = '\n' as i32;
                         read_save = true;
                     }
-                    114 => { // \r
+                    114 => {
+                        // \r
                         c = '\r' as i32;
                         read_save = true;
                     }
-                    116 => { // \t
+                    116 => {
+                        // \t
                         c = '\t' as i32;
                         read_save = true;
                     }
-                    118 => { // \v
+                    118 => {
+                        // \v
                         c = '\u{b}' as i32;
                         read_save = true;
                     }
-                    120 => { // \x
+                    120 => {
+                        // \x
                         c = readhexaesc(ls);
                         read_save = true;
                     }
-                    117 => { // \u
+                    117 => {
+                        // \u
                         utf8esc(ls);
                         continue;
                     }
-                    10 | 13 => { // \n \r
+                    10 | 13 => {
+                        // \n \r
                         inclinenumber(ls);
                         c = '\n' as i32;
                     }
-                    92 | 34 | 39 => { // \\ \" \'
+                    92 | 34 | 39 => {
+                        // \\ \" \'
                         c = (*ls).current;
                         read_save = true;
                     }
                     EOZ => {
                         continue;
                     }
-                    122 => { // \z - zap following span of spaces
-                        luaZ_buffremove((*ls).buff, 1);  /* remove '\\' */
-                        next(ls);  /* skip the 'z' */
+                    122 => {
+                        // \z - zap following span of spaces
+                        luaZ_buffremove((*ls).buff, 1); /* remove '\\' */
+                        next(ls); /* skip the 'z' */
                         while isspace((*ls).current) != 0 {
                             if currIsNewline(ls) {
                                 inclinenumber(ls);
@@ -636,9 +613,8 @@ unsafe fn read_string(
                     _ => {
                         esccheck(
                             ls,
-                            isdigit((*ls). current),
-                            b"invalid escape sequence\0" as *const u8
-                                as *const c_char,
+                            isdigit((*ls).current),
+                            b"invalid escape sequence\0" as *const u8 as *const c_char,
                         );
                         c = readdecesc(ls); /* digital escape '\ddd' */
                     }
@@ -654,9 +630,8 @@ unsafe fn read_string(
             }
         }
     }
-    save_and_next(ls);  /* skip delimiter */
-    (*seminfo)
-        .ts = luaX_newstring(
+    save_and_next(ls); /* skip delimiter */
+    (*seminfo).ts = luaX_newstring(
         ls,
         luaZ_buffer((*ls).buff).offset(1),
         luaZ_bufflen((*ls).buff).wrapping_sub(2),
@@ -673,20 +648,20 @@ unsafe fn lislalpha(c: c_int) -> bool {
     return false;
 }
 
-unsafe fn llex(
-    ls: *mut LexState,
-    mut seminfo: *mut SemInfo,
-) -> c_int {
+unsafe fn llex(ls: *mut LexState, mut seminfo: *mut SemInfo) -> c_int {
     luaZ_resetbuffer((*ls).buff);
     loop {
         match (*ls).current {
-            10 | 13 => { /* line breaks \n and \r */
+            10 | 13 => {
+                /* line breaks \n and \r */
                 inclinenumber(ls);
             }
-            32 | 12 | 9 | 11 => { // ' ' \f \t \v - spaces
+            32 | 12 | 9 | 11 => {
+                // ' ' \f \t \v - spaces
                 next(ls);
             }
-            45 => { /* '-' or '--' (comment) */
+            45 => {
+                /* '-' or '--' (comment) */
                 next(ls);
                 if (*ls).current != '-' as i32 {
                     return '-' as i32;
@@ -695,8 +670,8 @@ unsafe fn llex(
                 let mut isLongComment = false;
                 if (*ls).current == '[' as i32 {
                     let sep = skip_sep(ls);
-                    luaZ_resetbuffer((*ls).buff);  /* 'skip_sep' may dirty the buffer */
-                    if sep >= 2  {
+                    luaZ_resetbuffer((*ls).buff); /* 'skip_sep' may dirty the buffer */
+                    if sep >= 2 {
                         read_long_string(ls, ptr::null_mut() as *mut SemInfo, sep); /* skip long comment */
                         luaZ_resetbuffer((*ls).buff); /* previous call may dirty the buff. */
                         isLongComment = true;
@@ -705,102 +680,109 @@ unsafe fn llex(
                 /* else short comment */
                 if !isLongComment {
                     while !currIsNewline(ls) && (*ls).current != EOZ {
-                        next(ls);  /* skip until end of line (or end of file) */
+                        next(ls); /* skip until end of line (or end of file) */
                     }
                 }
             }
-            91 => { /* [ - long string or simply '[' */
+            91 => {
+                /* [ - long string or simply '[' */
                 let sep_0 = skip_sep(ls);
-                if sep_0 >= 2  {
+                if sep_0 >= 2 {
                     read_long_string(ls, seminfo, sep_0);
                     return TK_STRING as c_int;
                 } else {
-                    if sep_0 == 0  {
-                        lexerror(
-                            ls,
-                            cstr!("invalid long string delimiter"),
-                            TK_STRING,
-                        );
+                    if sep_0 == 0 {
+                        lexerror(ls, cstr!("invalid long string delimiter"), TK_STRING);
                     }
                 }
                 return '[' as i32;
             }
-            61 => { // =
+            61 => {
+                // =
                 next(ls);
                 if check_next1(ls, '=' as i32) != 0 {
-                    return TK_EQ as c_int
+                    return TK_EQ as c_int;
                 } else {
-                    return '=' as i32
+                    return '=' as i32;
                 }
             }
-            60 => { // <
+            60 => {
+                // <
                 next(ls);
                 if check_next1(ls, '=' as i32) != 0 {
-                    return TK_LE as c_int
+                    return TK_LE as c_int;
                 } else if check_next1(ls, '<' as i32) != 0 {
-                    return TK_SHL as c_int
+                    return TK_SHL as c_int;
                 } else {
-                    return '<' as i32
+                    return '<' as i32;
                 }
             }
-            62 => { // >
+            62 => {
+                // >
                 next(ls);
                 if check_next1(ls, '=' as i32) != 0 {
-                    return TK_GE as c_int
+                    return TK_GE as c_int;
                 } else if check_next1(ls, '>' as i32) != 0 {
-                    return TK_SHR as c_int
+                    return TK_SHR as c_int;
                 } else {
-                    return '>' as i32
+                    return '>' as i32;
                 }
             }
-            47 => { // /
+            47 => {
+                // /
                 next(ls);
                 if check_next1(ls, '/' as i32) != 0 {
-                    return TK_IDIV as c_int
+                    return TK_IDIV as c_int;
                 } else {
-                    return '/' as i32
+                    return '/' as i32;
                 }
             }
-            126 => { // ~
+            126 => {
+                // ~
                 next(ls);
                 if check_next1(ls, '=' as i32) != 0 {
-                    return TK_NE as c_int
+                    return TK_NE as c_int;
                 } else {
-                    return '~' as i32
+                    return '~' as i32;
                 }
             }
-            58 => { // :
+            58 => {
+                // :
                 next(ls);
                 if check_next1(ls, ':' as i32) != 0 {
-                    return TK_DBCOLON as c_int
+                    return TK_DBCOLON as c_int;
                 } else {
-                    return ':' as i32
+                    return ':' as i32;
                 }
             }
-            34 | 39 => { // " or ' - short literal strings
+            34 | 39 => {
+                // " or ' - short literal strings
                 read_string(ls, (*ls).current, seminfo);
                 return TK_STRING as c_int;
             }
-            46 => {  /* . - '.', '..', '...', or number */
+            46 => {
+                /* . - '.', '..', '...', or number */
                 save_and_next(ls);
                 if check_next1(ls, '.' as i32) != 0 {
                     if check_next1(ls, '.' as i32) != 0 {
-                        return TK_DOTS as c_int
+                        return TK_DOTS as c_int;
                     } else {
-                        return TK_CONCAT as c_int
+                        return TK_CONCAT as c_int;
                     }
                 } else if isdigit((*ls).current) == 0 {
-                    return '.' as i32
+                    return '.' as i32;
                 } else {
-                    return read_numeral(ls, seminfo)
+                    return read_numeral(ls, seminfo);
                 }
             }
-            48 | 49 | 50 | 51 | 52 | 53 | 54 | 55 | 56 | 57 => { // 0-9
+            48 | 49 | 50 | 51 | 52 | 53 | 54 | 55 | 56 | 57 => {
+                // 0-9
                 return read_numeral(ls, seminfo);
             }
             EOZ => return TK_EOS as c_int,
             _ => {
-                if lislalpha((*ls).current) { /* identifier or reserved word? */
+                if lislalpha((*ls).current) {
+                    /* identifier or reserved word? */
                     let ts;
                     loop {
                         save_and_next(ls);
@@ -808,28 +790,24 @@ unsafe fn llex(
                             break;
                         }
                     }
-                    ts = luaX_newstring(
-                        ls,
-                        luaZ_buffer((*ls).buff),
-                        luaZ_bufflen((*ls).buff),
-                    );
+                    ts = luaX_newstring(ls, luaZ_buffer((*ls).buff), luaZ_bufflen((*ls).buff));
                     (*seminfo).ts = ts;
-                    if isreserved(ts) { /* reserved word? */
-                        return (*ts).extra as c_int - 1 as c_int
-                            + FIRST_RESERVED
+                    if isreserved(ts) {
+                        /* reserved word? */
+                        return (*ts).extra as c_int - 1 as c_int + FIRST_RESERVED;
                     } else {
-                        return TK_NAME as c_int
+                        return TK_NAME as c_int;
                     }
-                } else {  /* single-char tokens (+ - / ...) */
+                } else {
+                    /* single-char tokens (+ - / ...) */
                     let c = (*ls).current;
                     next(ls);
                     return c;
                 }
             }
         }
-    };
+    }
 }
-
 
 #[no_mangle]
 pub unsafe extern "C" fn luaX_next(mut ls: *mut LexState) {
@@ -847,4 +825,3 @@ pub unsafe extern "C" fn luaX_lookahead(mut ls: *mut LexState) -> c_int {
     (*ls).lookahead.token = llex(ls, &mut (*ls).lookahead.seminfo);
     return (*ls).lookahead.token;
 }
-
