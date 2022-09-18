@@ -12,19 +12,10 @@ use libc::{
 };
 
 // Cross platform retrieval of errno
-cfg_if::cfg_if! {
-    if #[cfg(any(target_os = "netbsd", target_os = "openbsd", target_os = "android"))] {
-        use libc::__errno as errno_location;
-    } else if #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "redox"))] {
-        use libc::__errno_location as errno_location;
-    } else if #[cfg(any(target_os = "solaris", target_os = "illumos"))] {
-        use libc::___errno as errno_location;
-    } else if #[cfg(any(target_os = "macos", target_os = "freebsd"))] {
-        use libc::__error as errno_location;
-    } else if #[cfg(target_os = "haiku")] {
-        use libc::_errnop as errno_location;
-    }
-}
+#[cfg(target_os = "linux")]
+use libc::__errno_location as errno_location;
+#[cfg(target_os = "macos")]
+use libc::__error as errno_location;
 
 use crate::lapi::{
     lua_absindex, lua_atpanic, lua_call, lua_checkstack, lua_concat, lua_copy, lua_createtable,
