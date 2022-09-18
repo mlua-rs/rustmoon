@@ -4,13 +4,13 @@ use libc::{c_double, c_int, c_longlong, c_ulong, c_ulonglong, intptr_t, srand};
 use rand::prelude::*;
 
 use crate::lapi::{
-    lua_compare, lua_gettop, lua_isinteger, lua_isnoneornil, lua_pushboolean, lua_pushinteger,
-    lua_pushnil, lua_pushnumber, lua_pushstring, lua_pushvalue, lua_setfield, lua_settop,
-    lua_tointeger, lua_tointegerx, lua_type,
+    lua_compare, lua_gettop, lua_isinteger, lua_pushboolean, lua_pushinteger, lua_pushnil,
+    lua_pushnumber, lua_pushstring, lua_pushvalue, lua_setfield, lua_settop, lua_tointeger,
+    lua_tointegerx, lua_type,
 };
 use crate::lauxlib::{
     luaL_Reg, luaL_argerror, luaL_checkany, luaL_checkinteger, luaL_checknumber, luaL_error,
-    luaL_newlib, luaL_optnumber,
+    luaL_newlib, luaL_optnumber, lua_isnoneornil,
 };
 use crate::lstate::lua_State;
 use crate::types::{lua_CFunction, lua_Integer, lua_Number, lua_Unsigned, LUA_TNUMBER};

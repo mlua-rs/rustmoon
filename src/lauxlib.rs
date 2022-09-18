@@ -5,6 +5,8 @@
 use std::mem;
 use std::ptr;
 
+use libc::fwrite;
+use libc::STDOUT_FILENO;
 use libc::{
     c_char, c_int, c_void, fclose, fdopen, feof, ferror, fflush, fopen, fprintf, fread, free,
     freopen, memcpy, size_t, strcmp, strerror, strlen, strncmp, strstr, EOF, FILE, STDERR_FILENO,
@@ -96,6 +98,41 @@ pub unsafe fn luaL_checkstring(L: *mut lua_State, n: c_int) -> *const c_char {
 
 pub unsafe fn luaL_optstring(L: *mut lua_State, arg: c_int, def: *const c_char) -> *const c_char {
     luaL_optlstring(L, arg, def, ptr::null_mut())
+}
+
+/*
+** {==================================================================
+** "Abstraction Layer" for basic report of messages and errors
+** ===================================================================
+*/
+
+/* print a string */
+#[inline(always)]
+#[no_mangle]
+pub unsafe extern "C" fn lua_writestring(s: *const c_char, l: size_t) {
+    let stdout_fd = fdopen(STDOUT_FILENO, cstr!("w"));
+    fwrite(
+        s as *const c_void,
+        std::mem::size_of::<c_char>(),
+        l,
+        stdout_fd,
+    );
+    fflush(stdout_fd);
+}
+
+/* print a newline and flush the output */
+#[inline(always)]
+#[no_mangle]
+pub unsafe extern "C" fn lua_writeline() {
+    lua_writestring(cstr!("\n"), 1);
+}
+
+/* print an error message */
+#[inline(always)]
+pub unsafe extern "C" fn lua_writestringerror(s: *const c_char, l: size_t) {
+    let stderr_fd = fdopen(STDERR_FILENO, cstr!("w"));
+    fprintf(stderr_fd, s, l);
+    fflush(stderr_fd);
 }
 
 /*
@@ -725,8 +762,20 @@ pub unsafe extern "C" fn luaL_checkinteger(L: *mut lua_State, arg: libc::c_int) 
     return d;
 }
 
-pub unsafe extern "C" fn lua_isnoneornil(L: *mut lua_State, n: libc::c_int) -> bool {
+#[inline(always)]
+pub unsafe fn lua_isnoneornil(L: *mut lua_State, n: c_int) -> bool {
     return lua_type(L, n) <= 0;
+}
+
+#[inline(always)]
+pub unsafe fn lua_isnone(L: *mut lua_State, n: c_int) -> bool {
+    return lua_type(L, n) == LUA_TNONE;
+}
+
+#[inline(always)]
+pub unsafe extern "C" fn lua_replace(L: *mut lua_State, idx: c_int) {
+    lua_copy(L, -1, idx);
+    lua_pop(L, 1);
 }
 
 pub unsafe extern "C" fn luaL_opt(
