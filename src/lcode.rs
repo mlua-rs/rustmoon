@@ -67,8 +67,8 @@ pub unsafe extern "C" fn luaK_nil(
         previous = &mut *((*(*fs).f).code).offset(((*fs).pc - 1) as isize)
             as *mut Instruction;
         if GET_OPCODE(*previous) == OP_LOADNIL { /* previous is LOADNIL? */
-            let mut pfrom = GETARG_A(* previous); /* get previous range */
-            let mut pl = pfrom + GETARG_B(* previous);
+            let pfrom = GETARG_A(*previous); /* get previous range */
+            let pl = pfrom + GETARG_B(*previous);
             if pfrom <= from && from <= pl + 1
                 || from <= pfrom && pfrom <= l + 1 /* can connect both? */
             {
