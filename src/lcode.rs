@@ -4,16 +4,19 @@
 
 use libc::{abs, c_int, c_uint};
 
+use crate::lgc::luaC_barrier;
 use crate::llex::luaX_syntaxerror;
 use crate::llimits::{Instruction, MAX_INT, lu_byte};
 use crate::lmem::luaM_growvector;
-use crate::lobject::{setfltvalue, setivalue, TValue};
+use crate::lobject::{setfltvalue, setivalue, TValue, ttisinteger, ttype, setnilvalue, setobj, GCObject};
 use crate::lopcodes::{
     luaP_opmodes, GETARG_sBx, MAXARG_sBx, OpCode, SETARG_sBx, GETARG_A, GETARG_B, GETARG_C,
     GET_OPCODE, NO_REG, OP_JMP, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C,
-    POS_OP, SETARG_A, SETARG_B, iABC, getOpMode, getBMode, OpArgN, getCMode, MAXARG_A, MAXARG_B, MAXARG_C, iABx, iAsBx, MAXARG_Bx, CREATE_ABx, CREATE_Ax, OP_EXTRAARG, OP_LOADK, OP_LOADKX, ISK,
+    POS_OP, SETARG_A, SETARG_B, iABC, getOpMode, getBMode, OpArgN, getCMode, MAXARG_A, MAXARG_B, MAXARG_C, iABx, iAsBx, MAXARG_Bx, CREATE_ABx, CREATE_Ax, OP_EXTRAARG, OP_LOADK, OP_LOADKX, ISK, MAXARG_Ax,
 };
 use crate::lparser::{expdesc, FuncState, VKFLT, VKINT, VNONRELOC};
+use crate::ltable::luaH_set;
+use crate::lvm::luaV_rawequalobj;
 
 pub const MAXREGS: c_int = 255;
 pub const NO_JUMP: c_int = -1;
@@ -539,4 +542,50 @@ pub unsafe extern "C" fn freeexps(
         freereg(fs, r2);
         freereg(fs, r1);
     };
+}
+
+/*
+** Add constant 'v' to prototype's list of constants (field 'k').
+** Use scanner's table to cache position of constants in constant list
+** and try to reuse constants. Because some values should not be used
+** as keys (nil cannot be a key, integer keys can collapse with float
+** keys), the caller must provide a useful 'key' for indexing the cache.
+*/
+
+// FIXME - static
+#[no_mangle]
+pub unsafe extern "C" fn addk(
+    mut fs: *mut FuncState,
+    key: *mut TValue,
+    v: *mut TValue,
+) -> c_int {
+    let L = (*(*fs).ls).L;
+    let f = (*fs).f;
+    let idx = luaH_set(L, (*(*fs).ls).h, key); /* index scanner table */
+    let mut k: libc::c_int = 0;
+    let mut oldsize: c_int = 0;
+    if ttisinteger(idx) {  /* is there an index there? */
+        k = (*idx).value_.i as c_int;
+        /* correct value? (warning: must distinguish floats from integers!) */
+        if k < (*fs).nk && ttype((*f).k.offset(k as isize)) == ttype(v)
+            && luaV_rawequalobj((*f).k.offset(k as isize), v) != 0
+        {
+            return k; /* reuse index */
+        }
+    }
+    /* constant not found; create a new entry */
+    oldsize = (*f).sizek;
+    k = (*fs).nk;
+    /* numerical value does not need GC barrier;
+       table has no metatable, so it does not need to invalidate cache */
+    setivalue(idx, k as i64);
+    luaM_growvector(L, &mut (*f).k, k, &mut (*f).sizek, MAXARG_Ax as c_int, cstr!("constants"));
+    while oldsize < (*f).sizek {
+        setnilvalue((*f).k.offset(oldsize as isize));
+        oldsize += 1;
+    }
+    setobj(L, (*f).k.offset(k as isize), v);
+    (*fs).nk += 1;
+    luaC_barrier(L, f as *mut GCObject, v);
+    return k;
 }

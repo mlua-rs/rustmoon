@@ -61,41 +61,7 @@ void luaK_reserveregs (FuncState *fs, int n);
 extern void freereg (FuncState *fs, int reg);
 extern void freeexp (FuncState *fs, expdesc *e);
 extern void freeexps (FuncState *fs, expdesc *e1, expdesc *e2);
-
-
-/*
-** Add constant 'v' to prototype's list of constants (field 'k').
-** Use scanner's table to cache position of constants in constant list
-** and try to reuse constants. Because some values should not be used
-** as keys (nil cannot be a key, integer keys can collapse with float
-** keys), the caller must provide a useful 'key' for indexing the cache.
-*/
-static int addk (FuncState *fs, TValue *key, TValue *v) {
-  lua_State *L = fs->ls->L;
-  Proto *f = fs->f;
-  TValue *idx = luaH_set(L, fs->ls->h, key);  /* index scanner table */
-  int k, oldsize;
-  if (ttisinteger(idx)) {  /* is there an index there? */
-    k = cast_int(ivalue(idx));
-    /* correct value? (warning: must distinguish floats from integers!) */
-    if (k < fs->nk && ttype(&f->k[k]) == ttype(v) &&
-                      luaV_rawequalobj(&f->k[k], v))
-      return k;  /* reuse index */
-  }
-  /* constant not found; create a new entry */
-  oldsize = f->sizek;
-  k = fs->nk;
-  /* numerical value does not need GC barrier;
-     table has no metatable, so it does not need to invalidate cache */
-  setivalue(idx, k);
-  luaM_growvector(L, f->k, k, f->sizek, TValue, MAXARG_Ax, "constants");
-  while (oldsize < f->sizek) setnilvalue(&f->k[oldsize++]);
-  setobj(L, &f->k[k], v);
-  fs->nk++;
-  luaC_barrier(L, f, v);
-  return k;
-}
-
+extern int addk (FuncState *fs, TValue *key, TValue *v);
 
 /*
 ** Add a string to list of constants and return its index.
