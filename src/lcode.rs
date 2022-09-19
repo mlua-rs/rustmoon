@@ -2,11 +2,12 @@
 ** Code generator for Lua
 */
 
-use libc::{c_uint, c_int};
+use libc::{c_uint, c_int, abs};
 
+use crate::llex::luaX_syntaxerror;
 use crate::llimits::Instruction;
 use crate::lobject::{TValue, setivalue, setfltvalue};
-use crate::lopcodes::{GET_OPCODE, OP_LOADNIL, GETARG_A, GETARG_B, SETARG_A, SETARG_B, OpCode, GETARG_sBx};
+use crate::lopcodes::{GET_OPCODE, OP_LOADNIL, GETARG_A, GETARG_B, SETARG_A, SETARG_B, OpCode, GETARG_sBx, MAXARG_sBx, SETARG_sBx};
 use crate::lparser::{expdesc, VKINT, VKFLT, FuncState};
 
 pub const MAXREGS: c_int = 255;
@@ -104,6 +105,26 @@ pub unsafe extern "C" fn getjump(
     };
 }
 
+/*
+** Fix jump instruction at position 'pc' to jump to 'dest'.
+** (Jump addresses are relative in Lua)
+*/
+
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn fixjump(
+    fs: *mut FuncState,
+    pc: libc::c_int,
+    dest: libc::c_int,
+) {
+    let jmp: *mut Instruction = &mut *((*(*fs).f).code).offset(pc as isize)
+        as *mut Instruction;
+    let offset = dest - (pc + 1 as libc::c_int);
+    if abs(offset) as c_uint > MAXARG_sBx {
+        luaX_syntaxerror((*fs).ls, cstr!("control structure too long"));
+    }
+    SETARG_sBx(jmp, offset);
+}
 extern "C" {
     pub fn luaK_codeABC(
         fs: *mut FuncState,

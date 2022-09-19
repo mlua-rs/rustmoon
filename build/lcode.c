@@ -37,20 +37,7 @@
 extern int tonumeral(const expdesc *e, TValue *v);
 void luaK_nil (FuncState *fs, int from, int n);
 extern int getjump (FuncState *fs, int pc);
-
-
-/*
-** Fix jump instruction at position 'pc' to jump to 'dest'.
-** (Jump addresses are relative in Lua)
-*/
-static void fixjump (FuncState *fs, int pc, int dest) {
-  Instruction *jmp = &fs->f->code[pc];
-  int offset = dest - (pc + 1);
-  lua_assert(dest != NO_JUMP);
-  if (abs(offset) > MAXARG_sBx)
-    luaX_syntaxerror(fs->ls, "control structure too long");
-  SETARG_sBx(*jmp, offset);
-}
+extern void fixjump (FuncState *fs, int pc, int dest);
 
 
 /*

@@ -152,7 +152,10 @@ pub const fn GETARG_sBx(i: Instruction) -> c_int {
     GETARG_Bx(i) - MAXARG_sBx as c_int
 }
 
-// #define SETARG_sBx(i,b)	SETARG_Bx((i),cast(unsigned int, (b)+MAXARG_sBx))
+#[inline(always)]
+pub unsafe fn SETARG_sBx(i: *mut Instruction, b: c_int){
+    SETARG_Bx(i, b + MAXARG_sBx as c_int);
+}
 
 // #define CREATE_ABC(o,a,b,c)	((cast(Instruction, o)<<POS_OP) \
 // 			| (cast(Instruction, a)<<POS_A) \
