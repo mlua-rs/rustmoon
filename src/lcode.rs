@@ -8,7 +8,7 @@ use crate::lgc::luaC_barrier;
 use crate::llex::luaX_syntaxerror;
 use crate::llimits::{Instruction, MAX_INT, lu_byte};
 use crate::lmem::luaM_growvector;
-use crate::lobject::{setfltvalue, setivalue, TValue, ttisinteger, ttype, setnilvalue, setobj, GCObject, setsvalue, Value, TString, setpvalue};
+use crate::lobject::{setfltvalue, setivalue, TValue, ttisinteger, ttype, setnilvalue, setobj, GCObject, setsvalue, Value, TString, setpvalue, setbvalue};
 use crate::lopcodes::{
     luaP_opmodes, GETARG_sBx, MAXARG_sBx, OpCode, SETARG_sBx, GETARG_A, GETARG_B, GETARG_C,
     GET_OPCODE, NO_REG, OP_JMP, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C,
@@ -645,4 +645,18 @@ pub unsafe extern "C" fn luaK_numberK(
     };
     setfltvalue(&mut o, r);
     return addk(fs, &mut o, &mut o); /* use number itself as key */
+}
+
+/*
+** Add a boolean to list of constants and return its index.
+*/
+// FIXME static
+#[no_mangle]
+pub  unsafe extern "C" fn boolK(fs: *mut FuncState, b: c_int) -> c_int {
+    let mut o = TValue {
+        value_: Value { gc: 0 as *mut GCObject },
+        tt_: 0,
+    };
+    setbvalue(&mut o, b != 0);
+    return addk(fs, &mut o, &mut o); /* use boolean itself as key */
 }

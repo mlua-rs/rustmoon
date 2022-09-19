@@ -65,16 +65,7 @@ extern int addk (FuncState *fs, TValue *key, TValue *v);
 int luaK_stringK (FuncState *fs, TString *s);
 int luaK_intK (FuncState *fs, lua_Integer n);
 extern int luaK_numberK (FuncState *fs, lua_Number r);
-
-
-/*
-** Add a boolean to list of constants and return its index.
-*/
-static int boolK (FuncState *fs, int b) {
-  TValue o;
-  setbvalue(&o, b);
-  return addk(fs, &o, &o);  /* use boolean itself as key */
-}
+extern int boolK (FuncState *fs, int b);
 
 
 /*
