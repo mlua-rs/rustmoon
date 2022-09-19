@@ -58,19 +58,7 @@ extern int codeextraarg (FuncState *fs, int a);
 int luaK_codek (FuncState *fs, int reg, int k);
 void luaK_checkstack (FuncState *fs, int n);
 void luaK_reserveregs (FuncState *fs, int n);
-
-
-/*
-** Free register 'reg', if it is neither a constant index nor
-** a local variable.
-)
-*/
-static void freereg (FuncState *fs, int reg) {
-  if (!ISK(reg) && reg >= fs->nactvar) {
-    fs->freereg--;
-    lua_assert(reg == fs->freereg);
-  }
-}
+extern void freereg (FuncState *fs, int reg);
 
 
 /*

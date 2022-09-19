@@ -11,7 +11,7 @@ use crate::lobject::{setfltvalue, setivalue, TValue};
 use crate::lopcodes::{
     luaP_opmodes, GETARG_sBx, MAXARG_sBx, OpCode, SETARG_sBx, GETARG_A, GETARG_B, GETARG_C,
     GET_OPCODE, NO_REG, OP_JMP, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C,
-    POS_OP, SETARG_A, SETARG_B, iABC, getOpMode, getBMode, OpArgN, getCMode, MAXARG_A, MAXARG_B, MAXARG_C, iABx, iAsBx, MAXARG_Bx, CREATE_ABx, CREATE_Ax, OP_EXTRAARG, OP_LOADK, OP_LOADKX,
+    POS_OP, SETARG_A, SETARG_B, iABC, getOpMode, getBMode, OpArgN, getCMode, MAXARG_A, MAXARG_B, MAXARG_C, iABx, iAsBx, MAXARG_Bx, CREATE_ABx, CREATE_Ax, OP_EXTRAARG, OP_LOADK, OP_LOADKX, ISK,
 };
 use crate::lparser::{expdesc, FuncState, VKFLT, VKINT};
 
@@ -498,9 +498,18 @@ pub unsafe extern "C" fn luaK_reserveregs(mut fs: *mut FuncState, n: c_int) {
 ** a local variable.
 )
 */
-/*static void freereg (FuncState *fs, int reg) {
-    if (!ISK(reg) && reg >= fs->nactvar) {
-      fs->freereg--;
-      lua_assert(reg == fs->freereg);
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn freereg(mut fs: *mut FuncState, reg: c_int) {
+    if !ISK(reg as c_uint) && reg >= (*fs).nactvar as c_int {
+        (*fs).freereg = ((*fs).freereg).wrapping_sub(1);
     }
+}
+
+/*
+** Free register used by expression 'e' (if any)
+*/
+/*static void freeexp (FuncState *fs, expdesc *e) {
+    if (e->k == VNONRELOC)
+      freereg(fs, e->u.info);
   }*/
