@@ -190,6 +190,35 @@ pub unsafe extern "C" fn luaK_ret(
     luaK_codeABC(fs, OP_RETURN, first, nret + 1, 0);
 }
 
+/*
+** Code a "conditional jump", that is, a test or comparison opcode
+** followed by a jump. Return jump position.
+*/
+
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn condjump(
+    fs: *mut FuncState,
+    op: OpCode,
+    A: c_int,
+    B: c_int,
+    C: c_int,
+) -> c_int {
+    luaK_codeABC(fs, op, A, B, C);
+    return luaK_jump(fs);
+}
+  
+/*
+** returns current 'pc' and marks it as a jump target (to avoid wrong
+** optimizations with consecutive instructions not in the same basic block).
+*/
+
+#[no_mangle]
+pub unsafe extern "C" fn luaK_getlabel(mut fs: *mut FuncState) -> libc::c_int {
+    (*fs).lasttarget = (*fs).pc;
+    return (*fs).pc;
+}
+
 extern "C" {
     pub fn luaK_codeABC(
         fs: *mut FuncState,

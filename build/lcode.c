@@ -41,25 +41,8 @@ extern void fixjump (FuncState *fs, int pc, int dest);
 void luaK_concat (FuncState *fs, int *l1, int l2);
 int luaK_jump (FuncState *fs);
 void luaK_ret (FuncState *fs, int first, int nret);
-
-/*
-** Code a "conditional jump", that is, a test or comparison opcode
-** followed by a jump. Return jump position.
-*/
-static int condjump (FuncState *fs, OpCode op, int A, int B, int C) {
-  luaK_codeABC(fs, op, A, B, C);
-  return luaK_jump(fs);
-}
-
-
-/*
-** returns current 'pc' and marks it as a jump target (to avoid wrong
-** optimizations with consecutive instructions not in the same basic block).
-*/
-int luaK_getlabel (FuncState *fs) {
-  fs->lasttarget = fs->pc;
-  return fs->pc;
-}
+extern int condjump (FuncState *fs, OpCode op, int A, int B, int C);
+int luaK_getlabel (FuncState *fs);
 
 
 /*
