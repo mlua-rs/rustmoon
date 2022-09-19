@@ -55,8 +55,12 @@ void luaK_nil (FuncState *fs, int from, int n);
 ** Gets the destination address of a jump instruction. Used to traverse
 ** a list of jumps.
 */
-static int getjump (FuncState *fs, int pc) {
-  int offset = GETARG_sBx(fs->f->code[pc]);
+// #define GETARG_sBx(i)  (GETARG_Bx(i)-MAXARG_sBx)
+extern int getjump (FuncState *fs, int pc) {
+  //int offset = GETARG_sBx(fs->f->code[pc]);
+  //int offset = GETARG_Bx(fs->f->code[pc])-MAXARG_sBx;
+  //int offset = getarg(fs->f->code[pc], POS_Bx, SIZE_Bx)-MAXARG_sBx;
+  int offset = cast(int, ((fs->f->code[pc])>>POS_Bx) & MASK1(SIZE_Bx,0))-MAXARG_sBx;
   if (offset == NO_JUMP)  /* point to itself represents end of list */
     return NO_JUMP;  /* end of list */
   else

@@ -6,11 +6,11 @@ use libc::{c_uint, c_int};
 
 use crate::llimits::Instruction;
 use crate::lobject::{TValue, setivalue, setfltvalue};
-use crate::lopcodes::{GET_OPCODE, OP_LOADNIL, GETARG_A, GETARG_B, SETARG_A, SETARG_B, OpCode};
+use crate::lopcodes::{GET_OPCODE, OP_LOADNIL, GETARG_A, GETARG_B, SETARG_A, SETARG_B, OpCode, GETARG_sBx};
 use crate::lparser::{expdesc, VKINT, VKFLT, FuncState};
-use crate::types::lua_Integer;
 
-pub const MAXREGS: libc::c_int = 255 as libc::c_int;
+pub const MAXREGS: c_int = 255;
+pub const NO_JUMP: c_int = -1;
 
 #[inline(always)]
 pub unsafe extern "C" fn hasjumps (mut e: *const expdesc) -> bool {
@@ -83,6 +83,25 @@ pub unsafe extern "C" fn luaK_nil(
         }
     }
     luaK_codeABC(fs, OP_LOADNIL, from, n - 1, 0);
+}
+
+/*
+** Gets the destination address of a jump instruction. Used to traverse
+** a list of jumps.
+*/
+
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn getjump(
+    fs: *mut FuncState,
+    pc: c_int,
+) -> c_int {
+    let offset = GETARG_sBx(*((*(*fs).f).code.offset(pc as isize)));
+    if offset == NO_JUMP { /* point to itself represents end of list */
+        return NO_JUMP /* end of list */
+    } else {
+        return pc + 1 + offset /* turn offset into absolute position */
+    };
 }
 
 extern "C" {
