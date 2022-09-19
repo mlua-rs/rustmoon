@@ -56,22 +56,7 @@ int luaK_codeABC (FuncState *fs, OpCode o, int a, int b, int c);
 int luaK_codeABx (FuncState *fs, OpCode o, int a, unsigned int bc);
 extern int codeextraarg (FuncState *fs, int a);
 int luaK_codek (FuncState *fs, int reg, int k);
-
-
-/*
-** Check register-stack level, keeping track of its maximum size
-** in field 'maxstacksize'
-*/
-void luaK_checkstack (FuncState *fs, int n) {
-  int newstack = fs->freereg + n;
-  if (newstack > fs->f->maxstacksize) {
-    if (newstack >= MAXREGS)
-      luaX_syntaxerror(fs->ls,
-        "function or expression needs too many registers");
-    fs->f->maxstacksize = cast_byte(newstack);
-  }
-}
-
+void luaK_checkstack (FuncState *fs, int n);
 
 /*
 ** Reserve 'n' registers in register stack

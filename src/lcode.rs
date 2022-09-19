@@ -5,7 +5,7 @@
 use libc::{abs, c_int, c_uint};
 
 use crate::llex::luaX_syntaxerror;
-use crate::llimits::{Instruction, MAX_INT};
+use crate::llimits::{Instruction, MAX_INT, lu_byte};
 use crate::lmem::luaM_growvector;
 use crate::lobject::{setfltvalue, setivalue, TValue};
 use crate::lopcodes::{
@@ -454,17 +454,6 @@ pub unsafe extern "C" fn codeextraarg(
 ** (if constant index 'k' fits in 18 bits) or an 'OP_LOADKX'
 ** instruction with "extra argument".
 */
-/* 
-int luaK_codek (FuncState *fs, int reg, int k) {
-    if (k <= MAXARG_Bx)
-      return luaK_codeABx(fs, OP_LOADK, reg, k);
-    else {
-      int p = luaK_codeABx(fs, OP_LOADKX, reg, 0);
-      codeextraarg(fs, k);
-      return p;
-    }
-  }
-*/
 #[no_mangle]
 pub unsafe extern "C" fn luaK_codek(
     fs: *mut FuncState,
@@ -478,4 +467,30 @@ pub unsafe extern "C" fn luaK_codek(
         codeextraarg(fs, k);
         return p;
     };
+}
+
+/*
+** Check register-stack level, keeping track of its maximum size
+** in field 'maxstacksize'
+*/
+/*
+void luaK_checkstack (FuncState *fs, int n) {
+    int newstack = fs->freereg + n;
+    if (newstack > fs->f->maxstacksize) {
+      if (newstack >= MAXREGS)
+        luaX_syntaxerror(fs->ls,
+          "function or expression needs too many registers");
+      fs->f->maxstacksize = cast_byte(newstack);
+    }
+  }
+   */
+#[no_mangle]
+pub unsafe extern "C" fn luaK_checkstack(mut fs: *mut FuncState, n: c_int) {
+    let newstack = (*fs).freereg as c_int + n;
+    if newstack > (*(*fs).f).maxstacksize as c_int {
+        if newstack >= MAXREGS {
+            luaX_syntaxerror((*fs).ls, cstr!("function or expression needs too many registers"));
+        }
+        (*(*fs).f).maxstacksize = newstack as lu_byte;
+    }
 }
