@@ -7,26 +7,20 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        rust: [nightly]
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
+        os: [ubuntu-22.04]
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ matrix.rust }}
-          target: ${{ matrix.target }}
-          override: true
+      - uses: dtolnay/rust-toolchain@nightly
       - name: Run tests
         run: |
-          cargo test
+          RUSTFLAGS="-D warnings" cargo test
 
   rustfmt:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
       - run: cargo fmt -- --check
