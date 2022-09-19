@@ -60,23 +60,7 @@ void luaK_checkstack (FuncState *fs, int n);
 void luaK_reserveregs (FuncState *fs, int n);
 extern void freereg (FuncState *fs, int reg);
 extern void freeexp (FuncState *fs, expdesc *e);
-
-/*
-** Free registers used by expressions 'e1' and 'e2' (if any) in proper
-** order.
-*/
-static void freeexps (FuncState *fs, expdesc *e1, expdesc *e2) {
-  int r1 = (e1->k == VNONRELOC) ? e1->u.info : -1;
-  int r2 = (e2->k == VNONRELOC) ? e2->u.info : -1;
-  if (r1 > r2) {
-    freereg(fs, r1);
-    freereg(fs, r2);
-  }
-  else {
-    freereg(fs, r2);
-    freereg(fs, r1);
-  }
-}
+extern void freeexps (FuncState *fs, expdesc *e1, expdesc *e2);
 
 
 /*

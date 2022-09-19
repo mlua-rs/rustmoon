@@ -519,3 +519,24 @@ pub unsafe extern "C" fn freeexp(fs: *mut FuncState, e: *mut expdesc) {
         freereg(fs, (*e).u.info);
     }
 }
+
+/*
+** Free registers used by expressions 'e1' and 'e2' (if any) in proper
+** order.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn freeexps(
+    fs: *mut FuncState,
+    e1: *mut expdesc,
+    e2: *mut expdesc,
+) {
+    let r1: c_int = if (*e1).k as c_uint == VNONRELOC as c_uint { (*e1).u.info } else { -1 };
+    let r2: c_int = if (*e2).k as c_uint == VNONRELOC as c_uint { (*e2).u.info } else { -1 };
+    if r1 > r2 {
+        freereg(fs, r1);
+        freereg(fs, r2);
+    } else {
+        freereg(fs, r2);
+        freereg(fs, r1);
+    };
+}
