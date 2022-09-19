@@ -13,7 +13,10 @@ use crate::ldo::{
 };
 use crate::ldump::luaU_dump;
 use crate::lfunc::{luaF_newCclosure, UpVal};
-use crate::lgc::{luaC_barrier_, luaC_barrierback_, luaC_checkGC, luaC_fullgc, luaC_upvalbarrier_};
+use crate::lgc::{
+    luaC_barrier_, luaC_barrierback_, luaC_checkGC, luaC_checkfinalizer, luaC_fullgc, luaC_step,
+    luaC_upvalbarrier_, luaC_upvdeccount,
+};
 use crate::llimits::{l_mem, lu_byte, lu_mem};
 use crate::lobject::{
     clCvalue, luaO_arith, luaO_nilobject_, luaO_pushvfstring, luaO_str2num, luaO_tostring,
@@ -27,7 +30,10 @@ use crate::ltable::{
     luaH_setint,
 };
 use crate::ltm::luaT_typenames_;
-use crate::lvm::{luaV_concat, luaV_equalobj, luaV_tointeger, luaV_tonumber_};
+use crate::lvm::{
+    luaV_concat, luaV_equalobj, luaV_finishget, luaV_finishset, luaV_lessequal, luaV_lessthan,
+    luaV_objlen, luaV_tointeger, luaV_tonumber_,
+};
 use crate::lzio::{luaZ_init, ZIO};
 use crate::types::{
     lua_Alloc, lua_CFunction, lua_Integer, lua_KContext, lua_KFunction, lua_Number, lua_Reader,
@@ -1874,27 +1880,4 @@ pub unsafe extern "C" fn lua_upvaluejoin(
         luaC_upvalbarrier_(L, *up1);
     } else {
     };
-}
-
-extern "C" {
-    pub fn luaC_step(L: *mut lua_State);
-    pub fn luaV_lessthan(L: *mut lua_State, l: *const TValue, r: *const TValue) -> c_int;
-    pub fn luaV_lessequal(L: *mut lua_State, l: *const TValue, r: *const TValue) -> c_int;
-    pub fn luaV_finishget(
-        L: *mut lua_State,
-        t: *const TValue,
-        key: *mut TValue,
-        val: StkId,
-        slot: *const TValue,
-    );
-    pub fn luaC_checkfinalizer(L: *mut lua_State, o: *mut GCObject, mt: *mut Table);
-    pub fn luaV_finishset(
-        L: *mut lua_State,
-        t: *const TValue,
-        key: *mut TValue,
-        val: StkId,
-        slot: *const TValue,
-    );
-    pub fn luaC_upvdeccount(L: *mut lua_State, uv: *mut UpVal);
-    pub fn luaV_objlen(L: *mut lua_State, ra: StkId, rb: *const TValue);
 }

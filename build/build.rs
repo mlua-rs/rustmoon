@@ -5,7 +5,6 @@ fn main() {
         .define("LUA_USE_POSIX", None)
         // Lua core
         .file("build/lcode.c")
-        .file("build/lgc.c")
         .file("build/lparser.c")
         // Non core libs
         .file("build/lbitlib.c")

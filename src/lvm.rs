@@ -9,7 +9,7 @@ use libc::{c_char, c_int, c_uint, c_void, memcpy, strcoll, strlen};
 use crate::ldebug::{luaG_ordererror, luaG_runerror, luaG_traceexec, luaG_typeerror};
 use crate::ldo::{luaD_call, luaD_checkstack, luaD_poscall, luaD_precall};
 use crate::lfunc::{luaF_close, luaF_findupval, luaF_newLclosure, UpVal};
-use crate::lgc::{isblack, luaC_barrierback, luaC_condGC, luaC_upvalbarrier};
+use crate::lgc::{luaC_barrierback, luaC_condGC, luaC_upvalbarrier};
 use crate::llimits::{Instruction, LUAI_MAXSHORTLEN};
 use crate::lobject::{
     bvalue, chgfltvalue, chgivalue, clLvalue, fltvalue, fvalue, gcvalue, getproto, getstr, hvalue,
@@ -923,7 +923,7 @@ unsafe extern "C" fn pushclosure(
         (**((*ncl).upvals).as_mut_ptr().add(i)).refcount += 1;
         /* new closure is white, so we do not need a barrier here */
     }
-    if !isblack(obj2gco!(p)) {
+    if !isblack!(p) {
         /* cache will not break GC invariant? */
         (*p).cache = ncl; /* save it on cache for reuse */
     }

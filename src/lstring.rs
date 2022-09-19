@@ -7,7 +7,7 @@ use std::ptr;
 
 use libc::{c_char, c_int, c_uint, memcmp, memcpy, size_t, strcmp, strlen};
 
-use crate::lgc::{changewhite, isdead, iswhite, luaC_fix, luaC_newobj};
+use crate::lgc::{changewhite, isdead, luaC_fix, luaC_newobj};
 use crate::llimits::{lu_byte, LUAI_MAXSHORTLEN, MINSTRTABSIZE, STRCACHE_M, STRCACHE_N};
 use crate::lmem::luaM_reallocvector;
 use crate::lobject::{
@@ -150,7 +150,7 @@ pub unsafe extern "C" fn luaS_clearcache(g: *mut global_State) {
     for i in 0..STRCACHE_N {
         for j in 0..STRCACHE_M {
             /* will entry be collected? */
-            if iswhite(obj2gco!((*g).strcache[i][j])) {
+            if iswhite!((*g).strcache[i][j]) {
                 (*g).strcache[i][j] = (*g).memerrmsg; /* replace it with something fixed */
             }
         }

@@ -66,8 +66,8 @@ pub const EXTRA_STACK: usize = 5;
 pub const BASIC_STACK_SIZE: usize = 2 * LUA_MINSTACK;
 
 /* kinds of Garbage Collection */
-pub const KGC_NORMAL: c_int = 0;
-pub const KGC_EMERGENCY: c_int = 1; /* gc was forced by an allocation failure */
+pub const KGC_NORMAL: u8 = 0;
+pub const KGC_EMERGENCY: u8 = 1; /* gc was forced by an allocation failure */
 
 #[derive(Copy, Clone)]
 #[repr(C)]

@@ -9,13 +9,13 @@ use libc::{
 };
 
 use crate::lapi::{
-    lua_call, lua_callk, lua_concat, lua_copy, lua_error, lua_gc, lua_getglobal, lua_geti,
-    lua_getmetatable, lua_gettop, lua_insert, lua_isnil, lua_isstring, lua_load, lua_next,
-    lua_pcallk, lua_pop, lua_pushboolean, lua_pushcfunction, lua_pushglobaltable, lua_pushinteger,
-    lua_pushliteral, lua_pushnil, lua_pushnumber, lua_pushstring, lua_pushvalue, lua_rawequal,
-    lua_rawget, lua_rawlen, lua_rawset, lua_remove, lua_rotate, lua_setfield, lua_setmetatable,
-    lua_settop, lua_setupvalue, lua_stringtonumber, lua_toboolean, lua_tolstring, lua_tostring,
-    lua_type, lua_typename,
+    lua_call, lua_callk, lua_concat, lua_error, lua_gc, lua_getglobal, lua_geti, lua_getmetatable,
+    lua_gettop, lua_insert, lua_isnil, lua_isstring, lua_load, lua_next, lua_pcallk, lua_pop,
+    lua_pushboolean, lua_pushcfunction, lua_pushglobaltable, lua_pushinteger, lua_pushliteral,
+    lua_pushnil, lua_pushnumber, lua_pushstring, lua_pushvalue, lua_rawequal, lua_rawget,
+    lua_rawlen, lua_rawset, lua_remove, lua_rotate, lua_setfield, lua_setmetatable, lua_settop,
+    lua_setupvalue, lua_stringtonumber, lua_toboolean, lua_tolstring, lua_tostring, lua_type,
+    lua_typename,
 };
 use crate::lauxlib::{
     luaL_Reg, luaL_argerror, luaL_checkany, luaL_checkinteger, luaL_checkoption, luaL_checkstack,
@@ -152,7 +152,7 @@ unsafe extern "C" fn luaB_error(L: *mut lua_State) -> c_int {
         lua_pushvalue(L, 1);
         lua_concat(L, 2);
     }
-    return lua_error(L);
+    lua_error(L)
 }
 
 unsafe extern "C" fn luaB_getmetatable(L: *mut lua_State) -> c_int {
@@ -166,7 +166,8 @@ unsafe extern "C" fn luaB_getmetatable(L: *mut lua_State) -> c_int {
 }
 
 unsafe extern "C" fn luaB_setmetatable(L: *mut lua_State) -> c_int {
-    let t = lua_type(L, 2);
+    let _t = lua_type(L, 2);
+    // TODO: FIX
     luaL_checktype(L, 1, LUA_TTABLE); // FIXME? t is unused?
     if luaL_getmetafield(L, 1, cstr!("__metatable")) != LUA_TNIL {
         return luaL_error(L, cstr!("cannot change a protected metatable"));
@@ -374,9 +375,9 @@ pub const RESERVEDSLOT: c_int = 5;
 */
 
 unsafe extern "C" fn generic_reader(
-    mut L: *mut lua_State,
-    mut ud: *mut c_void,
-    mut size: *mut size_t,
+    L: *mut lua_State,
+    _ud: *mut c_void,
+    size: *mut size_t,
 ) -> *const c_char {
     luaL_checkstack(L, 2, cstr!("too many nested functions"));
     lua_pushvalue(L, 1); /* get function */
@@ -395,7 +396,7 @@ unsafe extern "C" fn generic_reader(
 }
 
 unsafe extern "C" fn luaB_load(L: *mut lua_State) -> c_int {
-    let mut status: c_int = 0;
+    let status;
     let mut l: size_t = 0;
     let s = lua_tolstring(L, 1 as c_int, &mut l);
     let mode = luaL_optstring(L, 3, cstr!("bt"));
@@ -435,7 +436,7 @@ unsafe extern "C" fn luaB_dofile(L: *mut lua_State) -> c_int {
     let fname = luaL_optstring(L, 1, ptr::null_mut());
     lua_settop(L, 1 as c_int);
     if luaL_loadfile(L, fname) != LUA_OK {
-        return lua_error(L);
+        lua_error(L)
     }
     lua_callk(
         L,
@@ -447,7 +448,7 @@ unsafe extern "C" fn luaB_dofile(L: *mut lua_State) -> c_int {
     return dofilecont(L, 0 as c_int, 0 as c_int as lua_KContext);
 }
 
-unsafe extern "C" fn luaB_assert(mut L: *mut lua_State) -> c_int {
+unsafe extern "C" fn luaB_assert(L: *mut lua_State) -> c_int {
     if lua_toboolean(L, 1) != 0 {
         /* condition is true? */
         return lua_gettop(L); /* return all arguments */
@@ -499,11 +500,10 @@ unsafe extern "C" fn finishpcall(L: *mut lua_State, status: c_int, extra: lua_KC
 }
 
 unsafe extern "C" fn luaB_pcall(L: *mut lua_State) -> c_int {
-    let mut status: c_int = 0;
     luaL_checkany(L, 1);
     lua_pushboolean(L, 1); /* first result if no errors */
     lua_insert(L, 1); /* put it in place */
-    status = lua_pcallk(L, lua_gettop(L) - 2, LUA_MULTRET, 0, 0, Some(finishpcall));
+    let status = lua_pcallk(L, lua_gettop(L) - 2, LUA_MULTRET, 0, 0, Some(finishpcall));
     return finishpcall(L, status, 0);
 }
 
@@ -513,13 +513,12 @@ unsafe extern "C" fn luaB_pcall(L: *mut lua_State) -> c_int {
 ** 2 to 'finishpcall' to skip the 2 first values when returning results.
 */
 unsafe extern "C" fn luaB_xpcall(L: *mut lua_State) -> c_int {
-    let mut status: c_int = 0;
     let n = lua_gettop(L);
     luaL_checktype(L, 2, LUA_TFUNCTION); /* check error function */
     lua_pushboolean(L, 1); /* first result */
     lua_pushvalue(L, 1); /* function */
     lua_rotate(L, 3, 2); /* move them below function's arguments */
-    status = lua_pcallk(L, n - 2, LUA_MULTRET, 2, 2, Some(finishpcall));
+    let status = lua_pcallk(L, n - 2, LUA_MULTRET, 2, 2, Some(finishpcall));
     return finishpcall(L, status, 2);
 }
 
@@ -529,7 +528,7 @@ unsafe extern "C" fn luaB_tostring(L: *mut lua_State) -> c_int {
     return 1;
 }
 
-static mut base_funcs: [luaL_Reg; 25] = unsafe {
+static mut base_funcs: [luaL_Reg; 25] = {
     [
         {
             let init = luaL_Reg {

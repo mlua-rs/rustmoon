@@ -14,7 +14,10 @@ use crate::types::LUA_ERRMEM;
 ** Arrays of chars do not need any test
 */
 
-// #define luaM_freemem(L, b, s)	luaM_realloc_(L, (b), (s), 0)
+#[inline(always)]
+pub unsafe fn luaM_freemem(L: *mut lua_State, b: *mut c_void, s: usize) {
+    luaM_realloc_(L, b, s, 0);
+}
 
 #[inline(always)]
 pub unsafe fn luaM_free<T>(L: *mut lua_State, b: *mut T) {
@@ -39,6 +42,11 @@ pub unsafe fn luaM_newvector<T>(L: *mut lua_State, n: usize) -> *mut T {
 #[inline(always)]
 pub unsafe fn luaM_newobject<T>(L: *mut lua_State, tag: u8) -> *mut T {
     luaM_realloc_(L, ptr::null_mut(), tag as usize, size_of::<T>()) as *mut T
+}
+
+#[inline(always)]
+pub unsafe fn luaM_newobject_sz(L: *mut lua_State, tag: u8, sz: usize) -> *mut c_void {
+    luaM_realloc_(L, ptr::null_mut(), tag as usize, sz)
 }
 
 #[inline(always)]
