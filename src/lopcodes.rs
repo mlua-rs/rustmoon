@@ -158,21 +158,26 @@ pub unsafe fn SETARG_sBx(i: *mut Instruction, b: c_int) {
     SETARG_Bx(i, b + MAXARG_sBx as c_int);
 }
 
-// #define CREATE_ABC(o,a,b,c)	((cast(Instruction, o)<<POS_OP) \
-// 			| (cast(Instruction, a)<<POS_A) \
-// 			| (cast(Instruction, b)<<POS_B) \
-// 			| (cast(Instruction, c)<<POS_C))
-
-// #define CREATE_ABx(o,a,bc)	((cast(Instruction, o)<<POS_OP) \
-// 			| (cast(Instruction, a)<<POS_A) \
-// 			| (cast(Instruction, bc)<<POS_Bx))
 #[inline(always)]
-pub unsafe fn CREATE_ABx(o: OpCode,a: c_int,bc: c_int) -> Instruction {
-    return o << POS_OP;
+pub unsafe fn CREATE_ABC(o: OpCode, a: c_int, b: c_int, c: c_int) -> Instruction {
+    return (o as Instruction) << POS_OP
+        | (a as Instruction) << POS_A
+        | (b as Instruction) << POS_B
+        | (c as Instruction) << POS_C;
 }
 
-// #define CREATE_Ax(o,a)		((cast(Instruction, o)<<POS_OP) \
-// 			| (cast(Instruction, a)<<POS_Ax))
+#[inline(always)]
+pub unsafe fn CREATE_ABx(o: OpCode, a: c_int, bc: c_uint) -> Instruction {
+    return (o as Instruction) << POS_OP
+        | (a as Instruction) << POS_A
+        | (bc as Instruction) << POS_Bx;
+}
+
+#[inline(always)]
+pub unsafe fn CREATE_Ax(o: OpCode, a: c_int) -> Instruction {
+    return (o as Instruction) << POS_OP
+        | (a as Instruction) << POS_Ax;
+}
 
 /*
 ** Macros to operate RK indices

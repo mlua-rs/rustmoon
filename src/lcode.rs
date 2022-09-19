@@ -11,7 +11,7 @@ use crate::lobject::{setfltvalue, setivalue, TValue};
 use crate::lopcodes::{
     luaP_opmodes, GETARG_sBx, MAXARG_sBx, OpCode, SETARG_sBx, GETARG_A, GETARG_B, GETARG_C,
     GET_OPCODE, NO_REG, OP_JMP, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C,
-    POS_OP, SETARG_A, SETARG_B, iABC, getOpMode, getBMode, OpArgN, getCMode, MAXARG_A, MAXARG_B, MAXARG_C,
+    POS_OP, SETARG_A, SETARG_B, iABC, getOpMode, getBMode, OpArgN, getCMode, MAXARG_A, MAXARG_B, MAXARG_C, iABx, iAsBx, MAXARG_Bx, CREATE_ABx, CREATE_Ax, OP_EXTRAARG,
 };
 use crate::lparser::{expdesc, FuncState, VKFLT, VKINT};
 
@@ -416,20 +416,35 @@ pub unsafe extern "C" fn luaK_codeABC(
 /*
 ** Format and emit an 'iABx' instruction.
 */
-/*int luaK_codeABx (FuncState *fs, OpCode o, int a, unsigned int bc) {
-    lua_assert(getOpMode(o) == iABx || getOpMode(o) == iAsBx);
-    lua_assert(getCMode(o) == OpArgN);
-    lua_assert(a <= MAXARG_A && bc <= MAXARG_Bx);
-    return luaK_code(fs, CREATE_ABx(o, a, bc));
-  }
-*/  
 
 #[no_mangle]
 pub unsafe extern "C" fn luaK_codeABx(
-    mut fs: *mut FuncState,
-    mut o: OpCode,
-    mut a: c_int,
-    mut bc: c_uint,
+    fs: *mut FuncState,
+    o: OpCode,
+    a: c_int,
+    bc: c_uint,
 ) -> c_int {
+    debug_assert!(getOpMode(o) == iABx || getOpMode(o) == iAsBx);
+    debug_assert!(getCMode(o) == OpArgN);
+    debug_assert!(a <= MAXARG_A as i32 && bc <= MAXARG_Bx);
     return luaK_code(fs, CREATE_ABx(o, a, bc));
+}
+
+/*
+** Emit an "extra argument" instruction (format 'iAx')
+*/
+/* 
+static int codeextraarg (FuncState *fs, int a) {
+    lua_assert(a <= MAXARG_Ax);
+    return luaK_code(fs, CREATE_Ax(OP_EXTRAARG, a));
+  }
+*/
+
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn codeextraarg(
+    mut fs: *mut FuncState,
+    mut a: c_int,
+) -> c_int {
+    return luaK_code(fs, CREATE_Ax(OP_EXTRAARG, a));
 }

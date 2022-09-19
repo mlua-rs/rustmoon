@@ -54,16 +54,7 @@ void luaK_patchclose (FuncState *fs, int list, int level);
 extern int luaK_code (FuncState *fs, Instruction i);
 int luaK_codeABC (FuncState *fs, OpCode o, int a, int b, int c);
 int luaK_codeABx (FuncState *fs, OpCode o, int a, unsigned int bc);
-
-
-/*
-** Emit an "extra argument" instruction (format 'iAx')
-*/
-static int codeextraarg (FuncState *fs, int a) {
-  lua_assert(a <= MAXARG_Ax);
-  return luaK_code(fs, CREATE_Ax(OP_EXTRAARG, a));
-}
-
+extern int codeextraarg (FuncState *fs, int a);
 
 /*
 ** Emit a "load constant" instruction, using either 'OP_LOADK'
