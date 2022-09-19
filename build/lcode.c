@@ -43,20 +43,7 @@ int luaK_jump (FuncState *fs);
 void luaK_ret (FuncState *fs, int first, int nret);
 extern int condjump (FuncState *fs, OpCode op, int A, int B, int C);
 int luaK_getlabel (FuncState *fs);
-
-
-/*
-** Returns the position of the instruction "controlling" a given
-** jump (that is, its condition), or the jump itself if it is
-** unconditional.
-*/
-static Instruction *getjumpcontrol (FuncState *fs, int pc) {
-  Instruction *pi = &fs->f->code[pc];
-  if (pc >= 1 && testTMode(GET_OPCODE(*(pi-1))))
-    return pi-1;
-  else
-    return pi;
-}
+extern Instruction *getjumpcontrol (FuncState *fs, int pc);
 
 
 /*

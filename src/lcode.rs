@@ -2,12 +2,12 @@
 ** Code generator for Lua
 */
 
-use libc::{c_uint, c_int, abs};
+use libc::{c_uint, c_int, abs, c_char, c_uchar};
 
 use crate::llex::luaX_syntaxerror;
-use crate::llimits::Instruction;
+use crate::llimits::{Instruction, lu_byte};
 use crate::lobject::{TValue, setivalue, setfltvalue};
-use crate::lopcodes::{GET_OPCODE, OP_LOADNIL, GETARG_A, GETARG_B, SETARG_A, SETARG_B, OpCode, GETARG_sBx, MAXARG_sBx, SETARG_sBx, OP_JMP, OP_RETURN};
+use crate::lopcodes::{GET_OPCODE, OP_LOADNIL, GETARG_A, GETARG_B, SETARG_A, SETARG_B, OpCode, GETARG_sBx, MAXARG_sBx, SETARG_sBx, OP_JMP, OP_RETURN, luaP_opmodes};
 use crate::lparser::{expdesc, VKINT, VKFLT, FuncState};
 
 pub const MAXREGS: c_int = 255;
@@ -21,6 +21,11 @@ pub unsafe extern "C" fn hasjumps (e: *const expdesc) -> bool {
 #[inline(always)]
 unsafe fn luaK_codeAsBx(fs: *mut FuncState, o: OpCode, A: c_int, sBx: c_int) -> c_int {
     return luaK_codeABx(fs,o,A,(sBx+MAXARG_sBx as c_int) as c_uint); // This integer size manipulation is absolutely necessary.
+}
+
+#[inline(always)]
+unsafe fn testTMode(m: usize) -> c_int {
+    return luaP_opmodes[m] as c_int & (1 << 7) as c_int;
 }
 
 /*
@@ -217,6 +222,26 @@ pub unsafe extern "C" fn condjump(
 pub unsafe extern "C" fn luaK_getlabel(mut fs: *mut FuncState) -> libc::c_int {
     (*fs).lasttarget = (*fs).pc;
     return (*fs).pc;
+}
+
+/*
+** Returns the position of the instruction "controlling" a given
+** jump (that is, its condition), or the jump itself if it is
+** unconditional.
+*/
+
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn getjumpcontrol(
+    fs: *mut FuncState,
+    pc: libc::c_int,
+) -> *mut Instruction {
+    let pi: *mut Instruction = &mut *((*(*fs).f).code).offset(pc as isize);
+    if pc >= 1 && testTMode(GET_OPCODE(*pi.offset(-1)) as usize) != 0 {
+        return pi.offset(-1)
+    } else {
+        return pi
+    };
 }
 
 extern "C" {
