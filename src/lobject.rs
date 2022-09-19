@@ -1278,6 +1278,6 @@ pub unsafe extern "C" fn luaO_chunkid(
             memcpy(out as *mut c_void, cstr!("...") as *const c_void, 3);
             out = out.add(3);
         }
-        memcpy(out as *mut c_void, cstr!("\"]") as *const c_void, 4);
+        memcpy(out as *mut c_void, cstr!("\"]") as *const c_void, 3);
     };
 }
