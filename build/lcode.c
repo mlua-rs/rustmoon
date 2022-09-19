@@ -47,42 +47,9 @@ extern Instruction *getjumpcontrol (FuncState *fs, int pc);
 extern int patchtestreg (FuncState *fs, int node, int reg);
 extern void removevalues (FuncState *fs, int list);
 extern void patchlistaux (FuncState *fs, int list, int vtarget, int reg, int dtarget);
-
-
-/*
-** Ensure all pending jumps to current position are fixed (jumping
-** to current position with no values) and reset list of pending
-** jumps
-*/
-static void dischargejpc (FuncState *fs) {
-  patchlistaux(fs, fs->jpc, fs->pc, NO_REG, fs->pc);
-  fs->jpc = NO_JUMP;
-}
-
-
-/*
-** Add elements in 'list' to list of pending jumps to "here"
-** (current position)
-*/
-void luaK_patchtohere (FuncState *fs, int list) {
-  luaK_getlabel(fs);  /* mark "here" as a jump target */
-  luaK_concat(fs, &fs->jpc, list);
-}
-
-
-/*
-** Path all jumps in 'list' to jump to 'target'.
-** (The assert means that we cannot fix a jump to a forward address
-** because we only know addresses once code is generated.)
-*/
-void luaK_patchlist (FuncState *fs, int list, int target) {
-  if (target == fs->pc)  /* 'target' is current position? */
-    luaK_patchtohere(fs, list);  /* add list to pending jumps */
-  else {
-    lua_assert(target < fs->pc);
-    patchlistaux(fs, list, target, NO_REG, target);
-  }
-}
+extern void dischargejpc (FuncState *fs);
+void luaK_patchtohere (FuncState *fs, int list);
+void luaK_patchlist (FuncState *fs, int list, int target);
 
 
 /*
