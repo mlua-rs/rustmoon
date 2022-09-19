@@ -34,38 +34,9 @@
 
 
 #define hasjumps(e)	((e)->t != (e)->f)
-
-
-/*
-** If expression is a numeric constant, fills 'v' with its value
-** and returns 1. Otherwise, returns 0.
-*/
 extern int tonumeral(const expdesc *e, TValue *v);
-
-
-/*
-** Create a OP_LOADNIL instruction, but try to optimize: if the previous
-** instruction is also OP_LOADNIL and ranges are compatible, adjust
-** range of previous instruction instead of emitting a new one. (For
-** instance, 'local a; local b' will generate a single opcode.)
-*/
 void luaK_nil (FuncState *fs, int from, int n);
-
-/*
-** Gets the destination address of a jump instruction. Used to traverse
-** a list of jumps.
-*/
-// #define GETARG_sBx(i)  (GETARG_Bx(i)-MAXARG_sBx)
-extern int getjump (FuncState *fs, int pc) {
-  //int offset = GETARG_sBx(fs->f->code[pc]);
-  //int offset = GETARG_Bx(fs->f->code[pc])-MAXARG_sBx;
-  //int offset = getarg(fs->f->code[pc], POS_Bx, SIZE_Bx)-MAXARG_sBx;
-  int offset = cast(int, ((fs->f->code[pc])>>POS_Bx) & MASK1(SIZE_Bx,0))-MAXARG_sBx;
-  if (offset == NO_JUMP)  /* point to itself represents end of list */
-    return NO_JUMP;  /* end of list */
-  else
-    return (pc+1)+offset;  /* turn offset into absolute position */
-}
+extern int getjump (FuncState *fs, int pc);
 
 
 /*
