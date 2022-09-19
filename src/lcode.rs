@@ -2,19 +2,18 @@
 ** Code generator for Lua
 */
 
-use libc::{abs, c_char, c_int, c_uint, c_void, size_t};
+use libc::{abs, c_int, c_uint};
 
 use crate::llex::luaX_syntaxerror;
 use crate::llimits::{Instruction, MAX_INT};
-use crate::lmem::{luaM_growaux_, luaM_growvector};
+use crate::lmem::luaM_growvector;
 use crate::lobject::{setfltvalue, setivalue, TValue};
 use crate::lopcodes::{
     luaP_opmodes, GETARG_sBx, MAXARG_sBx, OpCode, SETARG_sBx, GETARG_A, GETARG_B, GETARG_C,
     GET_OPCODE, NO_REG, OP_JMP, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C,
-    POS_OP, SETARG_A, SETARG_B,
+    POS_OP, SETARG_A, SETARG_B, iABC, getOpMode, getBMode, OpArgN, getCMode, MAXARG_A, MAXARG_B, MAXARG_C,
 };
 use crate::lparser::{expdesc, FuncState, VKFLT, VKINT};
-use crate::lstate::lua_State;
 
 pub const MAXREGS: c_int = 255;
 pub const NO_JUMP: c_int = -1;
@@ -35,7 +34,7 @@ unsafe fn testTMode(m: usize) -> c_int {
 }
 
 #[inline(always)]
-unsafe extern "C" fn CREATE_ABC(o: c_int, a: c_int, b: c_int, c: c_int) -> u32 {
+unsafe extern "C" fn CREATE_ABC(o: OpCode, a: c_int, b: c_int, c: c_int) -> u32 {
     return (o as Instruction) << POS_OP
         | (a as Instruction) << POS_A
         | (b as Instruction) << POS_B
@@ -258,7 +257,7 @@ pub unsafe extern "C" fn patchtestreg(fs: *mut FuncState, node: c_int, reg: c_in
     } else {
         /* no register to put value or register already has the value;
         change instruction to simple test */
-        *i = CREATE_ABC(OP_TEST as i32, GETARG_B(*i), 0, GETARG_C(*i));
+        *i = CREATE_ABC(OP_TEST, GETARG_B(*i), 0, GETARG_C(*i));
     }
     return 1 as libc::c_int;
 }
@@ -394,7 +393,26 @@ pub unsafe extern "C" fn luaK_code(mut fs: *mut FuncState, i: Instruction) -> c_
     return oldPc;
 }
 
+/*
+** Format and emit an 'iABC' instruction. (Assertions check consistency
+** of parameters versus opcode.)
+*/
+
+#[no_mangle]
+pub unsafe extern "C" fn luaK_codeABC(
+    fs: *mut FuncState,
+    o: OpCode,
+    a: c_int,
+    b: c_int,
+    c: c_int,
+) -> c_int {
+    debug_assert!(getOpMode(o) == iABC);
+    debug_assert!(getBMode(o) != OpArgN || b == 0);
+    debug_assert!(getCMode(o) != OpArgN || c == 0);
+    debug_assert!(a <= MAXARG_A as c_int && b <= MAXARG_B as c_int && c <= MAXARG_C as c_int);
+    return luaK_code(fs, CREATE_ABC(o, a, b, c));
+}
+
 extern "C" {
-    pub fn luaK_codeABC(fs: *mut FuncState, o: OpCode, a: c_int, b: c_int, c: c_int) -> c_int;
     pub fn luaK_codeABx(fs: *mut FuncState, o: OpCode, a: c_int, bc: c_uint) -> c_int;
 }

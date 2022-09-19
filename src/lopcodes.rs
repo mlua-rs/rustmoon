@@ -59,6 +59,7 @@ pub const MAXARG_Bx: c_uint = (1 << SIZE_Bx) - 1;
 pub const MAXARG_sBx: c_uint = MAXARG_Bx >> 1;
 pub const MAXARG_Ax: c_uint = (1 << SIZE_Ax) - 1;
 pub const MAXARG_A: c_uint = (1 << SIZE_A) - 1;
+pub const MAXARG_B: c_uint = (1<<SIZE_B) - 1;
 pub const MAXARG_C: c_uint = (1 << SIZE_C) - 1;
 
 /*
@@ -375,6 +376,11 @@ pub unsafe fn getCMode(m: OpCode) -> OpArgMask {
     (luaP_opmodes[m as usize] >> 2) & 3
 }
 
+#[inline(always)]
+pub unsafe fn getOpMode(m: OpCode) -> OpMode {
+    return luaP_opmodes[m as usize] & 3;
+}
+
 /* opcode names */
 pub const luaP_opnames: [*const c_char; NUM_OPCODES + 1] = [
     cstr!("MOVE"),
@@ -429,3 +435,4 @@ pub const luaP_opnames: [*const c_char; NUM_OPCODES + 1] = [
 
 /* number of list items to accumulate before a SETLIST instruction */
 pub const LFIELDS_PER_FLUSH: usize = 50;
+

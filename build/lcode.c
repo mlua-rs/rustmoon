@@ -52,21 +52,7 @@ void luaK_patchtohere (FuncState *fs, int list);
 void luaK_patchlist (FuncState *fs, int list, int target);
 void luaK_patchclose (FuncState *fs, int list, int level);
 extern int luaK_code (FuncState *fs, Instruction i);
-
-
-
-/*
-** Format and emit an 'iABC' instruction. (Assertions check consistency
-** of parameters versus opcode.)
-*/
-int luaK_codeABC (FuncState *fs, OpCode o, int a, int b, int c) {
-  lua_assert(getOpMode(o) == iABC);
-  lua_assert(getBMode(o) != OpArgN || b == 0);
-  lua_assert(getCMode(o) != OpArgN || c == 0);
-  lua_assert(a <= MAXARG_A && b <= MAXARG_B && c <= MAXARG_C);
-  return luaK_code(fs, CREATE_ABC(o, a, b, c));
-}
-
+int luaK_codeABC (FuncState *fs, OpCode o, int a, int b, int c);
 
 /*
 ** Format and emit an 'iABx' instruction.
