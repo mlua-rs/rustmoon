@@ -305,6 +305,30 @@ pub unsafe extern "C" fn patchlistaux(
     }
 }
 
+/*
+** Ensure all pending jumps to current position are fixed (jumping
+** to current position with no values) and reset list of pending
+** jumps
+*/
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn dischargejpc(mut fs: *mut FuncState) {
+    patchlistaux(fs, (*fs).jpc, (*fs).pc, NO_REG as c_int, (*fs).pc);
+    (*fs).jpc = NO_JUMP;
+}
+
+/*
+** Add elements in 'list' to list of pending jumps to "here"
+** (current position)
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_patchtohere(
+    fs: *mut FuncState,
+    list: c_int,
+) {
+    luaK_getlabel(fs);
+    luaK_concat(fs, &mut (*fs).jpc, list);
+}
 
 extern "C" {
     pub fn luaK_codeABC(fs: *mut FuncState, o: OpCode, a: c_int, b: c_int, c: c_int) -> c_int;
