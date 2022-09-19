@@ -38,24 +38,7 @@ extern int tonumeral(const expdesc *e, TValue *v);
 void luaK_nil (FuncState *fs, int from, int n);
 extern int getjump (FuncState *fs, int pc);
 extern void fixjump (FuncState *fs, int pc, int dest);
-
-
-/*
-** Concatenate jump-list 'l2' into jump-list 'l1'
-*/
-void luaK_concat (FuncState *fs, int *l1, int l2) {
-  if (l2 == NO_JUMP) return;  /* nothing to concatenate? */
-  else if (*l1 == NO_JUMP)  /* no original list? */
-    *l1 = l2;  /* 'l1' points to 'l2' */
-  else {
-    int list = *l1;
-    int next;
-    while ((next = getjump(fs, list)) != NO_JUMP)  /* find last element */
-      list = next;
-    fixjump(fs, list, l2);  /* last element links to 'l2' */
-  }
-}
-
+void luaK_concat (FuncState *fs, int *l1, int l2);
 
 /*
 ** Create a jump instruction and return its position, so its destination

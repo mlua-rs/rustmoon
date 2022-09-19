@@ -125,6 +125,37 @@ pub unsafe extern "C" fn fixjump(
     }
     SETARG_sBx(jmp, offset);
 }
+
+/*
+** Concatenate jump-list 'l2' into jump-list 'l1'
+*/
+
+#[no_mangle]
+pub unsafe extern "C" fn luaK_concat(
+      fs: *mut FuncState,
+      l1: *mut c_int,
+      l2: c_int,
+) {
+    if l2 == NO_JUMP {
+        return /* nothing to concatenate? */
+    } else {
+        if *l1 == NO_JUMP { /* no original list? */
+            *l1 = l2; /* 'l1' points to 'l2' */
+        } else {
+            let mut list = *l1;
+            let mut next: c_int = 0;
+            loop {
+                next = getjump(fs, list); /* find last element */
+                if !(next != NO_JUMP) {
+                    break;
+                }
+                list = next;
+            }
+            fixjump(fs, list, l2); /* last element links to 'l2' */
+        }
+    };
+}
+
 extern "C" {
     pub fn luaK_codeABC(
         fs: *mut FuncState,
