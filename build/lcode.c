@@ -49,27 +49,7 @@ extern int tonumeral(const expdesc *e, TValue *v);
 ** range of previous instruction instead of emitting a new one. (For
 ** instance, 'local a; local b' will generate a single opcode.)
 */
-void luaK_nil (FuncState *fs, int from, int n) {
-  Instruction *previous;
-  int l = from + n - 1;  /* last register to set nil */
-  if (fs->pc > fs->lasttarget) {  /* no jumps to current position? */
-    previous = &fs->f->code[fs->pc-1];
-    if (GET_OPCODE(*previous) == OP_LOADNIL) {  /* previous is LOADNIL? */
-      int pfrom = GETARG_A(*previous);  /* get previous range */
-      int pl = pfrom + GETARG_B(*previous);
-      if ((pfrom <= from && from <= pl + 1) ||
-          (from <= pfrom && pfrom <= l + 1)) {  /* can connect both? */
-        if (pfrom < from) from = pfrom;  /* from = min(from, pfrom) */
-        if (pl > l) l = pl;  /* l = max(l, pl) */
-        SETARG_A(*previous, from);
-        SETARG_B(*previous, l - from);
-        return;
-      }
-    }  /* else go through */
-  }
-  luaK_codeABC(fs, OP_LOADNIL, from, n - 1, 0);  /* else no optimization */
-}
-
+void luaK_nil (FuncState *fs, int from, int n);
 
 /*
 ** Gets the destination address of a jump instruction. Used to traverse
