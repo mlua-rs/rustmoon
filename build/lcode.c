@@ -53,16 +53,7 @@ void luaK_patchlist (FuncState *fs, int list, int target);
 void luaK_patchclose (FuncState *fs, int list, int level);
 extern int luaK_code (FuncState *fs, Instruction i);
 int luaK_codeABC (FuncState *fs, OpCode o, int a, int b, int c);
-
-/*
-** Format and emit an 'iABx' instruction.
-*/
-int luaK_codeABx (FuncState *fs, OpCode o, int a, unsigned int bc) {
-  lua_assert(getOpMode(o) == iABx || getOpMode(o) == iAsBx);
-  lua_assert(getCMode(o) == OpArgN);
-  lua_assert(a <= MAXARG_A && bc <= MAXARG_Bx);
-  return luaK_code(fs, CREATE_ABx(o, a, bc));
-}
+int luaK_codeABx (FuncState *fs, OpCode o, int a, unsigned int bc);
 
 
 /*

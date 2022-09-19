@@ -166,6 +166,10 @@ pub unsafe fn SETARG_sBx(i: *mut Instruction, b: c_int) {
 // #define CREATE_ABx(o,a,bc)	((cast(Instruction, o)<<POS_OP) \
 // 			| (cast(Instruction, a)<<POS_A) \
 // 			| (cast(Instruction, bc)<<POS_Bx))
+#[inline(always)]
+pub unsafe fn CREATE_ABx(o: OpCode,a: c_int,bc: c_int) -> Instruction {
+    return o << POS_OP;
+}
 
 // #define CREATE_Ax(o,a)		((cast(Instruction, o)<<POS_OP) \
 // 			| (cast(Instruction, a)<<POS_Ax))

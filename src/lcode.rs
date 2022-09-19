@@ -413,6 +413,23 @@ pub unsafe extern "C" fn luaK_codeABC(
     return luaK_code(fs, CREATE_ABC(o, a, b, c));
 }
 
-extern "C" {
-    pub fn luaK_codeABx(fs: *mut FuncState, o: OpCode, a: c_int, bc: c_uint) -> c_int;
+/*
+** Format and emit an 'iABx' instruction.
+*/
+/*int luaK_codeABx (FuncState *fs, OpCode o, int a, unsigned int bc) {
+    lua_assert(getOpMode(o) == iABx || getOpMode(o) == iAsBx);
+    lua_assert(getCMode(o) == OpArgN);
+    lua_assert(a <= MAXARG_A && bc <= MAXARG_Bx);
+    return luaK_code(fs, CREATE_ABx(o, a, bc));
+  }
+*/  
+
+#[no_mangle]
+pub unsafe extern "C" fn luaK_codeABx(
+    mut fs: *mut FuncState,
+    mut o: OpCode,
+    mut a: c_int,
+    mut bc: c_uint,
+) -> c_int {
+    return luaK_code(fs, CREATE_ABx(o, a, bc));
 }
