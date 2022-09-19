@@ -261,6 +261,51 @@ pub unsafe extern "C" fn patchtestreg(fs: *mut FuncState, node: c_int, reg: c_in
     return 1 as libc::c_int;
 }
 
+/*
+** Traverse a list of tests ensuring no one produces a value
+*/
+/*static void removevalues (FuncState *fs, int list) {
+    for (; list != NO_JUMP; list = getjump(fs, list))
+        patchtestreg(fs, list, NO_REG);
+  }
+  */
+
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn removevalues(fs: *mut FuncState, mut list: c_int) {
+    while list != NO_JUMP {
+        patchtestreg(fs, list, NO_REG as c_int);
+        list = getjump(fs, list);
+    }
+}
+
+/*
+** Traverse a list of tests, patching their destination address and
+** registers: tests producing values jump to 'vtarget' (and put their
+** values in 'reg'), other tests jump to 'dtarget'.
+*/
+
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn patchlistaux(
+    fs: *mut FuncState,
+    mut list: c_int,
+    vtarget: c_int,
+    reg: c_int,
+    dtarget: c_int,
+) {
+    while list != NO_JUMP {
+        let next = getjump(fs, list);
+        if patchtestreg(fs, list, reg) != 0 {
+            fixjump(fs, list, vtarget);
+        } else {
+            fixjump(fs, list, dtarget);
+        }
+        list = next;
+    }
+}
+
+
 extern "C" {
     pub fn luaK_codeABC(fs: *mut FuncState, o: OpCode, a: c_int, b: c_int, c: c_int) -> c_int;
     pub fn luaK_codeABx(fs: *mut FuncState, o: OpCode, a: c_int, bc: c_uint) -> c_int;

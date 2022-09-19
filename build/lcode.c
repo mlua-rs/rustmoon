@@ -45,33 +45,8 @@ extern int condjump (FuncState *fs, OpCode op, int A, int B, int C);
 int luaK_getlabel (FuncState *fs);
 extern Instruction *getjumpcontrol (FuncState *fs, int pc);
 extern int patchtestreg (FuncState *fs, int node, int reg);
-
-
-/*
-** Traverse a list of tests ensuring no one produces a value
-*/
-static void removevalues (FuncState *fs, int list) {
-  for (; list != NO_JUMP; list = getjump(fs, list))
-      patchtestreg(fs, list, NO_REG);
-}
-
-
-/*
-** Traverse a list of tests, patching their destination address and
-** registers: tests producing values jump to 'vtarget' (and put their
-** values in 'reg'), other tests jump to 'dtarget'.
-*/
-static void patchlistaux (FuncState *fs, int list, int vtarget, int reg,
-                          int dtarget) {
-  while (list != NO_JUMP) {
-    int next = getjump(fs, list);
-    if (patchtestreg(fs, list, reg))
-      fixjump(fs, list, vtarget);
-    else
-      fixjump(fs, list, dtarget);  /* jump to default target */
-    list = next;
-  }
-}
+extern void removevalues (FuncState *fs, int list);
+extern void patchlistaux (FuncState *fs, int list, int vtarget, int reg, int dtarget);
 
 
 /*
