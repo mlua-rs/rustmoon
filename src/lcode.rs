@@ -447,8 +447,8 @@ static int codeextraarg (FuncState *fs, int a) {
 // FIXME static
 #[no_mangle]
 pub unsafe extern "C" fn codeextraarg(
-    mut fs: *mut FuncState,
-    mut a: c_int,
+    fs: *mut FuncState,
+    a: c_int,
 ) -> c_int {
     return luaK_code(fs, CREATE_Ax(OP_EXTRAARG, a));
 }
@@ -563,8 +563,8 @@ pub unsafe extern "C" fn addk(
     let L = (*(*fs).ls).L;
     let f = (*fs).f;
     let idx = luaH_set(L, (*(*fs).ls).h, key); /* index scanner table */
-    let mut k: libc::c_int = 0;
-    let mut oldsize: c_int = 0;
+    let mut k: libc::c_int;
+    let mut oldsize: c_int;
     if ttisinteger(idx) {  /* is there an index there? */
         k = (*idx).value_.i as c_int;
         /* correct value? (warning: must distinguish floats from integers!) */
@@ -636,8 +636,8 @@ pub unsafe extern "C" fn luaK_intK(
 // FIXME static
 #[no_mangle]
 pub unsafe extern "C" fn luaK_numberK(
-    mut fs: *mut FuncState,
-    mut r: lua_Number,
+    fs: *mut FuncState,
+    r: lua_Number,
 ) -> c_int {
     let mut o = TValue {
         value_: Value { gc: 0 as *mut GCObject },

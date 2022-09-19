@@ -1,7 +1,7 @@
 use std::mem::size_of;
 use std::ptr;
 
-use libc::{c_char, c_int, c_ulong, c_void, size_t};
+use libc::{c_char, c_int, c_void, size_t};
 
 use crate::ldebug::luaG_runerror;
 use crate::ldo::luaD_throw;
