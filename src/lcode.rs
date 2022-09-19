@@ -330,6 +330,25 @@ pub unsafe extern "C" fn luaK_patchtohere(
     luaK_concat(fs, &mut (*fs).jpc, list);
 }
 
+/*
+** Path all jumps in 'list' to jump to 'target'.
+** (The assert means that we cannot fix a jump to a forward address
+** because we only know addresses once code is generated.)
+*/
+
+#[no_mangle]
+pub unsafe extern "C" fn luaK_patchlist(
+    fs: *mut FuncState,
+    list: c_int,
+    target: c_int,
+) {
+    if target == (*fs).pc {
+        luaK_patchtohere(fs, list);
+    } else {
+        patchlistaux(fs, list, target, NO_REG as c_int, target);
+    };
+}
+
 extern "C" {
     pub fn luaK_codeABC(fs: *mut FuncState, o: OpCode, a: c_int, b: c_int, c: c_int) -> c_int;
     pub fn luaK_codeABx(fs: *mut FuncState, o: OpCode, a: c_int, bc: c_uint) -> c_int;
