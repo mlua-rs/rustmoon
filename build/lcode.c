@@ -57,14 +57,7 @@ int luaK_codeABx (FuncState *fs, OpCode o, int a, unsigned int bc);
 extern int codeextraarg (FuncState *fs, int a);
 int luaK_codek (FuncState *fs, int reg, int k);
 void luaK_checkstack (FuncState *fs, int n);
-
-/*
-** Reserve 'n' registers in register stack
-*/
-void luaK_reserveregs (FuncState *fs, int n) {
-  luaK_checkstack(fs, n);
-  fs->freereg += n;
-}
+void luaK_reserveregs (FuncState *fs, int n);
 
 
 /*

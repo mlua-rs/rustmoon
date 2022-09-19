@@ -473,17 +473,6 @@ pub unsafe extern "C" fn luaK_codek(
 ** Check register-stack level, keeping track of its maximum size
 ** in field 'maxstacksize'
 */
-/*
-void luaK_checkstack (FuncState *fs, int n) {
-    int newstack = fs->freereg + n;
-    if (newstack > fs->f->maxstacksize) {
-      if (newstack >= MAXREGS)
-        luaX_syntaxerror(fs->ls,
-          "function or expression needs too many registers");
-      fs->f->maxstacksize = cast_byte(newstack);
-    }
-  }
-   */
 #[no_mangle]
 pub unsafe extern "C" fn luaK_checkstack(mut fs: *mut FuncState, n: c_int) {
     let newstack = (*fs).freereg as c_int + n;
@@ -494,3 +483,24 @@ pub unsafe extern "C" fn luaK_checkstack(mut fs: *mut FuncState, n: c_int) {
         (*(*fs).f).maxstacksize = newstack as lu_byte;
     }
 }
+
+/*
+** Reserve 'n' registers in register stack
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_reserveregs(mut fs: *mut FuncState, n: c_int) {
+    luaK_checkstack(fs, n);
+    (*fs).freereg = (*fs).freereg + n as lu_byte;
+}
+
+/*
+** Free register 'reg', if it is neither a constant index nor
+** a local variable.
+)
+*/
+/*static void freereg (FuncState *fs, int reg) {
+    if (!ISK(reg) && reg >= fs->nactvar) {
+      fs->freereg--;
+      lua_assert(reg == fs->freereg);
+    }
+  }*/
