@@ -1,7 +1,7 @@
 use std::mem::size_of;
 use std::ptr;
 
-use libc::{c_char, c_int, c_void, size_t};
+use libc::{c_char, c_int, c_ulong, c_void, size_t};
 
 use crate::ldebug::luaG_runerror;
 use crate::ldo::luaD_throw;
@@ -44,6 +44,29 @@ pub unsafe fn luaM_newobject<T>(L: *mut lua_State, tag: u8) -> *mut T {
     luaM_realloc_(L, ptr::null_mut(), tag as usize, size_of::<T>()) as *mut T
 }
 
+//#define luaM_growvector(L,v,nelems,size,t,limit,e) \
+//          if ((nelems)+1 > (size)) \
+//            ((v)=cast(t *, luaM_growaux_(L,v,&(size),sizeof(t),limit,e)))
+
+/*   if luaM_growvector!(
+    fs -> ls -> L, f -> code, fs -> pc, f -> sizecode, Instruction, MAX_INT,
+    "opcodes"
+) != 0
+{
+    let ref mut fresh146 = luaM_growvector!(
+        fs -> ls -> L, f -> code, fs -> pc, f -> sizecode, Instruction, MAX_INT,
+        "opcodes"
+    );
+    *fresh146 = luaM_growaux_(
+        (*(*fs).ls).L,
+        (*f).code as *mut libc::c_void,
+        &mut (*f).sizecode,
+        ::core::mem::size_of::<Instruction>() as libc::c_ulong,
+        2147483647 as libc::c_int,
+        b"opcodes\0" as *const u8 as *const libc::c_char,
+    ) as *mut Instruction;
+} */
+
 #[inline(always)]
 pub unsafe fn luaM_newobject_sz(L: *mut lua_State, tag: u8, sz: usize) -> *mut c_void {
     luaM_realloc_(L, ptr::null_mut(), tag as usize, sz)
@@ -57,6 +80,26 @@ pub unsafe fn luaM_reallocvector<T>(L: *mut lua_State, v: &mut *mut T, oldn: usi
         oldn * size_of::<T>(),
         n * size_of::<T>(),
     ) as *mut T;
+}
+
+pub unsafe fn luaM_growvector<T>(
+    L: *mut lua_State,
+    v: *mut *mut T,
+    nelems: c_int,
+    size: *mut i32,
+    limit: c_int,
+    what: *const c_char,
+) {
+    if nelems + 1 as libc::c_int > (*size) {
+        *v = luaM_growaux_(
+            L,
+            (*v) as *mut c_void,
+            size,
+            ::std::mem::size_of::<T>() as usize,
+            limit,
+            what,
+        ) as *mut T;
+    }
 }
 
 /*

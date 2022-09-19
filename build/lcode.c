@@ -51,24 +51,8 @@ extern void dischargejpc (FuncState *fs);
 void luaK_patchtohere (FuncState *fs, int list);
 void luaK_patchlist (FuncState *fs, int list, int target);
 void luaK_patchclose (FuncState *fs, int list, int level);
+extern int luaK_code (FuncState *fs, Instruction i);
 
-/*
-** Emit instruction 'i', checking for array sizes and saving also its
-** line information. Return 'i' position.
-*/
-static int luaK_code (FuncState *fs, Instruction i) {
-  Proto *f = fs->f;
-  dischargejpc(fs);  /* 'pc' will change */
-  /* put new instruction in code array */
-  luaM_growvector(fs->ls->L, f->code, fs->pc, f->sizecode, Instruction,
-                  MAX_INT, "opcodes");
-  f->code[fs->pc] = i;
-  /* save corresponding line information */
-  luaM_growvector(fs->ls->L, f->lineinfo, fs->pc, f->sizelineinfo, int,
-                  MAX_INT, "opcodes");
-  f->lineinfo[fs->pc] = fs->ls->lastline;
-  return fs->pc++;
-}
 
 
 /*

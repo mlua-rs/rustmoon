@@ -1,4 +1,4 @@
-use libc::{c_double, c_int, c_long, c_uchar, c_uint, c_void, ptrdiff_t, size_t};
+use libc::{c_double, c_int, c_long, c_uchar, c_uint, c_void, ptrdiff_t, size_t, INT_MAX};
 
 use crate::types::{lua_Integer, lua_Number};
 
@@ -80,3 +80,5 @@ pub const LUAI_MAXSTACK: usize = 1000000;
 ** in a program. (Value must fit in an unsigned short int.)
 */
 pub const LUAI_MAXCCALLS: u16 = 200;
+
+pub const MAX_INT: i32 = INT_MAX; 

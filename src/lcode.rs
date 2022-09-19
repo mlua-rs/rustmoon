@@ -2,10 +2,11 @@
 ** Code generator for Lua
 */
 
-use libc::{abs, c_int, c_uint, size_t};
+use libc::{abs, c_char, c_int, c_uint, c_void, size_t};
 
 use crate::llex::luaX_syntaxerror;
-use crate::llimits::Instruction;
+use crate::llimits::{Instruction, MAX_INT};
+use crate::lmem::{luaM_growaux_, luaM_growvector};
 use crate::lobject::{setfltvalue, setivalue, TValue};
 use crate::lopcodes::{
     luaP_opmodes, GETARG_sBx, MAXARG_sBx, OpCode, SETARG_sBx, GETARG_A, GETARG_B, GETARG_C,
@@ -13,6 +14,7 @@ use crate::lopcodes::{
     POS_OP, SETARG_A, SETARG_B,
 };
 use crate::lparser::{expdesc, FuncState, VKFLT, VKINT};
+use crate::lstate::lua_State;
 
 pub const MAXREGS: c_int = 255;
 pub const NO_JUMP: c_int = -1;
@@ -265,10 +267,10 @@ pub unsafe extern "C" fn patchtestreg(fs: *mut FuncState, node: c_int, reg: c_in
 ** Traverse a list of tests ensuring no one produces a value
 */
 /*static void removevalues (FuncState *fs, int list) {
-    for (; list != NO_JUMP; list = getjump(fs, list))
-        patchtestreg(fs, list, NO_REG);
-  }
-  */
+  for (; list != NO_JUMP; list = getjump(fs, list))
+      patchtestreg(fs, list, NO_REG);
+}
+*/
 
 // FIXME static
 #[no_mangle]
@@ -322,10 +324,7 @@ pub unsafe extern "C" fn dischargejpc(mut fs: *mut FuncState) {
 ** (current position)
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaK_patchtohere(
-    fs: *mut FuncState,
-    list: c_int,
-) {
+pub unsafe extern "C" fn luaK_patchtohere(fs: *mut FuncState, list: c_int) {
     luaK_getlabel(fs);
     luaK_concat(fs, &mut (*fs).jpc, list);
 }
@@ -337,11 +336,7 @@ pub unsafe extern "C" fn luaK_patchtohere(
 */
 
 #[no_mangle]
-pub unsafe extern "C" fn luaK_patchlist(
-    fs: *mut FuncState,
-    list: c_int,
-    target: c_int,
-) {
+pub unsafe extern "C" fn luaK_patchlist(fs: *mut FuncState, list: c_int, target: c_int) {
     if target == (*fs).pc {
         luaK_patchtohere(fs, list);
     } else {
@@ -353,13 +348,9 @@ pub unsafe extern "C" fn luaK_patchlist(
 ** Path all jumps in 'list' to close upvalues up to given 'level'
 ** (The assertion checks that jumps either were closing nothing
 ** or were closing higher levels, from inner blocks.)
-*/  
+*/
 #[no_mangle]
-pub unsafe extern "C" fn luaK_patchclose(
-    fs: *mut FuncState,
-    mut list: c_int,
-    mut level: c_int,
-) {
+pub unsafe extern "C" fn luaK_patchclose(fs: *mut FuncState, mut list: c_int, mut level: c_int) {
     level += 1;
     while list != NO_JUMP {
         SETARG_A((*(*fs).f).code.offset(list as isize), level);
@@ -367,51 +358,41 @@ pub unsafe extern "C" fn luaK_patchclose(
     }
 }
 
-  /*
-  ** Emit instruction 'i', checking for array sizes and saving also its
-  ** line information. Return 'i' position.
-  */
-  /* 
-  static int luaK_code (FuncState *fs, Instruction i) {
-    Proto *f = fs->f;
-    dischargejpc(fs);  /* 'pc' will change */
-    /* put new instruction in code array */
-    luaM_growvector(fs->ls->L, f->code, fs->pc, f->sizecode, Instruction,
-                    MAX_INT, "opcodes");
-    f->code[fs->pc] = i;
-    /* save corresponding line information */
-    luaM_growvector(fs->ls->L, f->lineinfo, fs->pc, f->sizelineinfo, int,
-                    MAX_INT, "opcodes");
-    f->lineinfo[fs->pc] = fs->ls->lastline;
-    return fs->pc++;
-  }
-  */
-/* 
+/*
+ ** Emit instruction 'i', checking for array sizes and saving also its
+ ** line information. Return 'i' position.
+ */
+
 // FIXME static
 #[no_mangle]
-pub unsafe extern "C" fn luaK_code(
-    mut fs: *mut FuncState,
-    mut i: Instruction,
-) -> libc::c_int {
-    let mut f = (*fs).f;
+pub unsafe extern "C" fn luaK_code(mut fs: *mut FuncState, i: Instruction) -> c_int {
+    let f = (*fs).f;
     dischargejpc(fs); /* 'pc' will change */
     /* put new instruction in code array */
     luaM_growvector(
-        (*(*fs).ls).L, (*f).code, (*fs).pc, (*f).sizecode, Instruction, MAX_INT,
-        "opcodes"
+        (*(*fs).ls).L,
+        &mut (*f).code,
+        (*fs).pc,
+        &mut (*f).sizecode,
+        MAX_INT,
+        cstr!("opcodes"),
     );
-    
     *((*f).code).offset((*fs).pc as isize) = i;
     /* save corresponding line information */
     luaM_growvector(
-        (*(*fs).ls).L, (*f).code, (*fs).pc, (*f).sizelineinfo, int, MAX_INT,
-        "opcodes"
+        (*(*fs).ls).L,
+        &mut (*f).lineinfo,
+        (*fs).pc,
+        &mut (*f).sizelineinfo,
+        MAX_INT,
+        cstr!("opcodes"),
     );
+
     *((*f).lineinfo).offset((*fs).pc as isize) = (*(*fs).ls).lastline;
     let oldPc = (*fs).pc;
     (*fs).pc = (*fs).pc + 1;
     return oldPc;
-}*/
+}
 
 extern "C" {
     pub fn luaK_codeABC(fs: *mut FuncState, o: OpCode, a: c_int, b: c_int, c: c_int) -> c_int;
