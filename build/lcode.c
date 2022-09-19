@@ -64,15 +64,7 @@ extern void freeexps (FuncState *fs, expdesc *e1, expdesc *e2);
 extern int addk (FuncState *fs, TValue *key, TValue *v);
 int luaK_stringK (FuncState *fs, TString *s);
 int luaK_intK (FuncState *fs, lua_Integer n);
-
-/*
-** Add a float to list of constants and return its index.
-*/
-static int luaK_numberK (FuncState *fs, lua_Number r) {
-  TValue o;
-  setfltvalue(&o, r);
-  return addk(fs, &o, &o);  /* use number itself as key */
-}
+extern int luaK_numberK (FuncState *fs, lua_Number r);
 
 
 /*

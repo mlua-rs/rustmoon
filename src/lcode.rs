@@ -17,7 +17,7 @@ use crate::lopcodes::{
 use crate::lparser::{expdesc, FuncState, VKFLT, VKINT, VNONRELOC};
 use crate::ltable::luaH_set;
 use crate::lvm::luaV_rawequalobj;
-use crate::types::lua_Integer;
+use crate::types::{lua_Integer, lua_Number};
 
 pub const MAXREGS: c_int = 255;
 pub const NO_JUMP: c_int = -1;
@@ -617,16 +617,32 @@ pub unsafe extern "C" fn luaK_stringK(
 pub unsafe extern "C" fn luaK_intK(
     fs: *mut FuncState,
     n: lua_Integer,
-  ) -> libc::c_int {
-      let mut k = TValue {
-          value_: Value { gc: 0 as *mut GCObject },
-          tt_: 0,
-      };
-      let mut o = TValue {
-          value_: Value { gc: 0 as *mut GCObject },
-          tt_: 0,
-      };
-      setpvalue(&mut k, n as size_t as *mut c_void);
-      setivalue(&mut o, n);
-      return addk(fs, &mut k, &mut o);
-  }
+) -> libc::c_int {
+    let mut k = TValue {
+        value_: Value { gc: 0 as *mut GCObject },
+        tt_: 0,
+    };
+    let mut o = TValue {
+        value_: Value { gc: 0 as *mut GCObject },
+        tt_: 0,
+    };
+    setpvalue(&mut k, n as size_t as *mut c_void);
+    setivalue(&mut o, n);
+    return addk(fs, &mut k, &mut o);
+}
+/*
+** Add a float to list of constants and return its index.
+*/
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn luaK_numberK(
+    mut fs: *mut FuncState,
+    mut r: lua_Number,
+) -> c_int {
+    let mut o = TValue {
+        value_: Value { gc: 0 as *mut GCObject },
+        tt_: 0,
+    };
+    setfltvalue(&mut o, r);
+    return addk(fs, &mut o, &mut o); /* use number itself as key */
+}
