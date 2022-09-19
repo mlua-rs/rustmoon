@@ -13,7 +13,7 @@ use crate::lopcodes::{
     GET_OPCODE, NO_REG, OP_JMP, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C,
     POS_OP, SETARG_A, SETARG_B, iABC, getOpMode, getBMode, OpArgN, getCMode, MAXARG_A, MAXARG_B, MAXARG_C, iABx, iAsBx, MAXARG_Bx, CREATE_ABx, CREATE_Ax, OP_EXTRAARG, OP_LOADK, OP_LOADKX, ISK,
 };
-use crate::lparser::{expdesc, FuncState, VKFLT, VKINT};
+use crate::lparser::{expdesc, FuncState, VKFLT, VKINT, VNONRELOC};
 
 pub const MAXREGS: c_int = 255;
 pub const NO_JUMP: c_int = -1;
@@ -513,3 +513,9 @@ pub unsafe extern "C" fn freereg(mut fs: *mut FuncState, reg: c_int) {
     if (e->k == VNONRELOC)
       freereg(fs, e->u.info);
   }*/
+#[no_mangle]
+pub unsafe extern "C" fn freeexp(fs: *mut FuncState, e: *mut expdesc) {
+    if (*e).k as libc::c_uint == VNONRELOC as c_uint {
+        freereg(fs, (*e).u.info);
+    }
+}

@@ -59,16 +59,7 @@ int luaK_codek (FuncState *fs, int reg, int k);
 void luaK_checkstack (FuncState *fs, int n);
 void luaK_reserveregs (FuncState *fs, int n);
 extern void freereg (FuncState *fs, int reg);
-
-
-/*
-** Free register used by expression 'e' (if any)
-*/
-static void freeexp (FuncState *fs, expdesc *e) {
-  if (e->k == VNONRELOC)
-    freereg(fs, e->u.info);
-}
-
+extern void freeexp (FuncState *fs, expdesc *e);
 
 /*
 ** Free registers used by expressions 'e1' and 'e2' (if any) in proper
