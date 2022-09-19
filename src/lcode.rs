@@ -2,7 +2,7 @@
 ** Code generator for Lua
 */
 
-use libc::{abs, c_int, c_uint};
+use libc::{abs, c_int, c_uint, size_t};
 
 use crate::llex::luaX_syntaxerror;
 use crate::llimits::Instruction;
@@ -348,6 +348,70 @@ pub unsafe extern "C" fn luaK_patchlist(
         patchlistaux(fs, list, target, NO_REG as c_int, target);
     };
 }
+
+/*
+** Path all jumps in 'list' to close upvalues up to given 'level'
+** (The assertion checks that jumps either were closing nothing
+** or were closing higher levels, from inner blocks.)
+*/  
+#[no_mangle]
+pub unsafe extern "C" fn luaK_patchclose(
+    fs: *mut FuncState,
+    mut list: c_int,
+    mut level: c_int,
+) {
+    level += 1;
+    while list != NO_JUMP {
+        SETARG_A((*(*fs).f).code.offset(list as isize), level);
+        list = getjump(fs, list);
+    }
+}
+
+  /*
+  ** Emit instruction 'i', checking for array sizes and saving also its
+  ** line information. Return 'i' position.
+  */
+  /* 
+  static int luaK_code (FuncState *fs, Instruction i) {
+    Proto *f = fs->f;
+    dischargejpc(fs);  /* 'pc' will change */
+    /* put new instruction in code array */
+    luaM_growvector(fs->ls->L, f->code, fs->pc, f->sizecode, Instruction,
+                    MAX_INT, "opcodes");
+    f->code[fs->pc] = i;
+    /* save corresponding line information */
+    luaM_growvector(fs->ls->L, f->lineinfo, fs->pc, f->sizelineinfo, int,
+                    MAX_INT, "opcodes");
+    f->lineinfo[fs->pc] = fs->ls->lastline;
+    return fs->pc++;
+  }
+  */
+/* 
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn luaK_code(
+    mut fs: *mut FuncState,
+    mut i: Instruction,
+) -> libc::c_int {
+    let mut f = (*fs).f;
+    dischargejpc(fs); /* 'pc' will change */
+    /* put new instruction in code array */
+    luaM_growvector(
+        (*(*fs).ls).L, (*f).code, (*fs).pc, (*f).sizecode, Instruction, MAX_INT,
+        "opcodes"
+    );
+    
+    *((*f).code).offset((*fs).pc as isize) = i;
+    /* save corresponding line information */
+    luaM_growvector(
+        (*(*fs).ls).L, (*f).code, (*fs).pc, (*f).sizelineinfo, int, MAX_INT,
+        "opcodes"
+    );
+    *((*f).lineinfo).offset((*fs).pc as isize) = (*(*fs).ls).lastline;
+    let oldPc = (*fs).pc;
+    (*fs).pc = (*fs).pc + 1;
+    return oldPc;
+}*/
 
 extern "C" {
     pub fn luaK_codeABC(fs: *mut FuncState, o: OpCode, a: c_int, b: c_int, c: c_int) -> c_int;

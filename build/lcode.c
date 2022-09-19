@@ -50,23 +50,7 @@ extern void patchlistaux (FuncState *fs, int list, int vtarget, int reg, int dta
 extern void dischargejpc (FuncState *fs);
 void luaK_patchtohere (FuncState *fs, int list);
 void luaK_patchlist (FuncState *fs, int list, int target);
-
-
-/*
-** Path all jumps in 'list' to close upvalues up to given 'level'
-** (The assertion checks that jumps either were closing nothing
-** or were closing higher levels, from inner blocks.)
-*/
-void luaK_patchclose (FuncState *fs, int list, int level) {
-  level++;  /* argument is +1 to reserve 0 as non-op */
-  for (; list != NO_JUMP; list = getjump(fs, list)) {
-    lua_assert(GET_OPCODE(fs->f->code[list]) == OP_JMP &&
-                (GETARG_A(fs->f->code[list]) == 0 ||
-                 GETARG_A(fs->f->code[list]) >= level));
-    SETARG_A(fs->f->code[list], level);
-  }
-}
-
+void luaK_patchclose (FuncState *fs, int list, int level);
 
 /*
 ** Emit instruction 'i', checking for array sizes and saving also its
