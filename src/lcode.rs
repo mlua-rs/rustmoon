@@ -7,7 +7,7 @@ use libc::{c_uint, c_int, abs, c_char, c_uchar};
 use crate::llex::luaX_syntaxerror;
 use crate::llimits::{Instruction, lu_byte};
 use crate::lobject::{TValue, setivalue, setfltvalue};
-use crate::lopcodes::{GET_OPCODE, OP_LOADNIL, GETARG_A, GETARG_B, SETARG_A, SETARG_B, OpCode, GETARG_sBx, MAXARG_sBx, SETARG_sBx, OP_JMP, OP_RETURN, luaP_opmodes};
+use crate::lopcodes::{GET_OPCODE, OP_LOADNIL, GETARG_A, GETARG_B, SETARG_A, SETARG_B, OpCode, GETARG_sBx, MAXARG_sBx, SETARG_sBx, OP_JMP, OP_RETURN, luaP_opmodes, NO_REG, OP_TESTSET, POS_OP, OP_TEST, POS_B, POS_A, POS_C, GETARG_C};
 use crate::lparser::{expdesc, VKINT, VKFLT, FuncState};
 
 pub const MAXREGS: c_int = 255;
@@ -26,6 +26,14 @@ unsafe fn luaK_codeAsBx(fs: *mut FuncState, o: OpCode, A: c_int, sBx: c_int) -> 
 #[inline(always)]
 unsafe fn testTMode(m: usize) -> c_int {
     return luaP_opmodes[m] as c_int & (1 << 7) as c_int;
+}
+
+#[inline(always)]
+unsafe extern "C" fn CREATE_ABC(o: c_int, a: c_int, b: c_int, c: c_int) -> u32 {
+    return (o as Instruction) << POS_OP
+    | (a as Instruction) << POS_A
+    | (b as Instruction) << POS_B
+    | (c as Instruction) << POS_C
 }
 
 /*
@@ -153,7 +161,7 @@ pub unsafe extern "C" fn luaK_concat(
             *l1 = l2; /* 'l1' points to 'l2' */
         } else {
             let mut list = *l1;
-            let mut next: c_int = 0;
+            let mut next: c_int;
             loop {
                 next = getjump(fs, list); /* find last element */
                 if !(next != NO_JUMP) {
@@ -242,6 +250,35 @@ pub unsafe extern "C" fn getjumpcontrol(
     } else {
         return pi
     };
+}
+
+/*
+** Patch destination register for a TESTSET instruction.
+** If instruction in position 'node' is not a TESTSET, return 0 ("fails").
+** Otherwise, if 'reg' is not 'NO_REG', set it as the destination
+** register. Otherwise, change instruction to a simple 'TEST' (produces
+** no register value)
+*/
+
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn patchtestreg(
+    fs: *mut FuncState,
+    node: c_int,
+    reg: c_int,
+) -> c_int {
+    let i = getjumpcontrol(fs, node);
+    if GET_OPCODE(*i) != OP_TESTSET {
+        return 0; /* cannot patch other instructions */
+    }
+    if reg != NO_REG as c_int && reg != GETARG_B(*i) {
+        SETARG_A(i, reg);
+    } else {
+        /* no register to put value or register already has the value;
+           change instruction to simple test */
+      *i = CREATE_ABC(OP_TEST as i32, GETARG_B(*i), 0, GETARG_C(*i));
+    }
+    return 1 as libc::c_int;
 }
 
 extern "C" {

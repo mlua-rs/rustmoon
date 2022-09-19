@@ -44,28 +44,7 @@ void luaK_ret (FuncState *fs, int first, int nret);
 extern int condjump (FuncState *fs, OpCode op, int A, int B, int C);
 int luaK_getlabel (FuncState *fs);
 extern Instruction *getjumpcontrol (FuncState *fs, int pc);
-
-
-/*
-** Patch destination register for a TESTSET instruction.
-** If instruction in position 'node' is not a TESTSET, return 0 ("fails").
-** Otherwise, if 'reg' is not 'NO_REG', set it as the destination
-** register. Otherwise, change instruction to a simple 'TEST' (produces
-** no register value)
-*/
-static int patchtestreg (FuncState *fs, int node, int reg) {
-  Instruction *i = getjumpcontrol(fs, node);
-  if (GET_OPCODE(*i) != OP_TESTSET)
-    return 0;  /* cannot patch other instructions */
-  if (reg != NO_REG && reg != GETARG_B(*i))
-    SETARG_A(*i, reg);
-  else {
-     /* no register to put value or register already has the value;
-        change instruction to simple test */
-    *i = CREATE_ABC(OP_TEST, GETARG_B(*i), 0, GETARG_C(*i));
-  }
-  return 1;
-}
+extern int patchtestreg (FuncState *fs, int node, int reg);
 
 
 /*
