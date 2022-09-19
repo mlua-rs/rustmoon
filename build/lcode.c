@@ -63,18 +63,7 @@ extern void freeexp (FuncState *fs, expdesc *e);
 extern void freeexps (FuncState *fs, expdesc *e1, expdesc *e2);
 extern int addk (FuncState *fs, TValue *key, TValue *v);
 int luaK_stringK (FuncState *fs, TString *s);
-/*
-** Add an integer to list of constants and return its index.
-** Integers use userdata as keys to avoid collision with floats with
-** same value; conversion to 'void*' is used only for hashing, so there
-** are no "precision" problems.
-*/
-int luaK_intK (FuncState *fs, lua_Integer n) {
-  TValue k, o;
-  setpvalue(&k, cast(void*, cast(size_t, n)));
-  setivalue(&o, n);
-  return addk(fs, &k, &o);
-}
+int luaK_intK (FuncState *fs, lua_Integer n);
 
 /*
 ** Add a float to list of constants and return its index.

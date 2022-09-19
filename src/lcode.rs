@@ -2,13 +2,13 @@
 ** Code generator for Lua
 */
 
-use libc::{abs, c_int, c_uint};
+use libc::{abs, c_int, c_uint, c_void, size_t};
 
 use crate::lgc::luaC_barrier;
 use crate::llex::luaX_syntaxerror;
 use crate::llimits::{Instruction, MAX_INT, lu_byte};
 use crate::lmem::luaM_growvector;
-use crate::lobject::{setfltvalue, setivalue, TValue, ttisinteger, ttype, setnilvalue, setobj, GCObject, setsvalue, Value, TString};
+use crate::lobject::{setfltvalue, setivalue, TValue, ttisinteger, ttype, setnilvalue, setobj, GCObject, setsvalue, Value, TString, setpvalue};
 use crate::lopcodes::{
     luaP_opmodes, GETARG_sBx, MAXARG_sBx, OpCode, SETARG_sBx, GETARG_A, GETARG_B, GETARG_C,
     GET_OPCODE, NO_REG, OP_JMP, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C,
@@ -17,6 +17,7 @@ use crate::lopcodes::{
 use crate::lparser::{expdesc, FuncState, VKFLT, VKINT, VNONRELOC};
 use crate::ltable::luaH_set;
 use crate::lvm::luaV_rawequalobj;
+use crate::types::lua_Integer;
 
 pub const MAXREGS: c_int = 255;
 pub const NO_JUMP: c_int = -1;
@@ -605,3 +606,27 @@ pub unsafe extern "C" fn luaK_stringK(
     setsvalue((*(*fs).ls).L, &mut o, s);
     return addk(fs, &mut o, &mut o); /* use string itself as key */
 }
+
+/*
+** Add an integer to list of constants and return its index.
+** Integers use userdata as keys to avoid collision with floats with
+** same value; conversion to 'void*' is used only for hashing, so there
+** are no "precision" problems.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_intK(
+    fs: *mut FuncState,
+    n: lua_Integer,
+  ) -> libc::c_int {
+      let mut k = TValue {
+          value_: Value { gc: 0 as *mut GCObject },
+          tt_: 0,
+      };
+      let mut o = TValue {
+          value_: Value { gc: 0 as *mut GCObject },
+          tt_: 0,
+      };
+      setpvalue(&mut k, n as size_t as *mut c_void);
+      setivalue(&mut o, n);
+      return addk(fs, &mut k, &mut o);
+  }
