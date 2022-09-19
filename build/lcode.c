@@ -39,22 +39,7 @@ void luaK_nil (FuncState *fs, int from, int n);
 extern int getjump (FuncState *fs, int pc);
 extern void fixjump (FuncState *fs, int pc, int dest);
 void luaK_concat (FuncState *fs, int *l1, int l2);
-
-/*
-** Create a jump instruction and return its position, so its destination
-** can be fixed later (with 'fixjump'). If there are jumps to
-** this position (kept in 'jpc'), link them all together so that
-** 'patchlistaux' will fix all them directly to the final destination.
-*/
-int luaK_jump (FuncState *fs) {
-  int jpc = fs->jpc;  /* save list of jumps to here */
-  int j;
-  fs->jpc = NO_JUMP;  /* no more jumps to here */
-  j = luaK_codeAsBx(fs, OP_JMP, 0, NO_JUMP);
-  luaK_concat(fs, &j, jpc);  /* keep them on hold */
-  return j;
-}
-
+int luaK_jump (FuncState *fs);
 
 /*
 ** Code a 'return' instruction

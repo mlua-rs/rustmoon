@@ -7,7 +7,7 @@ use libc::{c_uint, c_int, abs};
 use crate::llex::luaX_syntaxerror;
 use crate::llimits::Instruction;
 use crate::lobject::{TValue, setivalue, setfltvalue};
-use crate::lopcodes::{GET_OPCODE, OP_LOADNIL, GETARG_A, GETARG_B, SETARG_A, SETARG_B, OpCode, GETARG_sBx, MAXARG_sBx, SETARG_sBx};
+use crate::lopcodes::{GET_OPCODE, OP_LOADNIL, GETARG_A, GETARG_B, SETARG_A, SETARG_B, OpCode, GETARG_sBx, MAXARG_sBx, SETARG_sBx, OP_JMP};
 use crate::lparser::{expdesc, VKINT, VKFLT, FuncState};
 
 pub const MAXREGS: c_int = 255;
@@ -156,6 +156,26 @@ pub unsafe extern "C" fn luaK_concat(
     };
 }
 
+/*
+** Create a jump instruction and return its position, so its destination
+** can be fixed later (with 'fixjump'). If there are jumps to
+** this position (kept in 'jpc'), link them all together so that
+** 'patchlistaux' will fix all them directly to the final destination.
+*/
+
+unsafe fn luaK_codeAsBx(fs: *mut FuncState, o: OpCode, A: c_int, sBx: c_int) -> c_int {
+    return luaK_codeABx(fs,o,A,(sBx+MAXARG_sBx as c_int) as c_uint); // This integer size manipulation is absolutely necessary.
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn luaK_jump(mut fs: *mut FuncState) -> c_int {
+    let jpc = (*fs).jpc; /* save list of jumps to here */
+    (*fs).jpc = NO_JUMP; /* no more jumps to here */
+    let mut j: c_int = luaK_codeAsBx(fs, OP_JMP, 0, NO_JUMP);
+    luaK_concat(fs, &mut j, jpc); /* keep them on hold */
+    return j;
+}
+
 extern "C" {
     pub fn luaK_codeABC(
         fs: *mut FuncState,
@@ -163,5 +183,11 @@ extern "C" {
         a: c_int,
         b: c_int,
         c: c_int,
+    ) -> c_int;
+    pub fn luaK_codeABx(
+        fs: *mut FuncState,
+        o: OpCode,
+        a: c_int,
+        bc: c_uint,
     ) -> c_int;
 }
