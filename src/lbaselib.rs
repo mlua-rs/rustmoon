@@ -166,7 +166,9 @@ unsafe extern "C" fn luaB_getmetatable(L: *mut lua_State) -> c_int {
 }
 
 unsafe extern "C" fn luaB_setmetatable(L: *mut lua_State) -> c_int {
-    luaL_checktype(L, 1, LUA_TTABLE);
+    let _t = lua_type(L, 2);
+    // TODO: FIX
+    luaL_checktype(L, 1, LUA_TTABLE); // FIXME? t is unused?
     if luaL_getmetafield(L, 1, cstr!("__metatable")) != LUA_TNIL {
         luaL_error(L, cstr!("cannot change a protected metatable"));
     }
@@ -394,7 +396,7 @@ unsafe extern "C" fn generic_reader(
 }
 
 unsafe extern "C" fn luaB_load(L: *mut lua_State) -> c_int {
-    let status: c_int;
+    let status;
     let mut l: size_t = 0;
     let s = lua_tolstring(L, 1 as c_int, &mut l);
     let mode = luaL_optstring(L, 3, cstr!("bt"));

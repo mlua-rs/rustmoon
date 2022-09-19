@@ -76,7 +76,7 @@ const fn vkisvar(k: expkind) -> bool {
     VLOCAL <= k && k <= VINDEXED
 }
 
-const fn vkisinreg(k: expkind) -> bool {
+pub const fn vkisinreg(k: expkind) -> bool {
     k == VNONRELOC || k == VLOCAL
 }
 
