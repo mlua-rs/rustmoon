@@ -11,7 +11,7 @@ use crate::lobject::{setfltvalue, setivalue, TValue};
 use crate::lopcodes::{
     luaP_opmodes, GETARG_sBx, MAXARG_sBx, OpCode, SETARG_sBx, GETARG_A, GETARG_B, GETARG_C,
     GET_OPCODE, NO_REG, OP_JMP, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C,
-    POS_OP, SETARG_A, SETARG_B, iABC, getOpMode, getBMode, OpArgN, getCMode, MAXARG_A, MAXARG_B, MAXARG_C, iABx, iAsBx, MAXARG_Bx, CREATE_ABx, CREATE_Ax, OP_EXTRAARG,
+    POS_OP, SETARG_A, SETARG_B, iABC, getOpMode, getBMode, OpArgN, getCMode, MAXARG_A, MAXARG_B, MAXARG_C, iABx, iAsBx, MAXARG_Bx, CREATE_ABx, CREATE_Ax, OP_EXTRAARG, OP_LOADK, OP_LOADKX,
 };
 use crate::lparser::{expdesc, FuncState, VKFLT, VKINT};
 
@@ -447,4 +447,35 @@ pub unsafe extern "C" fn codeextraarg(
     mut a: c_int,
 ) -> c_int {
     return luaK_code(fs, CREATE_Ax(OP_EXTRAARG, a));
+}
+
+/*
+** Emit a "load constant" instruction, using either 'OP_LOADK'
+** (if constant index 'k' fits in 18 bits) or an 'OP_LOADKX'
+** instruction with "extra argument".
+*/
+/* 
+int luaK_codek (FuncState *fs, int reg, int k) {
+    if (k <= MAXARG_Bx)
+      return luaK_codeABx(fs, OP_LOADK, reg, k);
+    else {
+      int p = luaK_codeABx(fs, OP_LOADKX, reg, 0);
+      codeextraarg(fs, k);
+      return p;
+    }
+  }
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_codek(
+    fs: *mut FuncState,
+    reg: c_int,
+    k: c_int,
+) -> libc::c_int {
+    if k as c_uint <= MAXARG_Bx {
+        return luaK_codeABx(fs, OP_LOADK, reg, k as c_uint)
+    } else {
+        let p = luaK_codeABx(fs, OP_LOADKX, reg, 0);
+        codeextraarg(fs, k);
+        return p;
+    };
 }

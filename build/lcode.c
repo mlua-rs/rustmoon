@@ -55,21 +55,7 @@ extern int luaK_code (FuncState *fs, Instruction i);
 int luaK_codeABC (FuncState *fs, OpCode o, int a, int b, int c);
 int luaK_codeABx (FuncState *fs, OpCode o, int a, unsigned int bc);
 extern int codeextraarg (FuncState *fs, int a);
-
-/*
-** Emit a "load constant" instruction, using either 'OP_LOADK'
-** (if constant index 'k' fits in 18 bits) or an 'OP_LOADKX'
-** instruction with "extra argument".
-*/
-int luaK_codek (FuncState *fs, int reg, int k) {
-  if (k <= MAXARG_Bx)
-    return luaK_codeABx(fs, OP_LOADK, reg, k);
-  else {
-    int p = luaK_codeABx(fs, OP_LOADKX, reg, 0);
-    codeextraarg(fs, k);
-    return p;
-  }
-}
+int luaK_codek (FuncState *fs, int reg, int k);
 
 
 /*
