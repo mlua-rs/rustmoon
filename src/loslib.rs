@@ -89,7 +89,7 @@ unsafe extern "C" fn os_tmpname(L: *mut lua_State) -> c_int {
     }
     err = (err == -(1)) as c_int;
     if err != 0 {
-        return luaL_error(L, cstr!("unable to generate a unique filename"));
+        luaL_error(L, cstr!("unable to generate a unique filename"));
     }
     lua_pushstring(L, buff.as_mut_ptr());
     return 1;
@@ -139,16 +139,16 @@ unsafe fn getfield(L: *mut lua_State, key: *const c_char, d: c_int, delta: c_int
     let mut res: lua_Integer = lua_tointegerx(L, -(1), &mut isnum);
     if isnum == 0 {
         if t != 0 {
-            return luaL_error(L, cstr!("field '%s' is not an integer"), key);
+            luaL_error(L, cstr!("field '%s' is not an integer"), key);
         } else {
             if d < 0 {
-                return luaL_error(L, cstr!("field '%s' missing in date table"), key);
+                luaL_error(L, cstr!("field '%s' missing in date table"), key);
             }
         }
         res = d as lua_Integer;
     } else {
         if !(i64::from(-L_MAXDATEFIELD) <= res && res <= L_MAXDATEFIELD as i64) {
-            return luaL_error(L, cstr!("field '%s' is out-of-bound"), key);
+            luaL_error(L, cstr!("field '%s' is out-of-bound"), key);
         }
         res -= delta as c_longlong;
     }
@@ -215,7 +215,7 @@ unsafe extern "C" fn os_date(L: *mut lua_State) -> c_int {
         stm = localtime_r(&mut t, &mut tmr);
     }
     if stm.is_null() {
-        return luaL_error(
+        luaL_error(
             L,
             cstr!("time result cannot be represented in this installation"),
         );
@@ -290,7 +290,7 @@ unsafe extern "C" fn os_time(L: *mut lua_State) -> c_int {
         setallfields(L, &mut ts);
     }
     if t != t || t == -(1) {
-        return luaL_error(
+        luaL_error(
             L,
             cstr!("time result cannot be represented in this installation"),
         );

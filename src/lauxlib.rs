@@ -88,6 +88,16 @@ pub unsafe fn luaL_newlib(L: *mut lua_State, l: *const luaL_Reg) {
     luaL_setfuncs(L, l, 0);
 }
 
+#[inline(always)]
+pub unsafe fn luaL_argcheck(
+    L: *mut lua_State,
+    cond: bool,
+    arg: c_int,
+    extramsg: *const c_char,
+) -> bool {
+    cond || luaL_argerror(L, arg, extramsg) != 0
+}
+
 pub unsafe fn luaL_loadfile(L: *mut lua_State, filename: *const c_char) -> c_int {
     luaL_loadfilex(L, filename, ptr::null())
 }
@@ -369,7 +379,7 @@ pub unsafe extern "C" fn luaL_argerror(
         i_ci: 0 as *mut CallInfo,
     };
     if lua_getstack(L, 0 as libc::c_int, &mut ar) == 0 {
-        return luaL_error(
+        luaL_error(
             L,
             b"bad argument #%d (%s)\0" as *const u8 as *const libc::c_char,
             arg,
@@ -380,7 +390,7 @@ pub unsafe extern "C" fn luaL_argerror(
     if strcmp(ar.namewhat, b"method\0" as *const u8 as *const libc::c_char) == 0 as libc::c_int {
         arg -= 1;
         if arg == 0 as libc::c_int {
-            return luaL_error(
+            luaL_error(
                 L,
                 b"calling '%s' on bad self (%s)\0" as *const u8 as *const libc::c_char,
                 ar.name,
@@ -395,7 +405,7 @@ pub unsafe extern "C" fn luaL_argerror(
             b"?\0" as *const u8 as *const libc::c_char
         };
     }
-    return luaL_error(
+    luaL_error(
         L,
         b"bad argument #%d to '%s' (%s)\0" as *const u8 as *const libc::c_char,
         arg,
@@ -478,11 +488,7 @@ pub unsafe extern "C" fn luaL_where(L: *mut lua_State, level: libc::c_int) {
 ** an error with "stack overflow" instead of the given message.)
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaL_error(
-    L: *mut lua_State,
-    fmt: *const libc::c_char,
-    args: ...
-) -> c_int {
+pub unsafe extern "C" fn luaL_error(L: *mut lua_State, fmt: *const libc::c_char, args: ...) -> ! {
     let mut argp: ::core::ffi::VaListImpl;
     argp = args.clone();
     luaL_where(L, 1 as libc::c_int);

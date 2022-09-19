@@ -53,7 +53,7 @@ unsafe extern "C" fn codepoint(L: *mut lua_State) -> c_int {
         return 0 as c_int;
     }
     if pose - posi >= 2147483647 as c_int as c_longlong {
-        return luaL_error(L, b"string slice too long\0" as *const u8 as *const c_char);
+        luaL_error(L, b"string slice too long\0" as *const u8 as *const c_char);
     }
     n = (pose - posi) as c_int + 1 as c_int;
     luaL_checkstack(
@@ -68,7 +68,7 @@ unsafe extern "C" fn codepoint(L: *mut lua_State) -> c_int {
         let mut code: c_int = 0;
         s = utf8_decode(s, &mut code);
         if s.is_null() {
-            return luaL_error(L, b"invalid UTF-8 code\0" as *const u8 as *const c_char);
+            luaL_error(L, b"invalid UTF-8 code\0" as *const u8 as *const c_char);
         }
         lua_pushinteger(L, code as lua_Integer);
         n += 1;
@@ -230,7 +230,7 @@ unsafe extern "C" fn byteoffset(L: *mut lua_State) -> c_int {
         }
     } else {
         if *s.offset(posi as isize) as c_int & 0xc0 as c_int == 0x80 as c_int {
-            return luaL_error(
+            luaL_error(
                 L,
                 b"initial position is a continuation byte\0" as *const u8 as *const c_char,
             );
@@ -287,7 +287,7 @@ unsafe extern "C" fn iter_aux(L: *mut lua_State) -> c_int {
         let mut code: c_int = 0;
         let next: *const c_char = utf8_decode(s.offset(n as isize), &mut code);
         if next.is_null() || *next as c_int & 0xc0 as c_int == 0x80 as c_int {
-            return luaL_error(L, b"invalid UTF-8 code\0" as *const u8 as *const c_char);
+            luaL_error(L, b"invalid UTF-8 code\0" as *const u8 as *const c_char);
         }
         lua_pushinteger(L, n + 1 as c_int as c_longlong);
         lua_pushinteger(L, code as lua_Integer);

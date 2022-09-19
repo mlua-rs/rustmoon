@@ -76,7 +76,7 @@ unsafe extern "C" fn tinsert(L: *mut lua_State) -> c_int {
             }
         }
         _ => {
-            return luaL_error(L, cstr!("wrong number of arguments to 'insert'"));
+            luaL_error(L, cstr!("wrong number of arguments to 'insert'"));
         }
     }
     lua_seti(L, 1, pos);
@@ -193,7 +193,7 @@ unsafe extern "C" fn unpack(L: *mut lua_State) -> c_int {
         n = n.wrapping_add(1);
         lua_checkstack(L, n as c_int) == 0
     } {
-        return luaL_error(L, cstr!("too many results to unpack"));
+        luaL_error(L, cstr!("too many results to unpack"));
     }
     while i < e {
         lua_geti(L, 1, i);

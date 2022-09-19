@@ -50,7 +50,7 @@ unsafe extern "C" fn luaB_print(L: *mut lua_State) -> c_int {
         lua_call(L, 1, 1);
         let s: *const c_char = lua_tolstring(L, -1, &mut l); /* get result */
         if s.is_null() {
-            return luaL_error(L, cstr!("'tostring' must return a string to 'print'"));
+            luaL_error(L, cstr!("'tostring' must return a string to 'print'"));
         }
         if i > 1 as c_int {
             lua_writestring(cstr!("\t"), 1);
@@ -170,7 +170,7 @@ unsafe extern "C" fn luaB_setmetatable(L: *mut lua_State) -> c_int {
     // TODO: FIX
     luaL_checktype(L, 1, LUA_TTABLE); // FIXME? t is unused?
     if luaL_getmetafield(L, 1, cstr!("__metatable")) != LUA_TNIL {
-        return luaL_error(L, cstr!("cannot change a protected metatable"));
+        luaL_error(L, cstr!("cannot change a protected metatable"));
     }
     lua_settop(L, 2);
     lua_setmetatable(L, 1);

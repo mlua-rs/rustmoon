@@ -541,6 +541,23 @@ pub unsafe extern "C" fn lua_tointegerx(
     return res;
 }
 
+/*
+@@ lua_numbertointeger converts a float number to an integer, or
+** returns 0 if float is not within the range of a lua_Integer.
+** (The range comparisons are tricky because of rounding. The tests
+** here assume a two-complement representation, where MININTEGER always
+** has an exact representation as a float; MAXINTEGER may not have one,
+** and therefore its conversion to float may have an ill-defined value.)
+*/
+#[inline]
+pub fn lua_numbertointeger(n: lua_Number) -> Option<lua_Integer> {
+    if n >= lua_Integer::MIN as lua_Number && n < -(lua_Integer::MIN as lua_Number) {
+        Some(n as lua_Integer)
+    } else {
+        None
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn lua_toboolean(L: *mut lua_State, idx: c_int) -> c_int {
     let o: *const TValue = index2addr(L, idx);

@@ -106,6 +106,10 @@ pub const LUA_OPSHR: c_int = 11;
 pub const LUA_OPUNM: c_int = 12;
 pub const LUA_OPBNOT: c_int = 13;
 
+pub const LUA_OPEQ: c_int = 0;
+pub const LUA_OPLT: c_int = 1;
+pub const LUA_OPLE: c_int = 2;
+
 //
 // Debug API
 //

@@ -290,7 +290,7 @@ unsafe fn checkload(L: *mut lua_State, stat: c_int, filename: *const c_char) -> 
         lua_pushstring(L, filename); /* will be 2nd argument to module */
         return 2; /* return open function and file name */
     } else {
-        return luaL_error(
+        luaL_error(
             L,
             cstr!("error loading module '%s' from file '%s':\n\t%s"),
             lua_tostring(L, 1),
