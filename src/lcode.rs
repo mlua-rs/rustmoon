@@ -2,25 +2,29 @@
 ** Code generator for Lua
 */
 
-use libc::{c_uint, c_int, abs, c_char, c_uchar};
+use libc::{abs, c_int, c_uint};
 
 use crate::llex::luaX_syntaxerror;
-use crate::llimits::{Instruction, lu_byte};
-use crate::lobject::{TValue, setivalue, setfltvalue};
-use crate::lopcodes::{GET_OPCODE, OP_LOADNIL, GETARG_A, GETARG_B, SETARG_A, SETARG_B, OpCode, GETARG_sBx, MAXARG_sBx, SETARG_sBx, OP_JMP, OP_RETURN, luaP_opmodes, NO_REG, OP_TESTSET, POS_OP, OP_TEST, POS_B, POS_A, POS_C, GETARG_C};
-use crate::lparser::{expdesc, VKINT, VKFLT, FuncState};
+use crate::llimits::Instruction;
+use crate::lobject::{setfltvalue, setivalue, TValue};
+use crate::lopcodes::{
+    luaP_opmodes, GETARG_sBx, MAXARG_sBx, OpCode, SETARG_sBx, GETARG_A, GETARG_B, GETARG_C,
+    GET_OPCODE, NO_REG, OP_JMP, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C,
+    POS_OP, SETARG_A, SETARG_B,
+};
+use crate::lparser::{expdesc, FuncState, VKFLT, VKINT};
 
 pub const MAXREGS: c_int = 255;
 pub const NO_JUMP: c_int = -1;
 
 #[inline(always)]
-pub unsafe extern "C" fn hasjumps (e: *const expdesc) -> bool {
+pub unsafe extern "C" fn hasjumps(e: *const expdesc) -> bool {
     return (*e).t != (*e).f;
 }
 
 #[inline(always)]
 unsafe fn luaK_codeAsBx(fs: *mut FuncState, o: OpCode, A: c_int, sBx: c_int) -> c_int {
-    return luaK_codeABx(fs,o,A,(sBx+MAXARG_sBx as c_int) as c_uint); // This integer size manipulation is absolutely necessary.
+    return luaK_codeABx(fs, o, A, (sBx + MAXARG_sBx as c_int) as c_uint); // This integer size manipulation is absolutely necessary.
 }
 
 #[inline(always)]
@@ -31,9 +35,9 @@ unsafe fn testTMode(m: usize) -> c_int {
 #[inline(always)]
 unsafe extern "C" fn CREATE_ABC(o: c_int, a: c_int, b: c_int, c: c_int) -> u32 {
     return (o as Instruction) << POS_OP
-    | (a as Instruction) << POS_A
-    | (b as Instruction) << POS_B
-    | (c as Instruction) << POS_C
+        | (a as Instruction) << POS_A
+        | (b as Instruction) << POS_B
+        | (c as Instruction) << POS_C;
 }
 
 /*
@@ -43,10 +47,7 @@ unsafe extern "C" fn CREATE_ABC(o: c_int, a: c_int, b: c_int, c: c_int) -> u32 {
 
 // FIXME static
 #[no_mangle]
-pub unsafe extern "C" fn tonumeral(
-    e: *const expdesc,
-    v: *mut TValue,
-) -> c_int {
+pub unsafe extern "C" fn tonumeral(e: *const expdesc, v: *mut TValue) -> c_int {
     if hasjumps(e) {
         return 0;
     }
@@ -75,24 +76,24 @@ pub unsafe extern "C" fn tonumeral(
 */
 
 #[no_mangle]
-pub unsafe extern "C" fn luaK_nil(
-    fs: *mut FuncState,
-    mut from: c_int,
-    n: c_int,
-) {
-    let mut previous = 0 as *mut Instruction;
+pub unsafe extern "C" fn luaK_nil(fs: *mut FuncState, mut from: c_int, n: c_int) {
+    let previous: *mut Instruction;
     let mut l = from + n - 1; /* last register to set nil */
-    if (*fs).pc > (*fs).lasttarget {  /* no jumps to current position? */
-        previous = &mut *((*(*fs).f).code).offset(((*fs).pc - 1) as isize)
-            as *mut Instruction;
-        if GET_OPCODE(*previous) == OP_LOADNIL { /* previous is LOADNIL? */
+    if (*fs).pc > (*fs).lasttarget {
+        /* no jumps to current position? */
+        previous = &mut *((*(*fs).f).code).offset(((*fs).pc - 1) as isize) as *mut Instruction;
+        if GET_OPCODE(*previous) == OP_LOADNIL {
+            /* previous is LOADNIL? */
             let pfrom = GETARG_A(*previous); /* get previous range */
             let pl = pfrom + GETARG_B(*previous);
-            if pfrom <= from && from <= pl + 1 || from <= pfrom && pfrom <= l + 1 { /* can connect both? */
-                if pfrom < from { /* from = min(from, pfrom) */
+            if pfrom <= from && from <= pl + 1 || from <= pfrom && pfrom <= l + 1 {
+                /* can connect both? */
+                if pfrom < from {
+                    /* from = min(from, pfrom) */
                     from = pfrom;
                 }
-                if pl > l {  /* l = max(l, pl) */
+                if pl > l {
+                    /* l = max(l, pl) */
                     l = pl;
                 }
                 SETARG_A(previous, from);
@@ -111,15 +112,13 @@ pub unsafe extern "C" fn luaK_nil(
 
 // FIXME static
 #[no_mangle]
-pub unsafe extern "C" fn getjump(
-    fs: *mut FuncState,
-    pc: c_int,
-) -> c_int {
+pub unsafe extern "C" fn getjump(fs: *mut FuncState, pc: c_int) -> c_int {
     let offset = GETARG_sBx(*((*(*fs).f).code.offset(pc as isize)));
-    if offset == NO_JUMP { /* point to itself represents end of list */
-        return NO_JUMP /* end of list */
+    if offset == NO_JUMP {
+        /* point to itself represents end of list */
+        return NO_JUMP; /* end of list */
     } else {
-        return pc + 1 + offset /* turn offset into absolute position */
+        return pc + 1 + offset; /* turn offset into absolute position */
     };
 }
 
@@ -130,13 +129,8 @@ pub unsafe extern "C" fn getjump(
 
 // FIXME static
 #[no_mangle]
-pub unsafe extern "C" fn fixjump(
-    fs: *mut FuncState,
-    pc: libc::c_int,
-    dest: libc::c_int,
-) {
-    let jmp: *mut Instruction = &mut *((*(*fs).f).code).offset(pc as isize)
-        as *mut Instruction;
+pub unsafe extern "C" fn fixjump(fs: *mut FuncState, pc: libc::c_int, dest: libc::c_int) {
+    let jmp: *mut Instruction = &mut *((*(*fs).f).code).offset(pc as isize) as *mut Instruction;
     let offset = dest - (pc + 1 as libc::c_int);
     if abs(offset) as c_uint > MAXARG_sBx {
         luaX_syntaxerror((*fs).ls, cstr!("control structure too long"));
@@ -149,15 +143,12 @@ pub unsafe extern "C" fn fixjump(
 */
 
 #[no_mangle]
-pub unsafe extern "C" fn luaK_concat(
-      fs: *mut FuncState,
-      l1: *mut c_int,
-      l2: c_int,
-) {
+pub unsafe extern "C" fn luaK_concat(fs: *mut FuncState, l1: *mut c_int, l2: c_int) {
     if l2 == NO_JUMP {
-        return /* nothing to concatenate? */
+        return; /* nothing to concatenate? */
     } else {
-        if *l1 == NO_JUMP { /* no original list? */
+        if *l1 == NO_JUMP {
+            /* no original list? */
             *l1 = l2; /* 'l1' points to 'l2' */
         } else {
             let mut list = *l1;
@@ -195,11 +186,7 @@ pub unsafe extern "C" fn luaK_jump(mut fs: *mut FuncState) -> c_int {
 */
 
 #[no_mangle]
-pub unsafe extern "C" fn luaK_ret(
-    fs: *mut FuncState,
-    first: c_int,
-    nret: c_int,
-) {
+pub unsafe extern "C" fn luaK_ret(fs: *mut FuncState, first: c_int, nret: c_int) {
     luaK_codeABC(fs, OP_RETURN, first, nret + 1, 0);
 }
 
@@ -220,7 +207,7 @@ pub unsafe extern "C" fn condjump(
     luaK_codeABC(fs, op, A, B, C);
     return luaK_jump(fs);
 }
-  
+
 /*
 ** returns current 'pc' and marks it as a jump target (to avoid wrong
 ** optimizations with consecutive instructions not in the same basic block).
@@ -240,15 +227,12 @@ pub unsafe extern "C" fn luaK_getlabel(mut fs: *mut FuncState) -> libc::c_int {
 
 // FIXME static
 #[no_mangle]
-pub unsafe extern "C" fn getjumpcontrol(
-    fs: *mut FuncState,
-    pc: libc::c_int,
-) -> *mut Instruction {
+pub unsafe extern "C" fn getjumpcontrol(fs: *mut FuncState, pc: libc::c_int) -> *mut Instruction {
     let pi: *mut Instruction = &mut *((*(*fs).f).code).offset(pc as isize);
     if pc >= 1 && testTMode(GET_OPCODE(*pi.offset(-1)) as usize) != 0 {
-        return pi.offset(-1)
+        return pi.offset(-1);
     } else {
-        return pi
+        return pi;
     };
 }
 
@@ -262,11 +246,7 @@ pub unsafe extern "C" fn getjumpcontrol(
 
 // FIXME static
 #[no_mangle]
-pub unsafe extern "C" fn patchtestreg(
-    fs: *mut FuncState,
-    node: c_int,
-    reg: c_int,
-) -> c_int {
+pub unsafe extern "C" fn patchtestreg(fs: *mut FuncState, node: c_int, reg: c_int) -> c_int {
     let i = getjumpcontrol(fs, node);
     if GET_OPCODE(*i) != OP_TESTSET {
         return 0; /* cannot patch other instructions */
@@ -275,24 +255,13 @@ pub unsafe extern "C" fn patchtestreg(
         SETARG_A(i, reg);
     } else {
         /* no register to put value or register already has the value;
-           change instruction to simple test */
-      *i = CREATE_ABC(OP_TEST as i32, GETARG_B(*i), 0, GETARG_C(*i));
+        change instruction to simple test */
+        *i = CREATE_ABC(OP_TEST as i32, GETARG_B(*i), 0, GETARG_C(*i));
     }
     return 1 as libc::c_int;
 }
 
 extern "C" {
-    pub fn luaK_codeABC(
-        fs: *mut FuncState,
-        o: OpCode,
-        a: c_int,
-        b: c_int,
-        c: c_int,
-    ) -> c_int;
-    pub fn luaK_codeABx(
-        fs: *mut FuncState,
-        o: OpCode,
-        a: c_int,
-        bc: c_uint,
-    ) -> c_int;
+    pub fn luaK_codeABC(fs: *mut FuncState, o: OpCode, a: c_int, b: c_int, c: c_int) -> c_int;
+    pub fn luaK_codeABx(fs: *mut FuncState, o: OpCode, a: c_int, bc: c_uint) -> c_int;
 }

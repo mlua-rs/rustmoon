@@ -93,8 +93,8 @@ pub const fn getarg(i: Instruction, pos: c_uint, size: c_uint) -> c_int {
 }
 
 #[inline(always)]
-pub unsafe fn setarg(i: *mut Instruction, v: c_int, pos: c_uint, size: c_uint){
-    *i = (*i)&MASK0(size, pos) | (v as Instruction)<<pos& MASK1(size, pos);
+pub unsafe fn setarg(i: *mut Instruction, v: c_int, pos: c_uint, size: c_uint) {
+    *i = (*i) & MASK0(size, pos) | (v as Instruction) << pos & MASK1(size, pos);
 }
 
 #[inline(always)]
@@ -153,7 +153,7 @@ pub const fn GETARG_sBx(i: Instruction) -> c_int {
 }
 
 #[inline(always)]
-pub unsafe fn SETARG_sBx(i: *mut Instruction, b: c_int){
+pub unsafe fn SETARG_sBx(i: *mut Instruction, b: c_int) {
     SETARG_Bx(i, b + MAXARG_sBx as c_int);
 }
 
