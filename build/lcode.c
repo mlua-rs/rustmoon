@@ -40,19 +40,7 @@
 ** If expression is a numeric constant, fills 'v' with its value
 ** and returns 1. Otherwise, returns 0.
 */
-static int tonumeral(const expdesc *e, TValue *v) {
-  if (hasjumps(e))
-    return 0;  /* not a numeral */
-  switch (e->k) {
-    case VKINT:
-      if (v) setivalue(v, e->u.ival);
-      return 1;
-    case VKFLT:
-      if (v) setfltvalue(v, e->u.nval);
-      return 1;
-    default: return 0;
-  }
-}
+extern int tonumeral(const expdesc *e, TValue *v);
 
 
 /*
