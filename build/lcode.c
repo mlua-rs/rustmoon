@@ -40,14 +40,7 @@ extern int getjump (FuncState *fs, int pc);
 extern void fixjump (FuncState *fs, int pc, int dest);
 void luaK_concat (FuncState *fs, int *l1, int l2);
 int luaK_jump (FuncState *fs);
-
-/*
-** Code a 'return' instruction
-*/
-void luaK_ret (FuncState *fs, int first, int nret) {
-  luaK_codeABC(fs, OP_RETURN, first, nret+1, 0);
-}
-
+void luaK_ret (FuncState *fs, int first, int nret);
 
 /*
 ** Code a "conditional jump", that is, a test or comparison opcode
