@@ -8,7 +8,7 @@ use crate::lgc::luaC_barrier;
 use crate::llex::luaX_syntaxerror;
 use crate::llimits::{Instruction, MAX_INT, lu_byte};
 use crate::lmem::luaM_growvector;
-use crate::lobject::{setfltvalue, setivalue, TValue, ttisinteger, ttype, setnilvalue, setobj, GCObject};
+use crate::lobject::{setfltvalue, setivalue, TValue, ttisinteger, ttype, setnilvalue, setobj, GCObject, setsvalue, Value, TString};
 use crate::lopcodes::{
     luaP_opmodes, GETARG_sBx, MAXARG_sBx, OpCode, SETARG_sBx, GETARG_A, GETARG_B, GETARG_C,
     GET_OPCODE, NO_REG, OP_JMP, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C,
@@ -588,4 +588,20 @@ pub unsafe extern "C" fn addk(
     (*fs).nk += 1;
     luaC_barrier(L, f as *mut GCObject, v);
     return k;
+}
+
+/*
+** Add a string to list of constants and return its index.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_stringK(
+    fs: *mut FuncState,
+    s: *mut TString,
+) -> libc::c_int {
+    let mut o = TValue {
+        value_: Value { gc: 0 as *mut GCObject },
+        tt_: 0,
+    };
+    setsvalue((*(*fs).ls).L, &mut o, s);
+    return addk(fs, &mut o, &mut o); /* use string itself as key */
 }

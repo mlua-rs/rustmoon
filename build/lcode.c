@@ -62,17 +62,7 @@ extern void freereg (FuncState *fs, int reg);
 extern void freeexp (FuncState *fs, expdesc *e);
 extern void freeexps (FuncState *fs, expdesc *e1, expdesc *e2);
 extern int addk (FuncState *fs, TValue *key, TValue *v);
-
-/*
-** Add a string to list of constants and return its index.
-*/
-int luaK_stringK (FuncState *fs, TString *s) {
-  TValue o;
-  setsvalue(fs->ls->L, &o, s);
-  return addk(fs, &o, &o);  /* use string itself as key */
-}
-
-
+int luaK_stringK (FuncState *fs, TString *s);
 /*
 ** Add an integer to list of constants and return its index.
 ** Integers use userdata as keys to avoid collision with floats with
