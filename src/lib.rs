@@ -17,6 +17,7 @@ pub(crate) mod lobject;
 pub(crate) mod lgc;
 
 pub(crate) mod lbaselib;
+pub(crate) mod ldblib;
 pub(crate) mod ldebug;
 pub(crate) mod ldo;
 pub(crate) mod ldump;

@@ -38,7 +38,7 @@ use crate::lzio::{luaZ_init, ZIO};
 use crate::types::{
     lua_Alloc, lua_CFunction, lua_Integer, lua_KContext, lua_KFunction, lua_Number, lua_Reader,
     lua_Writer, LUA_MULTRET, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS, LUA_TFUNCTION, LUA_TNIL,
-    LUA_TTABLE, LUA_VERSION_NUM,
+    LUA_TTABLE, LUA_TTHREAD, LUA_VERSION_NUM,
 };
 
 #[inline(always)]
@@ -617,6 +617,11 @@ pub unsafe extern "C" fn lua_touserdata(L: *mut lua_State, idx: c_int) -> *mut c
         2 => return (*o).value_.p,
         _ => return 0 as *mut c_void,
     };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn lua_isthread(L: *mut lua_State, idx: c_int) -> bool {
+    return lua_type(L, idx) == LUA_TTHREAD;
 }
 
 #[no_mangle]
