@@ -13,7 +13,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
       - name: Run tests
         run: |
-          RUSTFLAGS="-D warnings -Z sanitizer=address" ASAN_OPTIONS=detect_leaks=0 cargo test
+          RUSTFLAGS="-D warnings -Z sanitizer=address" ASAN_OPTIONS=detect_leaks=1 cargo test
 
   rustfmt:
     name: Rustfmt

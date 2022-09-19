@@ -67,8 +67,9 @@ pub unsafe fn lua_istable(L: *mut lua_State, n: c_int) -> bool {
 }
 
 pub unsafe fn lua_pushliteral(L: *mut lua_State, s: &str) {
-    let cstr = CString::new(s).unwrap().into_raw();
-    lua_pushstring(L, cstr);
+    // TODO: Redesign
+    let s = CString::new(s).expect("valid literal");
+    lua_pushstring(L, s.as_ptr());
 }
 
 pub const fn lua_upvalueindex(i: c_int) -> c_int {

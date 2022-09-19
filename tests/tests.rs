@@ -4,6 +4,7 @@ use std::ptr;
 use rustmoon::cstr;
 use rustmoon::lapi::lua_call;
 use rustmoon::lauxlib::{luaL_loadfilex, luaL_loadstring, luaL_newstate};
+use rustmoon::lstate::lua_close;
 use rustmoon::lualib::luaL_openlibs;
 use rustmoon::types::LUA_OK;
 
@@ -27,6 +28,8 @@ fn test_all() {
                 panic!("Failed to load `all.lua`");
             }
             lua_call(state, 0, 0);
+
+            lua_close(state);
         })
         .unwrap()
         .join()

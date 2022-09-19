@@ -10,7 +10,7 @@
 pub(crate) mod macros;
 
 #[macro_use]
-pub(crate) mod lstate;
+pub mod lstate; // TODO: update visibility
 #[macro_use]
 pub(crate) mod lobject;
 #[macro_use]

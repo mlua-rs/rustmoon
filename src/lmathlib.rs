@@ -50,12 +50,11 @@ unsafe extern "C" fn lua_numbertointeger(n: lua_Number, p: *mut lua_Integer) -> 
     return false;
 }
 
-// FIXME static
 #[no_mangle]
 unsafe extern "C" fn pushnumint(L: *mut lua_State, d: lua_Number) {
-    let n: *mut lua_Integer = Box::into_raw(Box::new(0));
-    if lua_numbertointeger(d, n) {
-        lua_pushinteger(L, *n);
+    let mut n: lua_Integer = 0;
+    if lua_numbertointeger(d, &mut n) {
+        lua_pushinteger(L, n);
     } else {
         lua_pushnumber(L, d);
     };
