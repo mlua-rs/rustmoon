@@ -17,9 +17,9 @@ use crate::lopcodes::{
     GETARG_sBx, MAXARG_Ax, MAXARG_Bx, MAXARG_sBx, OpArgN, OpCode, SETARG_sBx, GETARG_A, GETARG_B,
     GETARG_C, GET_OPCODE, ISK, MAXARG_A, MAXARG_B, MAXARG_C, NO_REG, OP_EXTRAARG, OP_JMP, OP_LOADK,
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
-    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP,
+    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL,
 };
-use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL};
+use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP};
 use crate::ltable::luaH_set;
 use crate::lvm::luaV_rawequalobj;
 use crate::types::{lua_Integer, lua_Number};
@@ -793,3 +793,58 @@ pub unsafe extern "C" fn luaK_dischargevars(
         _ => {} /* there is one value available (somewhere) */
     };
   }
+
+/*
+** Ensures expression value is in register 'reg' (and therefore
+** 'e' will become a non-relocatable expression).
+*/
+
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn discharge2reg(
+    mut fs: *mut FuncState,
+    mut e: *mut expdesc,
+    mut reg: libc::c_int,
+) {
+    luaK_dischargevars(fs, e);
+    match (*e).k as libc::c_uint {
+        1 => {
+            luaK_nil(fs, reg, 1 as libc::c_int);
+        }
+        3 | 2 => {
+            luaK_codeABC(
+                fs,
+                OP_LOADBOOL,
+                reg,
+                ((*e).k as libc::c_uint == VTRUE as libc::c_int as libc::c_uint)
+                    as libc::c_int,
+                0,
+            );
+        }
+        4 => {
+            luaK_codek(fs, reg, (*e).u.info);
+        }
+        5 => {
+            luaK_codek(fs, reg, luaK_numberK(fs, (*e).u.nval));
+        }
+        6 => {
+            luaK_codek(fs, reg, luaK_intK(fs, (*e).u.ival));
+        }
+        12 => {
+            let pc: *mut Instruction = getinstruction(fs, e);
+            SETARG_A(pc, reg); /* instruction will put result in 'reg' */
+        }
+        7 => {
+            if reg != (*e).u.info {
+                luaK_codeABC(fs, OP_MOVE, reg, (*e).u.info, 0 as libc::c_int);
+            }
+        }
+        _ => {
+            debug_assert!((*e).k == VJMP);
+            /* nothing to do... */
+            return;
+        }
+    }
+    (*e).u.info = reg;
+    (*e).k = VNONRELOC;
+}

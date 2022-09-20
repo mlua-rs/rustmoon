@@ -70,52 +70,7 @@ extern int nilK (FuncState *fs);
 void luaK_setreturns (FuncState *fs, expdesc *e, int nresults);
 void luaK_setoneret (FuncState *fs, expdesc *e);
 void luaK_dischargevars (FuncState *fs, expdesc *e);
-
-/*
-** Ensures expression value is in register 'reg' (and therefore
-** 'e' will become a non-relocatable expression).
-*/
-static void discharge2reg (FuncState *fs, expdesc *e, int reg) {
-  luaK_dischargevars(fs, e);
-  switch (e->k) {
-    case VNIL: {
-      luaK_nil(fs, reg, 1);
-      break;
-    }
-    case VFALSE: case VTRUE: {
-      luaK_codeABC(fs, OP_LOADBOOL, reg, e->k == VTRUE, 0);
-      break;
-    }
-    case VK: {
-      luaK_codek(fs, reg, e->u.info);
-      break;
-    }
-    case VKFLT: {
-      luaK_codek(fs, reg, luaK_numberK(fs, e->u.nval));
-      break;
-    }
-    case VKINT: {
-      luaK_codek(fs, reg, luaK_intK(fs, e->u.ival));
-      break;
-    }
-    case VRELOCABLE: {
-      Instruction *pc = &getinstruction(fs, e);
-      SETARG_A(*pc, reg);  /* instruction will put result in 'reg' */
-      break;
-    }
-    case VNONRELOC: {
-      if (reg != e->u.info)
-        luaK_codeABC(fs, OP_MOVE, reg, e->u.info, 0);
-      break;
-    }
-    default: {
-      lua_assert(e->k == VJMP);
-      return;  /* nothing to do... */
-    }
-  }
-  e->u.info = reg;
-  e->k = VNONRELOC;
-}
+extern void discharge2reg (FuncState *fs, expdesc *e, int reg);
 
 
 /*
