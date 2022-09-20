@@ -36,7 +36,7 @@ unsafe extern "C" fn getthread(L: *mut lua_State, arg: *mut c_int) -> *mut lua_S
 
 unsafe extern "C" fn checkstack(L: *mut lua_State, L1: *mut lua_State, n: c_int) {
     if L != L1 && lua_checkstack(L1, n) == 0 {
-        luaL_error(L, cstr!("stack overflow") as *const u8 as *const c_char);
+        luaL_error(L, cstr!("stack overflow"));
     }
 }
 
@@ -49,10 +49,7 @@ unsafe extern "C" fn db_debug(L: *mut lua_State) -> c_int {
             io::stdin as *mut FILE,
         ))
         .is_null()
-            || strcmp(
-                buffer.as_mut_ptr(),
-                cstr!("cont\n") as *const u8 as *const c_char,
-            ) == 0 as c_int
+            || strcmp(buffer.as_mut_ptr(), cstr!("cont\n")) == 0 as c_int
         {
             return 0 as c_int;
         }
@@ -67,7 +64,7 @@ unsafe extern "C" fn db_debug(L: *mut lua_State) -> c_int {
         {
             fprintf(
                 io::stderr as *mut FILE,
-                cstr!("%s\n") as *const u8 as *const c_char,
+                cstr!("%s\n"),
                 lua_tolstring(L, -(1 as c_int), 0 as *mut usize),
             );
             fflush(io::stderr as *mut FILE);
@@ -266,112 +263,112 @@ static mut dblib: [luaL_Reg; 17] = unsafe {
     [
         {
             let init = luaL_Reg {
-                name: cstr!("debug") as *const u8 as *const c_char,
+                name: cstr!("debug"),
                 func: Some(db_debug as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("getuservalue") as *const u8 as *const c_char,
+                name: cstr!("getuservalue"),
                 func: Some(db_getuservalue as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("gethook") as *const u8 as *const c_char,
+                name: cstr!("gethook"),
                 func: Some(db_gethook as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("getinfo") as *const u8 as *const c_char,
+                name: cstr!("getinfo"),
                 func: Some(db_getinfo as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("getlocal") as *const u8 as *const c_char,
+                name: cstr!("getlocal"),
                 func: Some(db_getlocal as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("getregistry") as *const u8 as *const c_char,
+                name: cstr!("getregistry"),
                 func: Some(db_getregistry as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("getmetatable") as *const u8 as *const c_char,
+                name: cstr!("getmetatable"),
                 func: Some(db_getmetatable as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("getupvalue") as *const u8 as *const c_char,
+                name: cstr!("getupvalue"),
                 func: Some(db_getupvalue as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("upvaluejoin") as *const u8 as *const c_char,
+                name: cstr!("upvaluejoin"),
                 func: Some(db_upvaluejoin as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("upvalueid") as *const u8 as *const c_char,
+                name: cstr!("upvalueid"),
                 func: Some(db_upvalueid as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("setuservalue") as *const u8 as *const c_char,
+                name: cstr!("setuservalue"),
                 func: Some(db_setuservalue as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("sethook") as *const u8 as *const c_char,
+                name: cstr!("sethook"),
                 func: Some(db_sethook as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("setlocal") as *const u8 as *const c_char,
+                name: cstr!("setlocal"),
                 func: Some(db_setlocal as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("setmetatable") as *const u8 as *const c_char,
+                name: cstr!("setmetatable"),
                 func: Some(db_setmetatable as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("setupvalue") as *const u8 as *const c_char,
+                name: cstr!("setupvalue"),
                 func: Some(db_setupvalue as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
         },
         {
             let init = luaL_Reg {
-                name: cstr!("traceback") as *const u8 as *const c_char,
+                name: cstr!("traceback"),
                 func: Some(db_traceback as unsafe extern "C" fn(*mut lua_State) -> c_int),
             };
             init
