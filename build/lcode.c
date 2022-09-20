@@ -68,30 +68,7 @@ extern int luaK_numberK (FuncState *fs, lua_Number r);
 extern int boolK (FuncState *fs, int b);
 extern int nilK (FuncState *fs);
 void luaK_setreturns (FuncState *fs, expdesc *e, int nresults);
-
-
-/*
-** Fix an expression to return one result.
-** If expression is not a multi-ret expression (function call or
-** vararg), it already returns one result, so nothing needs to be done.
-** Function calls become VNONRELOC expressions (as its result comes
-** fixed in the base register of the call), while vararg expressions
-** become VRELOCABLE (as OP_VARARG puts its results where it wants).
-** (Calls are created returning one result, so that does not need
-** to be fixed.)
-*/
-void luaK_setoneret (FuncState *fs, expdesc *e) {
-  if (e->k == VCALL) {  /* expression is an open function call? */
-    /* already returns 1 value */
-    lua_assert(GETARG_C(getinstruction(fs, e)) == 2);
-    e->k = VNONRELOC;  /* result has fixed position */
-    e->u.info = GETARG_A(getinstruction(fs, e));
-  }
-  else if (e->k == VVARARG) {
-    SETARG_B(getinstruction(fs, e), 2);
-    e->k = VRELOCABLE;  /* can relocate its simple result */
-  }
-}
+void luaK_setoneret (FuncState *fs, expdesc *e);
 
 
 /*

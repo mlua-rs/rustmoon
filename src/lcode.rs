@@ -19,7 +19,7 @@ use crate::lopcodes::{
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
     SETARG_B, SETARG_C,
 };
-use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG};
+use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE};
 use crate::ltable::luaH_set;
 use crate::lvm::luaV_rawequalobj;
 use crate::types::{lua_Integer, lua_Number};
@@ -717,5 +717,28 @@ pub unsafe extern "C" fn luaK_setreturns(fs: *mut FuncState, e: *mut expdesc, nr
         SETARG_B(pc, nresults + 1);
         SETARG_A(pc, (*fs).freereg as c_int);
         luaK_reserveregs(fs, 1);
+    }
+}
+
+/*
+** Fix an expression to return one result.
+** If expression is not a multi-ret expression (function call or
+** vararg), it already returns one result, so nothing needs to be done.
+** Function calls become VNONRELOC expressions (as its result comes
+** fixed in the base register of the call), while vararg expressions
+** become VRELOCABLE (as OP_VARARG puts its results where it wants).
+** (Calls are created returning one result, so that does not need
+** to be fixed.)
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_setoneret(fs: *mut FuncState, mut e: *mut expdesc) {
+    if (*e).k == VCALL { /* expression is an open function call? */
+         /* already returns 1 value */
+         debug_assert!(GETARG_C(*getinstruction(fs, e)) == 2);
+        (*e).k = VNONRELOC; /* result has fixed position */
+        (*e).u.info = GETARG_A(*getinstruction(fs, e));
+    } else if (*e).k== VVARARG {
+        SETARG_B(getinstruction(fs, e), 2);
+        (*e).k = VRELOCABLE; /* can relocate its simple result */
     }
 }
