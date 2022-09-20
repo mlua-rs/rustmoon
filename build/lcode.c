@@ -67,24 +67,7 @@ int luaK_intK (FuncState *fs, lua_Integer n);
 extern int luaK_numberK (FuncState *fs, lua_Number r);
 extern int boolK (FuncState *fs, int b);
 extern int nilK (FuncState *fs);
-
-/*
-** Fix an expression to return the number of results 'nresults'.
-** Either 'e' is a multi-ret expression (function call or vararg)
-** or 'nresults' is LUA_MULTRET (as any expression can satisfy that).
-*/
-void luaK_setreturns (FuncState *fs, expdesc *e, int nresults) {
-  if (e->k == VCALL) {  /* expression is an open function call? */
-    SETARG_C(getinstruction(fs, e), nresults + 1);
-  }
-  else if (e->k == VVARARG) {
-    Instruction *pc = &getinstruction(fs, e);
-    SETARG_B(*pc, nresults + 1);
-    SETARG_A(*pc, fs->freereg);
-    luaK_reserveregs(fs, 1);
-  }
-  else lua_assert(nresults == LUA_MULTRET);
-}
+void luaK_setreturns (FuncState *fs, expdesc *e, int nresults);
 
 
 /*

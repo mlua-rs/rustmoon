@@ -12,9 +12,9 @@ use crate::lobject::{setfltvalue, setivalue, TValue, ttisinteger, ttype, setnilv
 use crate::lopcodes::{
     luaP_opmodes, GETARG_sBx, MAXARG_sBx, OpCode, SETARG_sBx, GETARG_A, GETARG_B, GETARG_C,
     GET_OPCODE, NO_REG, OP_JMP, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C,
-    POS_OP, SETARG_A, SETARG_B, iABC, getOpMode, getBMode, OpArgN, getCMode, MAXARG_A, MAXARG_B, MAXARG_C, iABx, iAsBx, MAXARG_Bx, CREATE_ABx, CREATE_Ax, OP_EXTRAARG, OP_LOADK, OP_LOADKX, ISK, MAXARG_Ax,
+    POS_OP, SETARG_A, SETARG_B, iABC, getOpMode, getBMode, OpArgN, getCMode, MAXARG_A, MAXARG_B, MAXARG_C, iABx, iAsBx, MAXARG_Bx, CREATE_ABx, CREATE_Ax, OP_EXTRAARG, OP_LOADK, OP_LOADKX, ISK, MAXARG_Ax, SETARG_C,
 };
-use crate::lparser::{expdesc, FuncState, VKFLT, VKINT, VNONRELOC};
+use crate::lparser::{expdesc, FuncState, VKFLT, VKINT, VNONRELOC, VCALL, VVARARG};
 use crate::ltable::luaH_set;
 use crate::lvm::luaV_rawequalobj;
 use crate::types::{lua_Integer, lua_Number};
@@ -43,6 +43,11 @@ unsafe extern "C" fn CREATE_ABC(o: OpCode, a: c_int, b: c_int, c: c_int) -> u32 
         | (a as Instruction) << POS_A
         | (b as Instruction) << POS_B
         | (c as Instruction) << POS_C;
+}
+
+#[inline(always)]
+unsafe fn getinstruction(fs: *mut FuncState, e: *mut expdesc) -> *mut Instruction {
+    return (*(*fs).f).code.offset((*e).u.info as isize);
 }
 
 /*
@@ -679,4 +684,27 @@ pub unsafe extern "C" fn nilK(fs: *mut FuncState) -> libc::c_int {
     /* cannot use nil as key; instead use table itself to represent nil */
     sethvalue((*(*fs).ls).L, &mut k, (*(*fs).ls).h);
     return addk(fs, &mut k, &mut v);
+}
+
+
+/*
+** Fix an expression to return the number of results 'nresults'.
+** Either 'e' is a multi-ret expression (function call or vararg)
+** or 'nresults' is LUA_MULTRET (as any expression can satisfy that).
+*/
+
+#[no_mangle]
+pub unsafe extern "C" fn luaK_setreturns(
+    fs: *mut FuncState,
+    e: *mut expdesc,
+    nresults: c_int,
+) {
+    if (*e).k as c_uint == VCALL { /* expression is an open function call? */
+        SETARG_C(getinstruction(fs, e), nresults + 1);
+    } else if (*e).k as c_uint == VVARARG {
+        let pc: *mut Instruction = getinstruction(fs, e);
+        SETARG_B(pc, nresults + 1);
+        SETARG_A(pc, (*fs).freereg as c_int);
+        luaK_reserveregs(fs, 1);
+    }
 }
