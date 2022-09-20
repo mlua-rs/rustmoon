@@ -1248,6 +1248,16 @@ pub unsafe extern "C" fn luaL_loadstring(L: *mut lua_State, s: *const libc::c_ch
     return luaL_loadbufferx(L, s, strlen(s), s, ptr::null_mut());
 }
 
+#[no_mangle]
+pub unsafe fn luaL_loadbuffer(
+    L: *mut lua_State,
+    buff: *const c_char,
+    size: size_t,
+    name: *const c_char,
+) -> c_int {
+    return luaL_loadbufferx(L, buff, size, name, 0 as *const i8);
+}
+
 /* }====================================================== */
 
 #[no_mangle]
