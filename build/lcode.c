@@ -66,19 +66,7 @@ int luaK_stringK (FuncState *fs, TString *s);
 int luaK_intK (FuncState *fs, lua_Integer n);
 extern int luaK_numberK (FuncState *fs, lua_Number r);
 extern int boolK (FuncState *fs, int b);
-
-
-/*
-** Add nil to list of constants and return its index.
-*/
-static int nilK (FuncState *fs) {
-  TValue k, v;
-  setnilvalue(&v);
-  /* cannot use nil as key; instead use table itself to represent nil */
-  sethvalue(fs->ls->L, &k, fs->ls->h);
-  return addk(fs, &k, &v);
-}
-
+extern int nilK (FuncState *fs);
 
 /*
 ** Fix an expression to return the number of results 'nresults'.
