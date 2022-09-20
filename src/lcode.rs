@@ -2,7 +2,7 @@
 ** Code generator for Lua
 */
 
-use libc::{abs, c_int, c_uint, c_void, size_t};
+use libc::{abs, c_int, c_uint, c_void, size_t, c_char, c_uchar};
 
 use crate::lgc::luaC_barrier;
 use crate::llex::luaX_syntaxerror;
@@ -17,9 +17,9 @@ use crate::lopcodes::{
     GETARG_sBx, MAXARG_Ax, MAXARG_Bx, MAXARG_sBx, OpArgN, OpCode, SETARG_sBx, GETARG_A, GETARG_B,
     GETARG_C, GET_OPCODE, ISK, MAXARG_A, MAXARG_B, MAXARG_C, NO_REG, OP_EXTRAARG, OP_JMP, OP_LOADK,
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
-    SETARG_B, SETARG_C,
+    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP,
 };
-use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE};
+use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL};
 use crate::ltable::luaH_set;
 use crate::lvm::luaV_rawequalobj;
 use crate::types::{lua_Integer, lua_Number};
@@ -742,3 +742,54 @@ pub unsafe extern "C" fn luaK_setoneret(fs: *mut FuncState, mut e: *mut expdesc)
         (*e).k = VRELOCABLE; /* can relocate its simple result */
     }
 }
+
+/*
+** Ensure that expression 'e' is not a variable.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_dischargevars(
+    fs: *mut FuncState,
+    mut e: *mut expdesc,
+) {
+    match (*e).k as libc::c_uint {
+        8 => { // VLOCAL /* already in a register */
+            (*e).k = VNONRELOC; /* becomes a non-relocatable value */
+        }
+        9 => { // VUPVAL /* move value to some (pending) register */
+            (*e)
+                .u
+                .info = luaK_codeABC(
+                fs,
+                OP_GETUPVAL,
+                0 as libc::c_int,
+                (*e).u.info,
+                0 as libc::c_int,
+            );
+            (*e).k = VRELOCABLE;
+        }
+        10 => { // VINDEXED
+            let mut op = OP_MOVE;
+            freereg(fs, (*e).u.ind.idx as libc::c_int);
+            if (*e).u.ind.vt as libc::c_int == VLOCAL as libc::c_int { /* is 't' in a register? */
+                freereg(fs, (*e).u.ind.t as libc::c_int);
+                op = OP_GETTABLE;
+            } else {
+                op = OP_GETTABUP; /* 't' is in an upvalue */
+            }
+            (*e)
+                .u
+                .info = luaK_codeABC(
+                fs,
+                op,
+                0,
+                (*e).u.ind.t as c_int,
+                (*e).u.ind.idx as c_int,
+            );
+            (*e).k = VRELOCABLE;
+        }
+        14 | 13 => { // VVARARG | VCALL
+            luaK_setoneret(fs, e);
+        }
+        _ => {} /* there is one value available (somewhere) */
+    };
+  }

@@ -69,45 +69,7 @@ extern int boolK (FuncState *fs, int b);
 extern int nilK (FuncState *fs);
 void luaK_setreturns (FuncState *fs, expdesc *e, int nresults);
 void luaK_setoneret (FuncState *fs, expdesc *e);
-
-
-/*
-** Ensure that expression 'e' is not a variable.
-*/
-void luaK_dischargevars (FuncState *fs, expdesc *e) {
-  switch (e->k) {
-    case VLOCAL: {  /* already in a register */
-      e->k = VNONRELOC;  /* becomes a non-relocatable value */
-      break;
-    }
-    case VUPVAL: {  /* move value to some (pending) register */
-      e->u.info = luaK_codeABC(fs, OP_GETUPVAL, 0, e->u.info, 0);
-      e->k = VRELOCABLE;
-      break;
-    }
-    case VINDEXED: {
-      OpCode op;
-      freereg(fs, e->u.ind.idx);
-      if (e->u.ind.vt == VLOCAL) {  /* is 't' in a register? */
-        freereg(fs, e->u.ind.t);
-        op = OP_GETTABLE;
-      }
-      else {
-        lua_assert(e->u.ind.vt == VUPVAL);
-        op = OP_GETTABUP;  /* 't' is in an upvalue */
-      }
-      e->u.info = luaK_codeABC(fs, op, 0, e->u.ind.t, e->u.ind.idx);
-      e->k = VRELOCABLE;
-      break;
-    }
-    case VVARARG: case VCALL: {
-      luaK_setoneret(fs, e);
-      break;
-    }
-    default: break;  /* there is one value available (somewhere) */
-  }
-}
-
+void luaK_dischargevars (FuncState *fs, expdesc *e);
 
 /*
 ** Ensures expression value is in register 'reg' (and therefore
