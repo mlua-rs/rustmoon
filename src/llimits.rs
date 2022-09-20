@@ -81,4 +81,4 @@ pub const LUAI_MAXSTACK: usize = 1000000;
 */
 pub const LUAI_MAXCCALLS: u16 = 200;
 
-pub const MAX_INT: i32 = INT_MAX; 
+pub const MAX_INT: i32 = INT_MAX;

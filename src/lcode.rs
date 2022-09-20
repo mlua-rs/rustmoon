@@ -6,15 +6,20 @@ use libc::{abs, c_int, c_uint, c_void, size_t};
 
 use crate::lgc::luaC_barrier;
 use crate::llex::luaX_syntaxerror;
-use crate::llimits::{Instruction, MAX_INT, lu_byte};
+use crate::llimits::{lu_byte, Instruction, MAX_INT};
 use crate::lmem::luaM_growvector;
-use crate::lobject::{setfltvalue, setivalue, TValue, ttisinteger, ttype, setnilvalue, setobj, GCObject, setsvalue, Value, TString, setpvalue, setbvalue, sethvalue};
-use crate::lopcodes::{
-    luaP_opmodes, GETARG_sBx, MAXARG_sBx, OpCode, SETARG_sBx, GETARG_A, GETARG_B, GETARG_C,
-    GET_OPCODE, NO_REG, OP_JMP, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C,
-    POS_OP, SETARG_A, SETARG_B, iABC, getOpMode, getBMode, OpArgN, getCMode, MAXARG_A, MAXARG_B, MAXARG_C, iABx, iAsBx, MAXARG_Bx, CREATE_ABx, CREATE_Ax, OP_EXTRAARG, OP_LOADK, OP_LOADKX, ISK, MAXARG_Ax, SETARG_C,
+use crate::lobject::{
+    setbvalue, setfltvalue, sethvalue, setivalue, setnilvalue, setobj, setpvalue, setsvalue,
+    ttisinteger, ttype, GCObject, TString, TValue, Value,
 };
-use crate::lparser::{expdesc, FuncState, VKFLT, VKINT, VNONRELOC, VCALL, VVARARG};
+use crate::lopcodes::{
+    getBMode, getCMode, getOpMode, iABC, iABx, iAsBx, luaP_opmodes, CREATE_ABx, CREATE_Ax,
+    GETARG_sBx, MAXARG_Ax, MAXARG_Bx, MAXARG_sBx, OpArgN, OpCode, SETARG_sBx, GETARG_A, GETARG_B,
+    GETARG_C, GET_OPCODE, ISK, MAXARG_A, MAXARG_B, MAXARG_C, NO_REG, OP_EXTRAARG, OP_JMP, OP_LOADK,
+    OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
+    SETARG_B, SETARG_C,
+};
+use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG};
 use crate::ltable::luaH_set;
 use crate::lvm::luaV_rawequalobj;
 use crate::types::{lua_Integer, lua_Number};
@@ -442,7 +447,7 @@ pub unsafe extern "C" fn luaK_codeABx(
 /*
 ** Emit an "extra argument" instruction (format 'iAx')
 */
-/* 
+/*
 static int codeextraarg (FuncState *fs, int a) {
     lua_assert(a <= MAXARG_Ax);
     return luaK_code(fs, CREATE_Ax(OP_EXTRAARG, a));
@@ -451,10 +456,7 @@ static int codeextraarg (FuncState *fs, int a) {
 
 // FIXME static
 #[no_mangle]
-pub unsafe extern "C" fn codeextraarg(
-    fs: *mut FuncState,
-    a: c_int,
-) -> c_int {
+pub unsafe extern "C" fn codeextraarg(fs: *mut FuncState, a: c_int) -> c_int {
     return luaK_code(fs, CREATE_Ax(OP_EXTRAARG, a));
 }
 
@@ -464,13 +466,9 @@ pub unsafe extern "C" fn codeextraarg(
 ** instruction with "extra argument".
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaK_codek(
-    fs: *mut FuncState,
-    reg: c_int,
-    k: c_int,
-) -> libc::c_int {
+pub unsafe extern "C" fn luaK_codek(fs: *mut FuncState, reg: c_int, k: c_int) -> libc::c_int {
     if k as c_uint <= MAXARG_Bx {
-        return luaK_codeABx(fs, OP_LOADK, reg, k as c_uint)
+        return luaK_codeABx(fs, OP_LOADK, reg, k as c_uint);
     } else {
         let p = luaK_codeABx(fs, OP_LOADKX, reg, 0);
         codeextraarg(fs, k);
@@ -487,7 +485,10 @@ pub unsafe extern "C" fn luaK_checkstack(mut fs: *mut FuncState, n: c_int) {
     let newstack = (*fs).freereg as c_int + n;
     if newstack > (*(*fs).f).maxstacksize as c_int {
         if newstack >= MAXREGS {
-            luaX_syntaxerror((*fs).ls, cstr!("function or expression needs too many registers"));
+            luaX_syntaxerror(
+                (*fs).ls,
+                cstr!("function or expression needs too many registers"),
+            );
         }
         (*(*fs).f).maxstacksize = newstack as lu_byte;
     }
@@ -519,9 +520,9 @@ pub unsafe extern "C" fn freereg(mut fs: *mut FuncState, reg: c_int) {
 ** Free register used by expression 'e' (if any)
 */
 /*static void freeexp (FuncState *fs, expdesc *e) {
-    if (e->k == VNONRELOC)
-      freereg(fs, e->u.info);
-  }*/
+  if (e->k == VNONRELOC)
+    freereg(fs, e->u.info);
+}*/
 #[no_mangle]
 pub unsafe extern "C" fn freeexp(fs: *mut FuncState, e: *mut expdesc) {
     if (*e).k as libc::c_uint == VNONRELOC as c_uint {
@@ -534,13 +535,17 @@ pub unsafe extern "C" fn freeexp(fs: *mut FuncState, e: *mut expdesc) {
 ** order.
 */
 #[no_mangle]
-pub unsafe extern "C" fn freeexps(
-    fs: *mut FuncState,
-    e1: *mut expdesc,
-    e2: *mut expdesc,
-) {
-    let r1: c_int = if (*e1).k as c_uint == VNONRELOC as c_uint { (*e1).u.info } else { -1 };
-    let r2: c_int = if (*e2).k as c_uint == VNONRELOC as c_uint { (*e2).u.info } else { -1 };
+pub unsafe extern "C" fn freeexps(fs: *mut FuncState, e1: *mut expdesc, e2: *mut expdesc) {
+    let r1: c_int = if (*e1).k as c_uint == VNONRELOC as c_uint {
+        (*e1).u.info
+    } else {
+        -1
+    };
+    let r2: c_int = if (*e2).k as c_uint == VNONRELOC as c_uint {
+        (*e2).u.info
+    } else {
+        -1
+    };
     if r1 > r2 {
         freereg(fs, r1);
         freereg(fs, r2);
@@ -560,20 +565,18 @@ pub unsafe extern "C" fn freeexps(
 
 // FIXME - static
 #[no_mangle]
-pub unsafe extern "C" fn addk(
-    mut fs: *mut FuncState,
-    key: *mut TValue,
-    v: *mut TValue,
-) -> c_int {
+pub unsafe extern "C" fn addk(mut fs: *mut FuncState, key: *mut TValue, v: *mut TValue) -> c_int {
     let L = (*(*fs).ls).L;
     let f = (*fs).f;
     let idx = luaH_set(L, (*(*fs).ls).h, key); /* index scanner table */
     let mut k: libc::c_int;
     let mut oldsize: c_int;
-    if ttisinteger(idx) {  /* is there an index there? */
+    if ttisinteger(idx) {
+        /* is there an index there? */
         k = (*idx).value_.i as c_int;
         /* correct value? (warning: must distinguish floats from integers!) */
-        if k < (*fs).nk && ttype((*f).k.offset(k as isize)) == ttype(v)
+        if k < (*fs).nk
+            && ttype((*f).k.offset(k as isize)) == ttype(v)
             && luaV_rawequalobj((*f).k.offset(k as isize), v) != 0
         {
             return k; /* reuse index */
@@ -583,9 +586,16 @@ pub unsafe extern "C" fn addk(
     oldsize = (*f).sizek;
     k = (*fs).nk;
     /* numerical value does not need GC barrier;
-       table has no metatable, so it does not need to invalidate cache */
+    table has no metatable, so it does not need to invalidate cache */
     setivalue(idx, k as i64);
-    luaM_growvector(L, &mut (*f).k, k, &mut (*f).sizek, MAXARG_Ax as c_int, cstr!("constants"));
+    luaM_growvector(
+        L,
+        &mut (*f).k,
+        k,
+        &mut (*f).sizek,
+        MAXARG_Ax as c_int,
+        cstr!("constants"),
+    );
     while oldsize < (*f).sizek {
         setnilvalue((*f).k.offset(oldsize as isize));
         oldsize += 1;
@@ -600,12 +610,11 @@ pub unsafe extern "C" fn addk(
 ** Add a string to list of constants and return its index.
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaK_stringK(
-    fs: *mut FuncState,
-    s: *mut TString,
-) -> libc::c_int {
+pub unsafe extern "C" fn luaK_stringK(fs: *mut FuncState, s: *mut TString) -> libc::c_int {
     let mut o = TValue {
-        value_: Value { gc: 0 as *mut GCObject },
+        value_: Value {
+            gc: 0 as *mut GCObject,
+        },
         tt_: 0,
     };
     setsvalue((*(*fs).ls).L, &mut o, s);
@@ -619,16 +628,17 @@ pub unsafe extern "C" fn luaK_stringK(
 ** are no "precision" problems.
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaK_intK(
-    fs: *mut FuncState,
-    n: lua_Integer,
-) -> libc::c_int {
+pub unsafe extern "C" fn luaK_intK(fs: *mut FuncState, n: lua_Integer) -> libc::c_int {
     let mut k = TValue {
-        value_: Value { gc: 0 as *mut GCObject },
+        value_: Value {
+            gc: 0 as *mut GCObject,
+        },
         tt_: 0,
     };
     let mut o = TValue {
-        value_: Value { gc: 0 as *mut GCObject },
+        value_: Value {
+            gc: 0 as *mut GCObject,
+        },
         tt_: 0,
     };
     setpvalue(&mut k, n as size_t as *mut c_void);
@@ -640,12 +650,11 @@ pub unsafe extern "C" fn luaK_intK(
 */
 // FIXME static
 #[no_mangle]
-pub unsafe extern "C" fn luaK_numberK(
-    fs: *mut FuncState,
-    r: lua_Number,
-) -> c_int {
+pub unsafe extern "C" fn luaK_numberK(fs: *mut FuncState, r: lua_Number) -> c_int {
     let mut o = TValue {
-        value_: Value { gc: 0 as *mut GCObject },
+        value_: Value {
+            gc: 0 as *mut GCObject,
+        },
         tt_: 0,
     };
     setfltvalue(&mut o, r);
@@ -659,7 +668,9 @@ pub unsafe extern "C" fn luaK_numberK(
 #[no_mangle]
 pub unsafe extern "C" fn boolK(fs: *mut FuncState, b: c_int) -> c_int {
     let mut o = TValue {
-        value_: Value { gc: 0 as *mut GCObject },
+        value_: Value {
+            gc: 0 as *mut GCObject,
+        },
         tt_: 0,
     };
     setbvalue(&mut o, b != 0);
@@ -673,11 +684,15 @@ pub unsafe extern "C" fn boolK(fs: *mut FuncState, b: c_int) -> c_int {
 #[no_mangle]
 pub unsafe extern "C" fn nilK(fs: *mut FuncState) -> libc::c_int {
     let mut k = TValue {
-        value_: Value { gc: 0 as *mut GCObject },
+        value_: Value {
+            gc: 0 as *mut GCObject,
+        },
         tt_: 0,
     };
     let mut v = TValue {
-        value_: Value { gc: 0 as *mut GCObject },
+        value_: Value {
+            gc: 0 as *mut GCObject,
+        },
         tt_: 0,
     };
     setnilvalue(&mut v);
@@ -686,7 +701,6 @@ pub unsafe extern "C" fn nilK(fs: *mut FuncState) -> libc::c_int {
     return addk(fs, &mut k, &mut v);
 }
 
-
 /*
 ** Fix an expression to return the number of results 'nresults'.
 ** Either 'e' is a multi-ret expression (function call or vararg)
@@ -694,12 +708,9 @@ pub unsafe extern "C" fn nilK(fs: *mut FuncState) -> libc::c_int {
 */
 
 #[no_mangle]
-pub unsafe extern "C" fn luaK_setreturns(
-    fs: *mut FuncState,
-    e: *mut expdesc,
-    nresults: c_int,
-) {
-    if (*e).k as c_uint == VCALL { /* expression is an open function call? */
+pub unsafe extern "C" fn luaK_setreturns(fs: *mut FuncState, e: *mut expdesc, nresults: c_int) {
+    if (*e).k as c_uint == VCALL {
+        /* expression is an open function call? */
         SETARG_C(getinstruction(fs, e), nresults + 1);
     } else if (*e).k as c_uint == VVARARG {
         let pc: *mut Instruction = getinstruction(fs, e);
