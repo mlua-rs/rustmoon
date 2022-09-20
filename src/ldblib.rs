@@ -51,7 +51,7 @@ unsafe extern "C" fn db_debug(L: *mut lua_State) -> c_int {
         .is_null()
             || strcmp(buffer.as_mut_ptr(), cstr!("cont\n")) == 0 as c_int
         {
-            return 0 as c_int;
+            return 0;
         }
         let name = String::from("=(debug command)");
         if luaL_loadbuffer(
@@ -87,7 +87,7 @@ unsafe extern "C" fn db_traceback(L: *mut lua_State) -> c_int {
         ) as c_int;
         luaL_traceback(L, L1, msg, level);
     }
-    return 1 as c_int;
+    return 1;
 }
 
 unsafe extern "C" fn db_getuservalue(L: *mut lua_State) -> c_int {
@@ -96,7 +96,7 @@ unsafe extern "C" fn db_getuservalue(L: *mut lua_State) -> c_int {
     } else {
         lua_getuservalue(L, 1 as c_int);
     }
-    return 1 as c_int;
+    return 1;
 }
 
 unsafe extern "C" fn db_setuservalue(L: *mut lua_State) -> c_int {
@@ -104,7 +104,7 @@ unsafe extern "C" fn db_setuservalue(L: *mut lua_State) -> c_int {
     luaL_checkany(L, 2 as c_int);
     lua_settop(L, 2 as c_int);
     lua_setuservalue(L, 1 as c_int);
-    return 1 as c_int;
+    return 1;
 }
 
 unsafe extern "C" fn db_setlocal(L: *mut lua_State) -> c_int {
@@ -141,7 +141,7 @@ unsafe extern "C" fn db_setlocal(L: *mut lua_State) -> c_int {
         lua_pop(L1, 1);
     }
     lua_pushstring(L, name);
-    return 1 as c_int;
+    return 1;
 }
 
 unsafe extern "C" fn db_getlocal(L: *mut lua_State) -> c_int {
@@ -168,7 +168,7 @@ unsafe extern "C" fn db_getlocal(L: *mut lua_State) -> c_int {
     if lua_isfunction(L, arg + 1) != 0 {
         lua_pushvalue(L, arg + 1 as c_int);
         lua_pushstring(L, lua_getlocal(L, NULL as *const lua_Debug, nvar));
-        return 1 as c_int;
+        return 1;
     } else {
         let level = luaL_checkinteger(L, arg + 1 as c_int) as c_int;
         if lua_getstack(L1, level, &mut ar) == 0 {
@@ -183,14 +183,14 @@ unsafe extern "C" fn db_getlocal(L: *mut lua_State) -> c_int {
             return 2 as c_int;
         } else {
             lua_pushnil(L);
-            return 1 as c_int;
+            return 1;
         }
     };
 }
 
 unsafe extern "C" fn db_getregistry(L: *mut lua_State) -> c_int {
     lua_pushvalue(L, LUA_REGISTRYINDEX);
-    return 1 as c_int;
+    return 1;
 }
 
 unsafe extern "C" fn db_setmetatable(L: *mut lua_State) -> c_int {
@@ -200,7 +200,7 @@ unsafe extern "C" fn db_setmetatable(L: *mut lua_State) -> c_int {
     }
     lua_settop(L, 2 as c_int);
     lua_setmetatable(L, 1 as c_int);
-    return 1 as c_int;
+    return 1;
 }
 
 unsafe extern "C" fn db_getmetatable(L: *mut lua_State) -> c_int {
@@ -208,7 +208,7 @@ unsafe extern "C" fn db_getmetatable(L: *mut lua_State) -> c_int {
     if lua_getmetatable(L, 1 as c_int) == 0 {
         lua_pushnil(L);
     }
-    return 1 as c_int;
+    return 1;
 }
 
 unsafe extern "C" fn auxupvalue(L: *mut lua_State, get: c_int) -> c_int {
@@ -221,7 +221,7 @@ unsafe extern "C" fn auxupvalue(L: *mut lua_State, get: c_int) -> c_int {
         lua_setupvalue(L, 1 as c_int, n)
     };
     if name.is_null() {
-        return 0 as c_int;
+        return 0;
     }
     lua_pushstring(L, name);
     lua_insert(L, -(get + 1 as c_int));
@@ -249,14 +249,14 @@ unsafe extern "C" fn checkupval(L: *mut lua_State, argf: c_int, argnup: c_int) -
 unsafe extern "C" fn db_upvalueid(L: *mut lua_State) -> c_int {
     let n = checkupval(L, 1 as c_int, 2 as c_int);
     lua_pushlightuserdata(L, lua_upvalueid(L, 1 as c_int, n));
-    return 1 as c_int;
+    return 1;
 }
 
 unsafe extern "C" fn db_upvaluejoin(L: *mut lua_State) -> c_int {
     let n1 = checkupval(L, 1 as c_int, 2 as c_int);
     let n2 = checkupval(L, 3 as c_int, 4 as c_int);
     lua_upvaluejoin(L, 1 as c_int, n1, 3 as c_int, n2);
-    return 0 as c_int;
+    return 0;
 }
 
 static mut dblib: [luaL_Reg; 17] = unsafe {
@@ -386,7 +386,7 @@ static mut dblib: [luaL_Reg; 17] = unsafe {
 #[no_mangle]
 pub unsafe extern "C" fn luaopen_debug(L: *mut lua_State) -> c_int {
     luaL_newlib(L, dblib.as_ptr());
-    return 1 as c_int;
+    return 1;
 }
 
 extern "C" {
