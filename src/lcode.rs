@@ -860,3 +860,15 @@ pub unsafe extern "C" fn discharge2anyreg(fs: *mut FuncState, e: *mut expdesc) {
         discharge2reg(fs, e, (*fs).freereg as libc::c_int - 1); /* put value there */
     }
 }
+
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn code_loadbool(
+    fs: *mut FuncState,
+    A: c_int,
+    b: c_int,
+    jump: c_int,
+) -> libc::c_int {
+    luaK_getlabel(fs); /* those instructions may be jump targets */
+    return luaK_codeABC(fs, OP_LOADBOOL, A, b, jump);
+}

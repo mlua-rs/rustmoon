@@ -72,13 +72,7 @@ void luaK_setoneret (FuncState *fs, expdesc *e);
 void luaK_dischargevars (FuncState *fs, expdesc *e);
 extern void discharge2reg (FuncState *fs, expdesc *e, int reg);
 void discharge2anyreg (FuncState *fs, expdesc *e);
-
-
-static int code_loadbool (FuncState *fs, int A, int b, int jump) {
-  luaK_getlabel(fs);  /* those instructions may be jump targets */
-  return luaK_codeABC(fs, OP_LOADBOOL, A, b, jump);
-}
-
+int code_loadbool (FuncState *fs, int A, int b, int jump);
 
 /*
 ** check whether list has any jump that do not produce a value
