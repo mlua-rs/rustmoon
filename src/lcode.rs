@@ -17,7 +17,7 @@ use crate::lopcodes::{
     GETARG_sBx, MAXARG_Ax, MAXARG_Bx, MAXARG_sBx, OpArgN, OpCode, SETARG_sBx, GETARG_A, GETARG_B,
     GETARG_C, GET_OPCODE, ISK, MAXARG_A, MAXARG_B, MAXARG_C, NO_REG, OP_EXTRAARG, OP_JMP, OP_LOADK,
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
-    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK,
+    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP,
 };
 use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK};
 use crate::ltable::luaH_set;
@@ -1067,4 +1067,45 @@ pub unsafe extern "C" fn luaK_exp2RK(
         }
     }
     return luaK_exp2anyreg(fs, e);
+}
+
+/*
+** Generate code to store result of expression 'ex' into variable 'var'.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_storevar(
+    fs: *mut FuncState,
+    var: *mut expdesc,
+    ex: *mut expdesc,
+) {
+    match (*var).k as libc::c_uint {
+        8 => { // VLOCAL
+            freeexp(fs, ex);
+            exp2reg(fs, ex, (*var).u.info); /* compute 'ex' into proper place */
+            return;
+        }
+        9 => { // VUPVAL
+            let e = luaK_exp2anyreg(fs, ex);
+            luaK_codeABC(fs, OP_SETUPVAL, e, (*var).u.info, 0 as libc::c_int);
+        }
+        10 => { // VINDEXED
+            let op = (if (*var).u.ind.vt as libc::c_int == VLOCAL as libc::c_int {
+                OP_SETTABLE as libc::c_int
+            } else {
+                OP_SETTABUP as libc::c_int
+            }) as OpCode;
+            let e_0 = luaK_exp2RK(fs, ex);
+            luaK_codeABC(
+                fs,
+                op,
+                (*var).u.ind.t as libc::c_int,
+                (*var).u.ind.idx as libc::c_int,
+                e_0,
+            );
+        }
+        _ => {
+            debug_assert!(false);  /* invalid var kind to store */
+        }
+    }
+    freeexp(fs, ex);
 }

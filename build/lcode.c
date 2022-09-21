@@ -80,32 +80,7 @@ int luaK_exp2anyreg (FuncState *fs, expdesc *e);
 void luaK_exp2anyregup (FuncState *fs, expdesc *e);
 void luaK_exp2val (FuncState *fs, expdesc *e);
 int luaK_exp2RK (FuncState *fs, expdesc *e);
-
-/*
-** Generate code to store result of expression 'ex' into variable 'var'.
-*/
-void luaK_storevar (FuncState *fs, expdesc *var, expdesc *ex) {
-  switch (var->k) {
-    case VLOCAL: {
-      freeexp(fs, ex);
-      exp2reg(fs, ex, var->u.info);  /* compute 'ex' into proper place */
-      return;
-    }
-    case VUPVAL: {
-      int e = luaK_exp2anyreg(fs, ex);
-      luaK_codeABC(fs, OP_SETUPVAL, e, var->u.info, 0);
-      break;
-    }
-    case VINDEXED: {
-      OpCode op = (var->u.ind.vt == VLOCAL) ? OP_SETTABLE : OP_SETTABUP;
-      int e = luaK_exp2RK(fs, ex);
-      luaK_codeABC(fs, op, var->u.ind.t, var->u.ind.idx, e);
-      break;
-    }
-    default: lua_assert(0);  /* invalid var kind to store */
-  }
-  freeexp(fs, ex);
-}
+void luaK_storevar (FuncState *fs, expdesc *var, expdesc *ex);
 
 
 /*
