@@ -87,20 +87,7 @@ extern int jumponcond (FuncState *fs, expdesc *e, int cond);
 void luaK_goiftrue (FuncState *fs, expdesc *e);
 void luaK_goiffalse (FuncState *fs, expdesc *e);
 void codenot (FuncState *fs, expdesc *e);
-
-
-/*
-** Create expression 't[k]'. 't' must have its final result already in a
-** register or upvalue.
-*/
-void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k) {
-  lua_assert(!hasjumps(t) && (vkisinreg(t->k) || t->k == VUPVAL));
-  t->u.ind.t = t->u.info;  /* register or upvalue index */
-  t->u.ind.idx = luaK_exp2RK(fs, k);  /* R/K index for key */
-  t->u.ind.vt = (t->k == VUPVAL) ? VUPVAL : VLOCAL;
-  t->k = VINDEXED;
-}
-
+void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k);
 
 /*
 ** Return false if folding can raise an error.

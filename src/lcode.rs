@@ -19,7 +19,7 @@ use crate::lopcodes::{
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
     SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF, OP_NOT,
 };
-use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK, VFALSE};
+use crate::lparser::{expdesc, vkisinreg, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK, VFALSE, VINDEXED};
 use crate::ltable::luaH_set;
 use crate::lvm::luaV_rawequalobj;
 use crate::types::{lua_Integer, lua_Number};
@@ -1225,36 +1225,6 @@ pub unsafe extern "C" fn luaK_goiffalse(fs: *mut FuncState, mut e: *mut expdesc)
 /*
 ** Code 'not e', doing constant folding.
 */
-/*static void codenot (FuncState *fs, expdesc *e) {
-    luaK_dischargevars(fs, e);
-    switch (e->k) {
-      case VNIL: case VFALSE: {
-        e->k = VTRUE;  /* true == not nil == not false */
-        break;
-      }
-      case VK: case VKFLT: case VKINT: case VTRUE: {
-        e->k = VFALSE;  /* false == not "x" == not 0.5 == not 1 == not true */
-        break;
-      }
-      case VJMP: {
-        negatecondition(fs, e);
-        break;
-      }
-      case VRELOCABLE:
-      case VNONRELOC: {
-        discharge2anyreg(fs, e);
-        freeexp(fs, e);
-        e->u.info = luaK_codeABC(fs, OP_NOT, 0, e->u.info, 0);
-        e->k = VRELOCABLE;
-        break;
-      }
-      default: lua_assert(0);  /* cannot happen */
-    }
-    /* interchange true and false lists */
-    { int temp = e->f; e->f = e->t; e->t = temp; }
-    removevalues(fs, e->f);  /* values are useless when negated */
-    removevalues(fs, e->t);
-  }*/
 // FIXME static
 #[no_mangle]
 pub unsafe extern "C" fn codenot(fs: *mut FuncState, mut e: *mut expdesc) {
@@ -1293,4 +1263,35 @@ pub unsafe extern "C" fn codenot(fs: *mut FuncState, mut e: *mut expdesc) {
     (*e).t = temp;
     removevalues(fs, (*e).f); /* values are useless when negated */
     removevalues(fs, (*e).t);
+}
+
+/*
+** Create expression 't[k]'. 't' must have its final result already in a
+** register or upvalue.
+*/
+/*void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k) {
+    lua_assert(!hasjumps(t) && (vkisinreg(t->k) || t->k == VUPVAL));
+    t->u.ind.t = t->u.info;  /* register or upvalue index */
+    t->u.ind.idx = luaK_exp2RK(fs, k);  /* R/K index for key */
+    t->u.ind.vt = (t->k == VUPVAL) ? VUPVAL : VLOCAL;
+    t->k = VINDEXED;
+  }*/
+  #[no_mangle]
+pub unsafe extern "C" fn luaK_indexed(
+    fs: *mut FuncState,
+    mut t: *mut expdesc,
+    k: *mut expdesc,
+) {
+    debug_assert!(!hasjumps(t) && (vkisinreg((*t).k) || (*t).k == VUPVAL));
+    (*t).u.ind.t = (*t).u.info as lu_byte; /* register or upvalue index */
+    (*t).u.ind.idx = luaK_exp2RK(fs, k) as libc::c_short; /* R/K index for key */
+    (*t)
+        .u
+        .ind
+        .vt = (if (*t).k as libc::c_uint == VUPVAL as libc::c_int as libc::c_uint {
+        VUPVAL as libc::c_int
+    } else {
+        VLOCAL as libc::c_int
+    }) as lu_byte;
+    (*t).k = VINDEXED;
 }
