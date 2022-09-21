@@ -78,44 +78,8 @@ void exp2reg (FuncState *fs, expdesc *e, int reg);
 void luaK_exp2nextreg (FuncState *fs, expdesc *e);
 int luaK_exp2anyreg (FuncState *fs, expdesc *e);
 void luaK_exp2anyregup (FuncState *fs, expdesc *e);
-/*
-** Ensures final expression result is either in a register or it is
-** a constant.
-*/
-void luaK_exp2val (FuncState *fs, expdesc *e) {
-  if (hasjumps(e))
-    luaK_exp2anyreg(fs, e);
-  else
-    luaK_dischargevars(fs, e);
-}
-
-
-/*
-** Ensures final expression result is in a valid R/K index
-** (that is, it is either in a register or in 'k' with an index
-** in the range of R/K indices).
-** Returns R/K index.
-*/
-int luaK_exp2RK (FuncState *fs, expdesc *e) {
-  luaK_exp2val(fs, e);
-  switch (e->k) {  /* move constants to 'k' */
-    case VTRUE: e->u.info = boolK(fs, 1); goto vk;
-    case VFALSE: e->u.info = boolK(fs, 0); goto vk;
-    case VNIL: e->u.info = nilK(fs); goto vk;
-    case VKINT: e->u.info = luaK_intK(fs, e->u.ival); goto vk;
-    case VKFLT: e->u.info = luaK_numberK(fs, e->u.nval); goto vk;
-    case VK:
-     vk:
-      e->k = VK;
-      if (e->u.info <= MAXINDEXRK)  /* constant fits in 'argC'? */
-        return RKASK(e->u.info);
-      else break;
-    default: break;
-  }
-  /* not a constant in the right range: put it in a register */
-  return luaK_exp2anyreg(fs, e);
-}
-
+void luaK_exp2val (FuncState *fs, expdesc *e);
+int luaK_exp2RK (FuncState *fs, expdesc *e);
 
 /*
 ** Generate code to store result of expression 'ex' into variable 'var'.

@@ -184,6 +184,7 @@ pub unsafe fn CREATE_Ax(o: OpCode, a: c_int) -> Instruction {
 
 // this bit 1 means constant (0 means register)
 pub const BITRK: c_uint = 1 << (SIZE_B - 1);
+pub const MAXINDEXRK: c_uint = BITRK - 1;
 
 // test whether value is a constant
 pub const fn ISK(x: c_uint) -> bool {
@@ -193,6 +194,11 @@ pub const fn ISK(x: c_uint) -> bool {
 // gets the index of the constant
 pub const fn INDEXK(r: c_uint) -> c_uint {
     r & !BITRK
+}
+
+
+pub const fn RKASK(x: c_uint) -> c_uint {
+    return x | BITRK;
 }
 
 /*

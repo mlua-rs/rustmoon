@@ -17,9 +17,9 @@ use crate::lopcodes::{
     GETARG_sBx, MAXARG_Ax, MAXARG_Bx, MAXARG_sBx, OpArgN, OpCode, SETARG_sBx, GETARG_A, GETARG_B,
     GETARG_C, GET_OPCODE, ISK, MAXARG_A, MAXARG_B, MAXARG_C, NO_REG, OP_EXTRAARG, OP_JMP, OP_LOADK,
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
-    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL,
+    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK,
 };
-use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL};
+use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK};
 use crate::ltable::luaH_set;
 use crate::lvm::luaV_rawequalobj;
 use crate::types::{lua_Integer, lua_Number};
@@ -1011,4 +1011,60 @@ pub unsafe extern "C" fn luaK_exp2anyregup(fs: *mut FuncState, e: *mut expdesc) 
         luaK_exp2anyreg(fs, e);
     }
 }
+/*
+** Ensures final expression result is either in a register or it is
+** a constant.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_exp2val(fs: *mut FuncState, e: *mut expdesc) {
+    if hasjumps(e) {
+        luaK_exp2anyreg(fs, e);
+    } else {
+        luaK_dischargevars(fs, e);
+    };
+}
   
+  
+  /*
+  ** Ensures final expression result is in a valid R/K index
+  ** (that is, it is either in a register or in 'k' with an index
+  ** in the range of R/K indices).
+  ** Returns R/K index.
+  */
+#[no_mangle]
+pub unsafe extern "C" fn luaK_exp2RK(
+    fs: *mut FuncState,
+    mut e: *mut expdesc,
+) -> libc::c_int {
+    luaK_exp2val(fs, e);
+    let mut doVk = true;
+    match (*e).k as libc::c_uint {  /* move constants to 'k' */
+        2 => { // VTRUE
+            (*e).u.info = boolK(fs, 1);
+        }
+        3 => { // VFALSE
+            (*e).u.info = boolK(fs, 0);
+        }
+        1 => { // VNIL
+            (*e).u.info = nilK(fs);
+        }
+        6 => { // VKINT
+            (*e).u.info = luaK_intK(fs, (*e).u.ival);
+        }
+        5 => { // VKFLT
+            (*e).u.info = luaK_numberK(fs, (*e).u.nval);
+        }
+        4 => { // VK
+        }
+        _ => {
+            doVk = false;
+        }
+    }
+    if doVk {
+        (*e).k = VK;
+        if (*e).u.info as c_uint <= MAXINDEXRK {
+            return RKASK((*e).u.info as c_uint) as c_int;
+        }
+    }
+    return luaK_exp2anyreg(fs, e);
+}
