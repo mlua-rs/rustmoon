@@ -76,37 +76,8 @@ int code_loadbool (FuncState *fs, int A, int b, int jump);
 int need_value (FuncState *fs, int list);
 void exp2reg (FuncState *fs, expdesc *e, int reg);
 void luaK_exp2nextreg (FuncState *fs, expdesc *e);
-
-
-/*
-** Ensures final expression result (including results from its jump
-** lists) is in some (any) register and return that register.
-*/
-int luaK_exp2anyreg (FuncState *fs, expdesc *e) {
-  luaK_dischargevars(fs, e);
-  if (e->k == VNONRELOC) {  /* expression already has a register? */
-    if (!hasjumps(e))  /* no jumps? */
-      return e->u.info;  /* result is already in a register */
-    if (e->u.info >= fs->nactvar) {  /* reg. is not a local? */
-      exp2reg(fs, e, e->u.info);  /* put final result in it */
-      return e->u.info;
-    }
-  }
-  luaK_exp2nextreg(fs, e);  /* otherwise, use next available register */
-  return e->u.info;
-}
-
-
-/*
-** Ensures final expression result is either in a register or in an
-** upvalue.
-*/
-void luaK_exp2anyregup (FuncState *fs, expdesc *e) {
-  if (e->k != VUPVAL || hasjumps(e))
-    luaK_exp2anyreg(fs, e);
-}
-
-
+int luaK_exp2anyreg (FuncState *fs, expdesc *e);
+void luaK_exp2anyregup (FuncState *fs, expdesc *e);
 /*
 ** Ensures final expression result is either in a register or it is
 ** a constant.
