@@ -935,25 +935,25 @@ pub unsafe extern "C" fn need_value(
 pub unsafe extern "C" fn exp2reg(
     fs: *mut FuncState,
     mut e: *mut expdesc,
-    reg: libc::c_int,
+    reg: c_int,
 ) {
     discharge2reg(fs, e, reg);
-    if (*e).k as libc::c_uint == VJMP as libc::c_int as libc::c_uint {
+    if (*e).k as libc::c_uint == VJMP as libc::c_uint {
         luaK_concat(fs, &mut (*e).t, (*e).u.info);
     }
     if hasjumps(e) {
-        let mut final_0: libc::c_int = 0;
+        let final_0;
         let mut p_f = NO_JUMP;
         let mut p_t = NO_JUMP;
         if need_value(fs, (*e).t) != 0 || need_value(fs, (*e).f) != 0 {
-            let fj = if (*e).k as libc::c_uint == VJMP as libc::c_int as libc::c_uint
+            let fj = if (*e).k as libc::c_uint == VJMP as libc::c_uint
             {
                 NO_JUMP
             } else {
                 luaK_jump(fs)
             };
-            p_f = code_loadbool(fs, reg, 0 as libc::c_int, 1 as libc::c_int);
-            p_t = code_loadbool(fs, reg, 1 as libc::c_int, 0 as libc::c_int);
+            p_f = code_loadbool(fs, reg, 0, 1);
+            p_t = code_loadbool(fs, reg, 1, 0);
             luaK_patchtohere(fs, fj);
         }
         final_0 = luaK_getlabel(fs);
@@ -964,4 +964,16 @@ pub unsafe extern "C" fn exp2reg(
     (*e).f = (*e).t;
     (*e).u.info = reg;
     (*e).k = VNONRELOC;
+}
+
+/*
+** Ensures final expression result (including results from its jump
+** lists) is in next available register.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_exp2nextreg(fs: *mut FuncState, e: *mut expdesc) {
+    luaK_dischargevars(fs, e);
+    freeexp(fs, e);
+    luaK_reserveregs(fs, 1);
+    exp2reg(fs, e, (*fs).freereg as libc::c_int - 1);
 }

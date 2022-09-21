@@ -75,18 +75,7 @@ void discharge2anyreg (FuncState *fs, expdesc *e);
 int code_loadbool (FuncState *fs, int A, int b, int jump);
 int need_value (FuncState *fs, int list);
 void exp2reg (FuncState *fs, expdesc *e, int reg);
-
-
-/*
-** Ensures final expression result (including results from its jump
-** lists) is in next available register.
-*/
-void luaK_exp2nextreg (FuncState *fs, expdesc *e) {
-  luaK_dischargevars(fs, e);
-  freeexp(fs, e);
-  luaK_reserveregs(fs, 1);
-  exp2reg(fs, e, fs->freereg - 1);
-}
+void luaK_exp2nextreg (FuncState *fs, expdesc *e);
 
 
 /*
