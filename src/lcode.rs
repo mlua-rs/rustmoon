@@ -17,7 +17,7 @@ use crate::lopcodes::{
     GETARG_sBx, MAXARG_Ax, MAXARG_Bx, MAXARG_sBx, OpArgN, OpCode, SETARG_sBx, GETARG_A, GETARG_B,
     GETARG_C, GET_OPCODE, ISK, MAXARG_A, MAXARG_B, MAXARG_C, NO_REG, OP_EXTRAARG, OP_JMP, OP_LOADK,
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
-    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP,
+    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF,
 };
 use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK};
 use crate::ltable::luaH_set;
@@ -1108,4 +1108,24 @@ pub unsafe extern "C" fn luaK_storevar(
         }
     }
     freeexp(fs, ex);
+}
+
+/*
+** Emit SELF instruction (convert expression 'e' into 'e:key(e,').
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_self(
+    fs: *mut FuncState,
+    mut e: *mut expdesc,
+    key: *mut expdesc,
+) {
+    let ereg: libc::c_int;
+    luaK_exp2anyreg(fs, e);
+    ereg = (*e).u.info; /* register where 'e' was placed */
+    freeexp(fs, e);
+    (*e).u.info = (*fs).freereg as libc::c_int; /* base register for op_self */
+    (*e).k = VNONRELOC; /* self expression has a fixed register */
+    luaK_reserveregs(fs, 2 as libc::c_int);  /* function and 'self' produced by op_self */
+    luaK_codeABC(fs, OP_SELF, (*e).u.info, ereg, luaK_exp2RK(fs, key));
+    freeexp(fs, key);
 }

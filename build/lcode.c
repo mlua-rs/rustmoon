@@ -81,23 +81,7 @@ void luaK_exp2anyregup (FuncState *fs, expdesc *e);
 void luaK_exp2val (FuncState *fs, expdesc *e);
 int luaK_exp2RK (FuncState *fs, expdesc *e);
 void luaK_storevar (FuncState *fs, expdesc *var, expdesc *ex);
-
-
-/*
-** Emit SELF instruction (convert expression 'e' into 'e:key(e,').
-*/
-void luaK_self (FuncState *fs, expdesc *e, expdesc *key) {
-  int ereg;
-  luaK_exp2anyreg(fs, e);
-  ereg = e->u.info;  /* register where 'e' was placed */
-  freeexp(fs, e);
-  e->u.info = fs->freereg;  /* base register for op_self */
-  e->k = VNONRELOC;  /* self expression has a fixed register */
-  luaK_reserveregs(fs, 2);  /* function and 'self' produced by op_self */
-  luaK_codeABC(fs, OP_SELF, e->u.info, ereg, luaK_exp2RK(fs, key));
-  freeexp(fs, key);
-}
-
+void luaK_self (FuncState *fs, expdesc *e, expdesc *key);
 
 /*
 ** Negate condition 'e' (where 'e' is a comparison).
