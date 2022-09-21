@@ -899,3 +899,69 @@ pub unsafe extern "C" fn need_value(
     }
     return 0;
 }
+
+/*
+** Ensures final expression result (including results from its jump
+** lists) is in register 'reg'.
+** If expression has jumps, need to patch these jumps either to
+** its final position or to "load" instructions (for those tests
+** that do not produce values).
+*/
+/*static void exp2reg (FuncState *fs, expdesc *e, int reg) {
+    discharge2reg(fs, e, reg);
+    if (e->k == VJMP)  /* expression itself is a test? */
+      luaK_concat(fs, &e->t, e->u.info);  /* put this jump in 't' list */
+    if (hasjumps(e)) {
+      int final;  /* position after whole expression */
+      int p_f = NO_JUMP;  /* position of an eventual LOAD false */
+      int p_t = NO_JUMP;  /* position of an eventual LOAD true */
+      if (need_value(fs, e->t) || need_value(fs, e->f)) {
+        int fj = (e->k == VJMP) ? NO_JUMP : luaK_jump(fs);
+        p_f = code_loadbool(fs, reg, 0, 1);
+        p_t = code_loadbool(fs, reg, 1, 0);
+        luaK_patchtohere(fs, fj);
+      }
+      final = luaK_getlabel(fs);
+      patchlistaux(fs, e->f, final, reg, p_f);
+      patchlistaux(fs, e->t, final, reg, p_t);
+    }
+    e->f = e->t = NO_JUMP;
+    e->u.info = reg;
+    e->k = VNONRELOC;
+  }*/
+
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn exp2reg(
+    fs: *mut FuncState,
+    mut e: *mut expdesc,
+    reg: libc::c_int,
+) {
+    discharge2reg(fs, e, reg);
+    if (*e).k as libc::c_uint == VJMP as libc::c_int as libc::c_uint {
+        luaK_concat(fs, &mut (*e).t, (*e).u.info);
+    }
+    if hasjumps(e) {
+        let mut final_0: libc::c_int = 0;
+        let mut p_f = NO_JUMP;
+        let mut p_t = NO_JUMP;
+        if need_value(fs, (*e).t) != 0 || need_value(fs, (*e).f) != 0 {
+            let fj = if (*e).k as libc::c_uint == VJMP as libc::c_int as libc::c_uint
+            {
+                NO_JUMP
+            } else {
+                luaK_jump(fs)
+            };
+            p_f = code_loadbool(fs, reg, 0 as libc::c_int, 1 as libc::c_int);
+            p_t = code_loadbool(fs, reg, 1 as libc::c_int, 0 as libc::c_int);
+            luaK_patchtohere(fs, fj);
+        }
+        final_0 = luaK_getlabel(fs);
+        patchlistaux(fs, (*e).f, final_0, reg, p_f);
+        patchlistaux(fs, (*e).t, final_0, reg, p_t);
+    }
+    (*e).t = NO_JUMP;
+    (*e).f = (*e).t;
+    (*e).u.info = reg;
+    (*e).k = VNONRELOC;
+}
