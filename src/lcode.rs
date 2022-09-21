@@ -19,7 +19,7 @@ use crate::lopcodes::{
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
     SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF, OP_NOT,
 };
-use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK};
+use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK, VFALSE};
 use crate::ltable::luaH_set;
 use crate::lvm::luaV_rawequalobj;
 use crate::types::{lua_Integer, lua_Number};
@@ -1204,7 +1204,7 @@ pub unsafe extern "C" fn luaK_goiftrue(fs: *mut FuncState, mut e: *mut expdesc) 
 */
 #[no_mangle]
 pub unsafe extern "C" fn luaK_goiffalse(fs: *mut FuncState, mut e: *mut expdesc) {
-    let mut pc: libc::c_int = 0;
+    let pc: libc::c_int;
     luaK_dischargevars(fs, e);
     match (*e).k as libc::c_uint {
         11 => { // VJMP
@@ -1220,4 +1220,77 @@ pub unsafe extern "C" fn luaK_goiffalse(fs: *mut FuncState, mut e: *mut expdesc)
     luaK_concat(fs, &mut (*e).t, pc); /* insert new jump in 't' list */
     luaK_patchtohere(fs, (*e).f); /* false list jumps to here (to go through) */
     (*e).f = NO_JUMP;
+}
+
+/*
+** Code 'not e', doing constant folding.
+*/
+/*static void codenot (FuncState *fs, expdesc *e) {
+    luaK_dischargevars(fs, e);
+    switch (e->k) {
+      case VNIL: case VFALSE: {
+        e->k = VTRUE;  /* true == not nil == not false */
+        break;
+      }
+      case VK: case VKFLT: case VKINT: case VTRUE: {
+        e->k = VFALSE;  /* false == not "x" == not 0.5 == not 1 == not true */
+        break;
+      }
+      case VJMP: {
+        negatecondition(fs, e);
+        break;
+      }
+      case VRELOCABLE:
+      case VNONRELOC: {
+        discharge2anyreg(fs, e);
+        freeexp(fs, e);
+        e->u.info = luaK_codeABC(fs, OP_NOT, 0, e->u.info, 0);
+        e->k = VRELOCABLE;
+        break;
+      }
+      default: lua_assert(0);  /* cannot happen */
+    }
+    /* interchange true and false lists */
+    { int temp = e->f; e->f = e->t; e->t = temp; }
+    removevalues(fs, e->f);  /* values are useless when negated */
+    removevalues(fs, e->t);
+  }*/
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn codenot(fs: *mut FuncState, mut e: *mut expdesc) {
+    luaK_dischargevars(fs, e);
+    match (*e).k as libc::c_uint {
+        1 | 3 => { // VNIL | VFALSE
+            (*e).k = VTRUE; /* true == not nil == not false */
+        }
+        4 | 5 | 6 | 2 => { // VK | VKFLT | VKINT | VTRUE
+            (*e).k = VFALSE; /* false == not "x" == not 0.5 == not 1 == not true */
+        }
+        11 => { // VJMP
+            negatecondition(fs, e);
+        }
+        12 | 7 => { // VRELOCABLE | VNONRELOC
+            discharge2anyreg(fs, e);
+            freeexp(fs, e);
+            (*e)
+                .u
+                .info = luaK_codeABC(
+                fs,
+                OP_NOT,
+                0 as libc::c_int,
+                (*e).u.info,
+                0 as libc::c_int,
+            );
+            (*e).k = VRELOCABLE;
+        }
+        _ => {
+            debug_assert!(false);  /* cannot happen */
+        }
+    }
+    /* interchange true and false lists */
+    let temp = (*e).f;
+    (*e).f = (*e).t;
+    (*e).t = temp;
+    removevalues(fs, (*e).f); /* values are useless when negated */
+    removevalues(fs, (*e).t);
 }

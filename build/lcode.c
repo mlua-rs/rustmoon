@@ -86,41 +86,7 @@ extern void negatecondition (FuncState *fs, expdesc *e);
 extern int jumponcond (FuncState *fs, expdesc *e, int cond);
 void luaK_goiftrue (FuncState *fs, expdesc *e);
 void luaK_goiffalse (FuncState *fs, expdesc *e);
-
-
-/*
-** Code 'not e', doing constant folding.
-*/
-static void codenot (FuncState *fs, expdesc *e) {
-  luaK_dischargevars(fs, e);
-  switch (e->k) {
-    case VNIL: case VFALSE: {
-      e->k = VTRUE;  /* true == not nil == not false */
-      break;
-    }
-    case VK: case VKFLT: case VKINT: case VTRUE: {
-      e->k = VFALSE;  /* false == not "x" == not 0.5 == not 1 == not true */
-      break;
-    }
-    case VJMP: {
-      negatecondition(fs, e);
-      break;
-    }
-    case VRELOCABLE:
-    case VNONRELOC: {
-      discharge2anyreg(fs, e);
-      freeexp(fs, e);
-      e->u.info = luaK_codeABC(fs, OP_NOT, 0, e->u.info, 0);
-      e->k = VRELOCABLE;
-      break;
-    }
-    default: lua_assert(0);  /* cannot happen */
-  }
-  /* interchange true and false lists */
-  { int temp = e->f; e->f = e->t; e->t = temp; }
-  removevalues(fs, e->f);  /* values are useless when negated */
-  removevalues(fs, e->t);
-}
+void codenot (FuncState *fs, expdesc *e);
 
 
 /*
