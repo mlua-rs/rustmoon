@@ -71,17 +71,7 @@ void luaK_setreturns (FuncState *fs, expdesc *e, int nresults);
 void luaK_setoneret (FuncState *fs, expdesc *e);
 void luaK_dischargevars (FuncState *fs, expdesc *e);
 extern void discharge2reg (FuncState *fs, expdesc *e, int reg);
-
-
-/*
-** Ensures expression value is in any register.
-*/
-static void discharge2anyreg (FuncState *fs, expdesc *e) {
-  if (e->k != VNONRELOC) {  /* no fixed register yet? */
-    luaK_reserveregs(fs, 1);  /* get a register */
-    discharge2reg(fs, e, fs->freereg-1);  /* put value there */
-  }
-}
+void discharge2anyreg (FuncState *fs, expdesc *e);
 
 
 static int code_loadbool (FuncState *fs, int A, int b, int jump) {

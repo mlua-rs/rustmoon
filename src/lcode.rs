@@ -2,7 +2,7 @@
 ** Code generator for Lua
 */
 
-use libc::{abs, c_int, c_uint, c_void, size_t, c_char, c_uchar};
+use libc::{abs, c_int, c_uint, c_void, size_t};
 
 use crate::lgc::luaC_barrier;
 use crate::llex::luaX_syntaxerror;
@@ -768,7 +768,7 @@ pub unsafe extern "C" fn luaK_dischargevars(
             (*e).k = VRELOCABLE;
         }
         10 => { // VINDEXED
-            let mut op = OP_MOVE;
+            let op;
             freereg(fs, (*e).u.ind.idx as libc::c_int);
             if (*e).u.ind.vt as libc::c_int == VLOCAL as libc::c_int { /* is 't' in a register? */
                 freereg(fs, (*e).u.ind.t as libc::c_int);
@@ -802,9 +802,9 @@ pub unsafe extern "C" fn luaK_dischargevars(
 // FIXME static
 #[no_mangle]
 pub unsafe extern "C" fn discharge2reg(
-    mut fs: *mut FuncState,
+    fs: *mut FuncState,
     mut e: *mut expdesc,
-    mut reg: libc::c_int,
+    reg: libc::c_int,
 ) {
     luaK_dischargevars(fs, e);
     match (*e).k as libc::c_uint {
@@ -847,4 +847,16 @@ pub unsafe extern "C" fn discharge2reg(
     }
     (*e).u.info = reg;
     (*e).k = VNONRELOC;
+}
+
+/*
+** Ensures expression value is in any register.
+*/
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn discharge2anyreg(fs: *mut FuncState, e: *mut expdesc) {
+    if (*e).k as libc::c_uint != VNONRELOC as c_uint { /* no fixed register yet? */
+        luaK_reserveregs(fs, 1); /* get a register */
+        discharge2reg(fs, e, (*fs).freereg as libc::c_int - 1); /* put value there */
+    }
 }
