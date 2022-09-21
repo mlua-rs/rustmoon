@@ -82,38 +82,8 @@ void luaK_exp2val (FuncState *fs, expdesc *e);
 int luaK_exp2RK (FuncState *fs, expdesc *e);
 void luaK_storevar (FuncState *fs, expdesc *var, expdesc *ex);
 void luaK_self (FuncState *fs, expdesc *e, expdesc *key);
-
-/*
-** Negate condition 'e' (where 'e' is a comparison).
-*/
-static void negatecondition (FuncState *fs, expdesc *e) {
-  Instruction *pc = getjumpcontrol(fs, e->u.info);
-  lua_assert(testTMode(GET_OPCODE(*pc)) && GET_OPCODE(*pc) != OP_TESTSET &&
-                                           GET_OPCODE(*pc) != OP_TEST);
-  SETARG_A(*pc, !(GETARG_A(*pc)));
-}
-
-
-/*
-** Emit instruction to jump if 'e' is 'cond' (that is, if 'cond'
-** is true, code will jump if 'e' is true.) Return jump position.
-** Optimize when 'e' is 'not' something, inverting the condition
-** and removing the 'not'.
-*/
-static int jumponcond (FuncState *fs, expdesc *e, int cond) {
-  if (e->k == VRELOCABLE) {
-    Instruction ie = getinstruction(fs, e);
-    if (GET_OPCODE(ie) == OP_NOT) {
-      fs->pc--;  /* remove previous OP_NOT */
-      return condjump(fs, OP_TEST, GETARG_B(ie), 0, !cond);
-    }
-    /* else go through */
-  }
-  discharge2anyreg(fs, e);
-  freeexp(fs, e);
-  return condjump(fs, OP_TESTSET, NO_REG, e->u.info, cond);
-}
-
+extern void negatecondition (FuncState *fs, expdesc *e);
+extern int jumponcond (FuncState *fs, expdesc *e, int cond);
 
 /*
 ** Emit code to go through if 'e' is true, jump otherwise.

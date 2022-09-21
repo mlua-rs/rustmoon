@@ -17,7 +17,7 @@ use crate::lopcodes::{
     GETARG_sBx, MAXARG_Ax, MAXARG_Bx, MAXARG_sBx, OpArgN, OpCode, SETARG_sBx, GETARG_A, GETARG_B,
     GETARG_C, GET_OPCODE, ISK, MAXARG_A, MAXARG_B, MAXARG_C, NO_REG, OP_EXTRAARG, OP_JMP, OP_LOADK,
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
-    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF,
+    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF, OP_NOT,
 };
 use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK};
 use crate::ltable::luaH_set;
@@ -1128,4 +1128,49 @@ pub unsafe extern "C" fn luaK_self(
     luaK_reserveregs(fs, 2 as libc::c_int);  /* function and 'self' produced by op_self */
     luaK_codeABC(fs, OP_SELF, (*e).u.info, ereg, luaK_exp2RK(fs, key));
     freeexp(fs, key);
+}
+
+/*
+** Negate condition 'e' (where 'e' is a comparison).
+*/
+
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn negatecondition(fs: *mut FuncState, e: *mut expdesc) {
+    let pc = getjumpcontrol(fs, (*e).u.info);
+    debug_assert!(testTMode(GET_OPCODE(*pc) as size_t) != 0 && GET_OPCODE(*pc) != OP_TESTSET &&
+                                             GET_OPCODE(*pc) != OP_TEST);
+    SETARG_A(pc, !GETARG_A(*pc));
+}
+  
+/*
+** Emit instruction to jump if 'e' is 'cond' (that is, if 'cond'
+** is true, code will jump if 'e' is true.) Return jump position.
+** Optimize when 'e' is 'not' something, inverting the condition
+** and removing the 'not'.
+*/
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn jumponcond(
+    mut fs: *mut FuncState,
+    e: *mut expdesc,
+    cond_0: libc::c_int,
+) -> libc::c_int {
+    if (*e).k as libc::c_uint == VRELOCABLE as libc::c_int as libc::c_uint {
+        let ie = getinstruction(fs, e);
+        if GET_OPCODE(*ie) == OP_NOT {
+            (*fs).pc -= 1; /* remove previous OP_NOT */
+            return condjump(
+                fs,
+                OP_TEST,
+                GETARG_B(*ie),
+                0 as libc::c_int,
+                (cond_0 == 0) as libc::c_int,
+            );
+        }
+        /* else go through */
+    }
+    discharge2anyreg(fs, e);
+    freeexp(fs, e);
+    return condjump(fs, OP_TESTSET, NO_REG as c_int, (*e).u.info, cond_0);
 }
