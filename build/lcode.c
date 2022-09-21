@@ -85,32 +85,7 @@ void luaK_self (FuncState *fs, expdesc *e, expdesc *key);
 extern void negatecondition (FuncState *fs, expdesc *e);
 extern int jumponcond (FuncState *fs, expdesc *e, int cond);
 void luaK_goiftrue (FuncState *fs, expdesc *e);
-
-
-/*
-** Emit code to go through if 'e' is false, jump otherwise.
-*/
-void luaK_goiffalse (FuncState *fs, expdesc *e) {
-  int pc;  /* pc of new jump */
-  luaK_dischargevars(fs, e);
-  switch (e->k) {
-    case VJMP: {
-      pc = e->u.info;  /* already jump if true */
-      break;
-    }
-    case VNIL: case VFALSE: {
-      pc = NO_JUMP;  /* always false; do nothing */
-      break;
-    }
-    default: {
-      pc = jumponcond(fs, e, 1);  /* jump if true */
-      break;
-    }
-  }
-  luaK_concat(fs, &e->t, pc);  /* insert new jump in 't' list */
-  luaK_patchtohere(fs, e->f);  /* false list jumps to here (to go through) */
-  e->f = NO_JUMP;
-}
+void luaK_goiffalse (FuncState *fs, expdesc *e);
 
 
 /*

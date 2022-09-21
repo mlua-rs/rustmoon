@@ -1202,24 +1202,22 @@ pub unsafe extern "C" fn luaK_goiftrue(fs: *mut FuncState, mut e: *mut expdesc) 
 /*
 ** Emit code to go through if 'e' is false, jump otherwise.
 */
-/*void luaK_goiffalse (FuncState *fs, expdesc *e) {
-    int pc;  /* pc of new jump */
+#[no_mangle]
+pub unsafe extern "C" fn luaK_goiffalse(fs: *mut FuncState, mut e: *mut expdesc) {
+    let mut pc: libc::c_int = 0;
     luaK_dischargevars(fs, e);
-    switch (e->k) {
-      case VJMP: {
-        pc = e->u.info;  /* already jump if true */
-        break;
-      }
-      case VNIL: case VFALSE: {
-        pc = NO_JUMP;  /* always false; do nothing */
-        break;
-      }
-      default: {
-        pc = jumponcond(fs, e, 1);  /* jump if true */
-        break;
-      }
+    match (*e).k as libc::c_uint {
+        11 => { // VJMP
+            pc = (*e).u.info; /* already jump if true */
+        }
+        1 | 3 => { // VNIL | VFALSE
+            pc = NO_JUMP;
+        }
+        _ => { /* jump if true */
+            pc = jumponcond(fs, e, 1 as libc::c_int);
+        }
     }
-    luaK_concat(fs, &e->t, pc);  /* insert new jump in 't' list */
-    luaK_patchtohere(fs, e->f);  /* false list jumps to here (to go through) */
-    e->f = NO_JUMP;
-  }*/
+    luaK_concat(fs, &mut (*e).t, pc); /* insert new jump in 't' list */
+    luaK_patchtohere(fs, (*e).f); /* false list jumps to here (to go through) */
+    (*e).f = NO_JUMP;
+}
