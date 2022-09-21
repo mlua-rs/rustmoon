@@ -19,7 +19,7 @@ use crate::lopcodes::{
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
     SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL,
 };
-use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP};
+use crate::lparser::{expdesc, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL};
 use crate::ltable::luaH_set;
 use crate::lvm::luaV_rawequalobj;
 use crate::types::{lua_Integer, lua_Number};
@@ -977,3 +977,38 @@ pub unsafe extern "C" fn luaK_exp2nextreg(fs: *mut FuncState, e: *mut expdesc) {
     luaK_reserveregs(fs, 1);
     exp2reg(fs, e, (*fs).freereg as libc::c_int - 1);
 }
+
+/*
+** Ensures final expression result (including results from its jump
+** lists) is in some (any) register and return that register.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_exp2anyreg(
+    fs: *mut FuncState,
+    e: *mut expdesc,
+) -> libc::c_int {
+    luaK_dischargevars(fs, e);
+    if (*e).k as libc::c_uint == VNONRELOC as libc::c_uint { /* expression already has a register? */
+        if !hasjumps(e) { /* no jumps? */
+            return (*e).u.info; /* result is already in a register */
+        }
+        if (*e).u.info >= (*fs).nactvar as libc::c_int { /* reg. is not a local? */
+            exp2reg(fs, e, (*e).u.info);  /* put final result in it */
+            return (*e).u.info;
+        }
+    }
+    luaK_exp2nextreg(fs, e); /* otherwise, use next available register */
+    return (*e).u.info;
+}
+
+/*
+** Ensures final expression result is either in a register or in an
+** upvalue.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_exp2anyregup(fs: *mut FuncState, e: *mut expdesc) {
+    if (*e).k as libc::c_uint != VUPVAL as c_uint || !hasjumps(e) {
+        luaK_exp2anyreg(fs, e);
+    }
+}
+  
