@@ -1140,9 +1140,10 @@ pub unsafe extern "C" fn negatecondition(fs: *mut FuncState, e: *mut expdesc) {
     let pc = getjumpcontrol(fs, (*e).u.info);
     debug_assert!(testTMode(GET_OPCODE(*pc) as size_t) != 0 && GET_OPCODE(*pc) != OP_TESTSET &&
                                              GET_OPCODE(*pc) != OP_TEST);
-    SETARG_A(pc, !GETARG_A(*pc));
+    SETARG_A(pc, (GETARG_A(*pc) == 0) as c_int);
 }
-  
+
+
 /*
 ** Emit instruction to jump if 'e' is 'cond' (that is, if 'cond'
 ** is true, code will jump if 'e' is true.) Return jump position.

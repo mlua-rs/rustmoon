@@ -85,6 +85,7 @@ void luaK_self (FuncState *fs, expdesc *e, expdesc *key);
 extern void negatecondition (FuncState *fs, expdesc *e);
 extern int jumponcond (FuncState *fs, expdesc *e, int cond);
 
+
 /*
 ** Emit code to go through if 'e' is true, jump otherwise.
 */
