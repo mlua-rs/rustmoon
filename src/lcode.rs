@@ -872,3 +872,30 @@ pub unsafe extern "C" fn code_loadbool(
     luaK_getlabel(fs); /* those instructions may be jump targets */
     return luaK_codeABC(fs, OP_LOADBOOL, A, b, jump);
 }
+
+/*
+** check whether list has any jump that do not produce a value
+** or produce an inverted value
+*/
+/*static int need_value (FuncState *fs, int list) {
+    for (; list != NO_JUMP; list = getjump(fs, list)) {
+      Instruction i = *getjumpcontrol(fs, list);
+      if (GET_OPCODE(i) != OP_TESTSET) return 1;
+    }
+    return 0;  /* not found */
+  }*/
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn need_value(
+    fs: *mut FuncState,
+    mut list: c_int,
+) -> c_int {
+    while list != NO_JUMP {
+        let i = *getjumpcontrol(fs, list);
+        if GET_OPCODE(i) as c_uint != OP_TESTSET as c_uint {
+            return 1
+        }
+        list = getjump(fs, list);
+    }
+    return 0;
+}

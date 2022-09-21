@@ -73,18 +73,7 @@ void luaK_dischargevars (FuncState *fs, expdesc *e);
 extern void discharge2reg (FuncState *fs, expdesc *e, int reg);
 void discharge2anyreg (FuncState *fs, expdesc *e);
 int code_loadbool (FuncState *fs, int A, int b, int jump);
-
-/*
-** check whether list has any jump that do not produce a value
-** or produce an inverted value
-*/
-static int need_value (FuncState *fs, int list) {
-  for (; list != NO_JUMP; list = getjump(fs, list)) {
-    Instruction i = *getjumpcontrol(fs, list);
-    if (GET_OPCODE(i) != OP_TESTSET) return 1;
-  }
-  return 0;  /* not found */
-}
+int need_value (FuncState *fs, int list);
 
 
 /*
