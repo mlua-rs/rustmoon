@@ -779,7 +779,7 @@ pub unsafe extern "C" fn luaK_dischargevars(fs: *mut FuncState, mut e: *mut expd
         }
         9 => {
             // VUPVAL /* move value to some (pending) register */
-            (*e).u.info = luaK_codeABC(fs, OP_GETUPVAL, 0 as c_int, (*e).u.info, 0 as c_int);
+            (*e).u.info = luaK_codeABC(fs, OP_GETUPVAL, 0, (*e).u.info, 0);
             (*e).k = VRELOCABLE;
         }
         10 => {
@@ -822,7 +822,7 @@ pub unsafe extern "C" fn discharge2reg(fs: *mut FuncState, mut e: *mut expdesc, 
                 fs,
                 OP_LOADBOOL,
                 reg,
-                ((*e).k as c_uint == VTRUE as c_int as c_uint) as c_int,
+                ((*e).k as c_uint == VTRUE as c_uint) as c_int,
                 0,
             );
         }
@@ -841,7 +841,7 @@ pub unsafe extern "C" fn discharge2reg(fs: *mut FuncState, mut e: *mut expdesc, 
         }
         7 => {
             if reg != (*e).u.info {
-                luaK_codeABC(fs, OP_MOVE, reg, (*e).u.info, 0 as c_int);
+                luaK_codeABC(fs, OP_MOVE, reg, (*e).u.info, 0);
             }
         }
         _ => {
@@ -1084,7 +1084,7 @@ pub unsafe extern "C" fn luaK_storevar(fs: *mut FuncState, var: *mut expdesc, ex
         9 => {
             // VUPVAL
             let e = luaK_exp2anyreg(fs, ex);
-            luaK_codeABC(fs, OP_SETUPVAL, e, (*var).u.info, 0 as c_int);
+            luaK_codeABC(fs, OP_SETUPVAL, e, (*var).u.info, 0);
         }
         10 => {
             // VINDEXED
@@ -1154,7 +1154,7 @@ pub unsafe extern "C" fn jumponcond(
     e: *mut expdesc,
     cond_0: c_int,
 ) -> c_int {
-    if (*e).k as c_uint == VRELOCABLE as c_int as c_uint {
+    if (*e).k as c_uint == VRELOCABLE as c_uint {
         let ie = getinstruction(fs, e);
         if GET_OPCODE(*ie) == OP_NOT {
             (*fs).pc -= 1; /* remove previous OP_NOT */
@@ -1162,7 +1162,7 @@ pub unsafe extern "C" fn jumponcond(
                 fs,
                 OP_TEST,
                 GETARG_B(*ie),
-                0 as c_int,
+                0,
                 (cond_0 == 0) as c_int,
             );
         }
@@ -1248,7 +1248,7 @@ pub unsafe extern "C" fn codenot(fs: *mut FuncState, mut e: *mut expdesc) {
             // VRELOCABLE | VNONRELOC
             discharge2anyreg(fs, e);
             freeexp(fs, e);
-            (*e).u.info = luaK_codeABC(fs, OP_NOT, 0 as c_int, (*e).u.info, 0 as c_int);
+            (*e).u.info = luaK_codeABC(fs, OP_NOT, 0, (*e).u.info, 0);
             (*e).k = VRELOCABLE;
         }
         _ => {
@@ -1272,7 +1272,7 @@ pub unsafe extern "C" fn luaK_indexed(fs: *mut FuncState, mut t: *mut expdesc, k
     debug_assert!(!hasjumps(t) && (vkisinreg((*t).k) || (*t).k == VUPVAL));
     (*t).u.ind.t = (*t).u.info as lu_byte; /* register or upvalue index */
     (*t).u.ind.idx = luaK_exp2RK(fs, k) as c_short; /* R/K index for key */
-    (*t).u.ind.vt = (if (*t).k as c_uint == VUPVAL as c_int as c_uint {
+    (*t).u.ind.vt = (if (*t).k as c_uint == VUPVAL as c_uint {
         VUPVAL as c_int
     } else {
         VLOCAL as c_int
@@ -1296,7 +1296,7 @@ pub unsafe extern "C" fn validop(op: c_int, v1: *mut TValue, v2: *mut TValue) ->
         }
         LUA_OPDIV | LUA_OPIDIV | LUA_OPMOD => {
             /* division by 0 */
-            return (nvalue(v2) != 0 as c_int as c_double) as c_int;
+            return (nvalue(v2) != 0 as c_double) as c_int;
         }
         _ => return 1 as c_int,
     };
@@ -1336,7 +1336,7 @@ pub unsafe extern "C" fn constfolding(
         || tonumeral(e2, &mut v2) == 0
         || validop(op, &mut v1, &mut v2) == 0
     {
-        return 0 as c_int; /* non-numeric operands or not safe to fold */
+        return 0; /* non-numeric operands or not safe to fold */
     }
     luaO_arith((*(*fs).ls).L, op, &mut v1, &mut v2, &mut res); /* does operation */
     if ttisinteger(&mut res) {
@@ -1345,8 +1345,8 @@ pub unsafe extern "C" fn constfolding(
     } else {
         /* folds neither NaN nor 0.0 (to avoid problems with -0.0) */
         let n = fltvalue(&mut res);
-        if !(n == n) || n == 0 as c_int as c_double {
-            return 0 as c_int;
+        if !(n == n) || n == 0 as c_double {
+            return 0;
         }
         (*e1).k = VKFLT;
         (*e1).u.nval = n;
@@ -1370,7 +1370,7 @@ pub unsafe extern "C" fn codeunexpval(
 ) {
     let r = luaK_exp2anyreg(fs, e);
     freeexp(fs, e);
-    (*e).u.info = luaK_codeABC(fs, op, 0 as c_int, r, 0 as c_int);
+    (*e).u.info = luaK_codeABC(fs, op, 0, r, 0);
     (*e).k = VRELOCABLE;
     luaK_fixline(fs, line);
 }
@@ -1396,7 +1396,7 @@ pub unsafe extern "C" fn codebinexpval(
     let rk2 = luaK_exp2RK(fs, e2); /* both operands are "RK" */
     let rk1 = luaK_exp2RK(fs, e1);
     freeexps(fs, e1, e2);
-    (*e1).u.info = luaK_codeABC(fs, op, 0 as c_int, rk1, rk2); /* generate opcode */
+    (*e1).u.info = luaK_codeABC(fs, op, 0, rk1, rk2); /* generate opcode */
     (*e1).k = VRELOCABLE; /* all those operations are relocatable */
     luaK_fixline(fs, line);
 }
@@ -1413,7 +1413,7 @@ pub unsafe extern "C" fn codecomp(
     mut e1: *mut expdesc,
     e2: *mut expdesc,
 ) {
-    let rk1 = if (*e1).k as c_uint == VK as c_int as c_uint {
+    let rk1 = if (*e1).k as c_uint == VK as c_uint {
         RKASK((*e1).u.info as c_uint)
     } else {
         debug_assert!((*e1).k == VNONRELOC);
@@ -1424,7 +1424,7 @@ pub unsafe extern "C" fn codecomp(
     match opr as c_uint {
         16 => {
             // OPR_NE: '(a ~= b)' ==> 'not (a == b)' */
-            (*e1).u.info = condjump(fs, OP_EQ, 0 as c_int, rk1 as c_int, rk2);
+            (*e1).u.info = condjump(fs, OP_EQ, 0, rk1 as c_int, rk2);
         }
         17 | 18 => {
             // OPR_GT |  OPR_GE
@@ -1616,7 +1616,7 @@ pub unsafe extern "C" fn luaK_setlist(
     if c as c_uint <= MAXARG_C {
         luaK_codeABC(fs, OP_SETLIST, base, b, c);
     } else if c as c_uint <= MAXARG_Ax {
-        luaK_codeABC(fs, OP_SETLIST, base, b, 0 as c_int);
+        luaK_codeABC(fs, OP_SETLIST, base, b, 0);
         codeextraarg(fs, c);
     } else {
         luaX_syntaxerror((*fs).ls, cstr!("constructor too long"));
