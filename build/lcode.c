@@ -96,42 +96,7 @@ void codebinexpval (FuncState *fs, OpCode op,
                            expdesc *e1, expdesc *e2, int line);
 void codecomp (FuncState *fs, BinOpr opr, expdesc *e1, expdesc *e2);
 void luaK_prefix (FuncState *fs, UnOpr op, expdesc *e, int line);
-
-
-/*
-** Process 1st operand 'v' of binary operation 'op' before reading
-** 2nd operand.
-*/
-void luaK_infix (FuncState *fs, BinOpr op, expdesc *v) {
-  switch (op) {
-    case OPR_AND: {
-      luaK_goiftrue(fs, v);  /* go ahead only if 'v' is true */
-      break;
-    }
-    case OPR_OR: {
-      luaK_goiffalse(fs, v);  /* go ahead only if 'v' is false */
-      break;
-    }
-    case OPR_CONCAT: {
-      luaK_exp2nextreg(fs, v);  /* operand must be on the 'stack' */
-      break;
-    }
-    case OPR_ADD: case OPR_SUB:
-    case OPR_MUL: case OPR_DIV: case OPR_IDIV:
-    case OPR_MOD: case OPR_POW:
-    case OPR_BAND: case OPR_BOR: case OPR_BXOR:
-    case OPR_SHL: case OPR_SHR: {
-      if (!tonumeral(v, NULL))
-        luaK_exp2RK(fs, v);
-      /* else keep numeral, which may be folded with 2nd operand */
-      break;
-    }
-    default: {
-      luaK_exp2RK(fs, v);
-      break;
-    }
-  }
-}
+void luaK_infix (FuncState *fs, BinOpr op, expdesc *v);
 
 
 /*

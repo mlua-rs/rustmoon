@@ -2,6 +2,8 @@
 ** Code generator for Lua
 */
 
+use std::ptr;
+
 use libc::{abs, c_int, c_uint, c_void, size_t};
 
 use crate::lgc::luaC_barrier;
@@ -1517,4 +1519,36 @@ pub unsafe extern "C" fn luaK_prefix(
             codeunexpval(fs, (op + OP_UNM as c_uint) as OpCode, e, line);
     }
 
+}
+
+/*
+** Process 1st operand 'v' of binary operation 'op' before reading
+** 2nd operand.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_infix(
+    fs: *mut FuncState,
+    op: BinOpr,
+    v: *mut expdesc,
+) {
+    match op as libc::c_uint {
+        19 => { // OPR_AND
+            luaK_goiftrue(fs, v); /* go ahead only if 'v' is true */
+        }
+        20 => { // OPR_OR
+            luaK_goiffalse(fs, v); /* go ahead only if 'v' is false */
+        }
+        12 => { // OPR_CONCAT
+            luaK_exp2nextreg(fs, v); /* operand must be on the 'stack' */
+        }
+        0 | 1 | 2 | 5 | 6 | 3 | 4 | 7 | 8 | 9 | 10 | 11 => { // OPR_ADD | OPR_SUB | OPR_MUL | OPR_DIV | OPR_IDIV | OPR_MOD | OPR_POW | OPR_BAND | OPR_BOR | OPR_BXOR | OPR_SHL | OPR_SHR
+            if tonumeral(v, ptr::null_mut() as *mut TValue) == 0 {
+                luaK_exp2RK(fs, v);
+            }
+            /* else keep numeral, which may be folded with 2nd operand */
+        }
+        _ => {
+            luaK_exp2RK(fs, v);
+        }
+    };
 }
