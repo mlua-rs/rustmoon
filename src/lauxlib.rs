@@ -59,6 +59,12 @@ pub struct luaL_Reg {
     pub func: lua_CFunction,
 }
 
+impl luaL_Reg {
+    pub(crate) const fn new(name: *const c_char, func: lua_CFunction) -> Self {
+        luaL_Reg { name, func }
+    }
+}
+
 const LUAL_NUMSIZES: usize = mem::size_of::<lua_Integer>() * 16 + mem::size_of::<lua_Number>();
 
 pub unsafe fn luaL_checkversion(L: *mut lua_State) {
