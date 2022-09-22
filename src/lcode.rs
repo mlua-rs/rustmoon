@@ -1450,7 +1450,7 @@ pub unsafe extern "C" fn luaK_prefix(fs: *mut FuncState, op: UnOpr, e: *mut expd
         let init = expdesc {
             k: VKINT,
             u: C2RustUnnamed_8 {
-                ival: 0 as c_int as lua_Integer,
+                ival: 0,
             },
             t: NO_JUMP,
             f: NO_JUMP,
@@ -1552,11 +1552,8 @@ pub unsafe extern "C" fn luaK_posfix(
         12 => {
             // OPR_CONCAT
             luaK_exp2val(fs, e2);
-            if (*e2).k as c_uint == VRELOCABLE as c_int as c_uint
-                && (*((*(*fs).f).code).offset((*e2).u.info as isize) >> 0 as c_int
-                    & !(!(0 as c_int as Instruction) << 6 as c_int) << 0 as c_int)
-                    as OpCode as c_uint
-                    == OP_CONCAT as c_int as c_uint
+            if (*e2).k as c_uint == VRELOCABLE as c_uint
+                && GET_OPCODE(*getinstruction(fs, e2)) == OP_CONCAT
             {
                 freeexp(fs, e1);
                 SETARG_B(getinstruction(fs, e2), (*e1).u.info);
@@ -1614,11 +1611,7 @@ pub unsafe extern "C" fn luaK_setlist(
     tostore: c_int,
 ) {
     let c = ((nelems - 1 as c_int) / LFIELDS_PER_FLUSH as c_int) + 1;
-    let b = if tostore == LUA_MULTRET {
-        0 as c_int
-    } else {
-        tostore
-    };
+    let b = if tostore == LUA_MULTRET { 0 } else { tostore };
     debug_assert!(tostore != 0 && tostore <= LFIELDS_PER_FLUSH as c_int);
     if c as c_uint <= MAXARG_C {
         luaK_codeABC(fs, OP_SETLIST, base, b, c);
@@ -1628,5 +1621,5 @@ pub unsafe extern "C" fn luaK_setlist(
     } else {
         luaX_syntaxerror((*fs).ls, cstr!("constructor too long"));
     }
-    (*fs).freereg = (base + 1 as c_int) as lu_byte; /* free registers with list values */
+    (*fs).freereg = (base + 1) as lu_byte; /* free registers with list values */
 }
