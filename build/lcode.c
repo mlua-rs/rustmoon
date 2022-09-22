@@ -88,25 +88,7 @@ void luaK_goiftrue (FuncState *fs, expdesc *e);
 void luaK_goiffalse (FuncState *fs, expdesc *e);
 void codenot (FuncState *fs, expdesc *e);
 void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k);
-
-/*
-** Return false if folding can raise an error.
-** Bitwise operations need operands convertible to integers; division
-** operations cannot have 0 as divisor.
-*/
-static int validop (int op, TValue *v1, TValue *v2) {
-  switch (op) {
-    case LUA_OPBAND: case LUA_OPBOR: case LUA_OPBXOR:
-    case LUA_OPSHL: case LUA_OPSHR: case LUA_OPBNOT: {  /* conversion errors */
-      lua_Integer i;
-      return (tointeger(v1, &i) && tointeger(v2, &i));
-    }
-    case LUA_OPDIV: case LUA_OPIDIV: case LUA_OPMOD:  /* division by 0 */
-      return (nvalue(v2) != 0);
-    default: return 1;  /* everything else is valid */
-  }
-}
-
+int validop (int op, TValue *v1, TValue *v2);
 
 /*
 ** Try to "constant-fold" an operation; return 1 iff successful.

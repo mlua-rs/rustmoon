@@ -10,7 +10,7 @@ use crate::llimits::{lu_byte, Instruction, MAX_INT};
 use crate::lmem::luaM_growvector;
 use crate::lobject::{
     setbvalue, setfltvalue, sethvalue, setivalue, setnilvalue, setobj, setpvalue, setsvalue,
-    ttisinteger, ttype, GCObject, TString, TValue, Value,
+    ttisinteger, ttype, GCObject, TString, TValue, Value, nvalue,
 };
 use crate::lopcodes::{
     getBMode, getCMode, getOpMode, iABC, iABx, iAsBx, luaP_opmodes, CREATE_ABx, CREATE_Ax,
@@ -21,8 +21,8 @@ use crate::lopcodes::{
 };
 use crate::lparser::{expdesc, vkisinreg, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK, VFALSE, VINDEXED};
 use crate::ltable::luaH_set;
-use crate::lvm::luaV_rawequalobj;
-use crate::types::{lua_Integer, lua_Number};
+use crate::lvm::{luaV_rawequalobj, tointeger};
+use crate::types::{lua_Integer, lua_Number, LUA_OPBAND, LUA_OPBOR, LUA_OPBXOR, LUA_OPSHL, LUA_OPSHR, LUA_OPBNOT, LUA_OPDIV, LUA_OPIDIV, LUA_OPMOD};
 
 pub const MAXREGS: c_int = 255;
 pub const NO_JUMP: c_int = -1;
@@ -1269,14 +1269,7 @@ pub unsafe extern "C" fn codenot(fs: *mut FuncState, mut e: *mut expdesc) {
 ** Create expression 't[k]'. 't' must have its final result already in a
 ** register or upvalue.
 */
-/*void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k) {
-    lua_assert(!hasjumps(t) && (vkisinreg(t->k) || t->k == VUPVAL));
-    t->u.ind.t = t->u.info;  /* register or upvalue index */
-    t->u.ind.idx = luaK_exp2RK(fs, k);  /* R/K index for key */
-    t->u.ind.vt = (t->k == VUPVAL) ? VUPVAL : VLOCAL;
-    t->k = VINDEXED;
-  }*/
-  #[no_mangle]
+#[no_mangle]
 pub unsafe extern "C" fn luaK_indexed(
     fs: *mut FuncState,
     mut t: *mut expdesc,
@@ -1294,4 +1287,28 @@ pub unsafe extern "C" fn luaK_indexed(
         VLOCAL as libc::c_int
     }) as lu_byte;
     (*t).k = VINDEXED;
+}
+
+/*
+** Return false if folding can raise an error.
+** Bitwise operations need operands convertible to integers; division
+** operations cannot have 0 as divisor.
+*/
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn validop(
+    op: libc::c_int,
+    v1: *mut TValue,
+    v2: *mut TValue,
+) -> libc::c_int {
+    match op {
+        LUA_OPBAND | LUA_OPBOR | LUA_OPBXOR | LUA_OPSHL | LUA_OPSHR | LUA_OPBNOT => {
+            let mut i: lua_Integer = 0;
+            return (tointeger(v1, &mut i) != 0 && tointeger(v2, &mut i) != 0) as libc::c_int;
+        }
+        LUA_OPDIV | LUA_OPIDIV | LUA_OPMOD => {
+            return (nvalue(v2) != 0 as libc::c_int as libc::c_double) as libc::c_int;
+        }
+        _ => return 1 as libc::c_int,
+    };
 }
