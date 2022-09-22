@@ -59,6 +59,7 @@ pub const MAXARG_Bx: c_uint = (1 << SIZE_Bx) - 1;
 pub const MAXARG_sBx: c_uint = MAXARG_Bx >> 1;
 pub const MAXARG_Ax: c_uint = (1 << SIZE_Ax) - 1;
 pub const MAXARG_A: c_uint = (1 << SIZE_A) - 1;
+pub const MAXARG_B: c_uint = (1 << SIZE_B) - 1;
 pub const MAXARG_C: c_uint = (1 << SIZE_C) - 1;
 
 /*
@@ -79,6 +80,7 @@ pub const fn GET_OPCODE(i: Instruction) -> OpCode {
     ((i >> POS_OP) & MASK1(SIZE_OP, 0)) as OpCode
 }
 
+#[inline(always)]
 pub fn SET_OPCODE(i: &mut Instruction, o: OpCode) {
     *i = (*i & MASK0(SIZE_OP, POS_OP)) | (((o as Instruction) << POS_OP) & MASK1(SIZE_OP, POS_OP));
 }
@@ -87,56 +89,84 @@ pub const fn getarg(i: Instruction, pos: c_uint, size: c_uint) -> c_int {
     ((i >> pos) & MASK1(size, 0)) as c_int
 }
 
-// #define setarg(i,v,pos,size)	((i) = (((i)&MASK0(size,pos)) | \
-//                 ((cast(Instruction, v)<<pos)&MASK1(size,pos))))
+#[inline(always)]
+pub unsafe fn setarg(i: *mut Instruction, v: c_int, pos: c_uint, size: c_uint) {
+    *i = (*i) & MASK0(size, pos) | (v as Instruction) << pos & MASK1(size, pos);
+}
 
 pub const fn GETARG_A(i: Instruction) -> c_int {
     getarg(i, POS_A, SIZE_A)
 }
 
-// #define SETARG_A(i,v)	setarg(i, v, POS_A, SIZE_A)
+#[inline(always)]
+pub unsafe fn SETARG_A(i: *mut Instruction, v: c_int) {
+    setarg(i, v, POS_A, SIZE_A);
+}
 
 pub const fn GETARG_B(i: Instruction) -> c_int {
     getarg(i, POS_B, SIZE_B)
 }
 
-// #define SETARG_B(i,v)	setarg(i, v, POS_B, SIZE_B)
+#[inline(always)]
+pub unsafe fn SETARG_B(i: *mut Instruction, v: c_int) {
+    setarg(i, v, POS_B, SIZE_B);
+}
 
 pub const fn GETARG_C(i: Instruction) -> c_int {
     getarg(i, POS_C, SIZE_C)
 }
 
-// #define SETARG_C(i,v)	setarg(i, v, POS_C, SIZE_C)
+#[inline(always)]
+pub unsafe fn SETARG_C(i: *mut Instruction, v: c_int) {
+    setarg(i, v, POS_C, SIZE_C);
+}
 
 pub const fn GETARG_Bx(i: Instruction) -> c_int {
     getarg(i, POS_Bx, SIZE_Bx)
 }
 
-// #define SETARG_Bx(i,v)	setarg(i, v, POS_Bx, SIZE_Bx)
+#[inline(always)]
+pub unsafe fn SETARG_Bx(i: *mut Instruction, v: c_int) {
+    setarg(i, v, POS_Bx, SIZE_Bx);
+}
 
 pub const fn GETARG_Ax(i: Instruction) -> c_int {
     getarg(i, POS_Ax, SIZE_Ax)
 }
 
-// #define SETARG_Ax(i,v)	setarg(i, v, POS_Ax, SIZE_Ax)
+#[inline(always)]
+pub unsafe fn SETARG_Ax(i: *mut Instruction, v: c_int) {
+    setarg(i, v, POS_Ax, SIZE_Ax);
+}
 
 pub const fn GETARG_sBx(i: Instruction) -> c_int {
     GETARG_Bx(i) - MAXARG_sBx as c_int
 }
 
-// #define SETARG_sBx(i,b)	SETARG_Bx((i),cast(unsigned int, (b)+MAXARG_sBx))
+#[inline(always)]
+pub unsafe fn SETARG_sBx(i: *mut Instruction, b: c_int) {
+    SETARG_Bx(i, b + MAXARG_sBx as c_int);
+}
 
-// #define CREATE_ABC(o,a,b,c)	((cast(Instruction, o)<<POS_OP) \
-// 			| (cast(Instruction, a)<<POS_A) \
-// 			| (cast(Instruction, b)<<POS_B) \
-// 			| (cast(Instruction, c)<<POS_C))
+#[inline(always)]
+pub unsafe fn CREATE_ABC(o: OpCode, a: c_int, b: c_int, c: c_int) -> Instruction {
+    return (o as Instruction) << POS_OP
+        | (a as Instruction) << POS_A
+        | (b as Instruction) << POS_B
+        | (c as Instruction) << POS_C;
+}
 
-// #define CREATE_ABx(o,a,bc)	((cast(Instruction, o)<<POS_OP) \
-// 			| (cast(Instruction, a)<<POS_A) \
-// 			| (cast(Instruction, bc)<<POS_Bx))
+#[inline(always)]
+pub unsafe fn CREATE_ABx(o: OpCode, a: c_int, bc: c_uint) -> Instruction {
+    return (o as Instruction) << POS_OP
+        | (a as Instruction) << POS_A
+        | (bc as Instruction) << POS_Bx;
+}
 
-// #define CREATE_Ax(o,a)		((cast(Instruction, o)<<POS_OP) \
-// 			| (cast(Instruction, a)<<POS_Ax))
+#[inline(always)]
+pub unsafe fn CREATE_Ax(o: OpCode, a: c_int) -> Instruction {
+    return (o as Instruction) << POS_OP | (a as Instruction) << POS_Ax;
+}
 
 /*
 ** Macros to operate RK indices
@@ -144,6 +174,7 @@ pub const fn GETARG_sBx(i: Instruction) -> c_int {
 
 // this bit 1 means constant (0 means register)
 pub const BITRK: c_uint = 1 << (SIZE_B - 1);
+pub const MAXINDEXRK: c_uint = BITRK - 1;
 
 // test whether value is a constant
 pub const fn ISK(x: c_uint) -> bool {
@@ -153,6 +184,10 @@ pub const fn ISK(x: c_uint) -> bool {
 // gets the index of the constant
 pub const fn INDEXK(r: c_uint) -> c_uint {
     r & !BITRK
+}
+
+pub const fn RKASK(x: c_uint) -> c_uint {
+    return x | BITRK;
 }
 
 /*
@@ -342,6 +377,11 @@ pub unsafe fn getBMode(m: OpCode) -> OpArgMask {
 #[inline(always)]
 pub unsafe fn getCMode(m: OpCode) -> OpArgMask {
     (luaP_opmodes[m as usize] >> 2) & 3
+}
+
+#[inline(always)]
+pub unsafe fn getOpMode(m: OpCode) -> OpMode {
+    return luaP_opmodes[m as usize] & 3;
 }
 
 /* opcode names */

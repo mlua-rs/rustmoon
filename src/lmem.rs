@@ -44,6 +44,26 @@ pub unsafe fn luaM_newobject<T>(L: *mut lua_State, tag: u8) -> *mut T {
     luaM_realloc_(L, ptr::null_mut(), tag as usize, size_of::<T>()) as *mut T
 }
 
+pub unsafe fn luaM_growvector<T>(
+    L: *mut lua_State,
+    v: *mut *mut T,
+    nelems: c_int,
+    size: *mut i32,
+    limit: c_int,
+    what: *const c_char,
+) {
+    if nelems + 1 as libc::c_int > (*size) {
+        *v = luaM_growaux_(
+            L,
+            (*v) as *mut c_void,
+            size,
+            ::std::mem::size_of::<T>() as usize,
+            limit,
+            what,
+        ) as *mut T;
+    }
+}
+
 #[inline(always)]
 pub unsafe fn luaM_newobject_sz(L: *mut lua_State, tag: u8, sz: usize) -> *mut c_void {
     luaM_realloc_(L, ptr::null_mut(), tag as usize, sz)
