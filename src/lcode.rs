@@ -19,12 +19,12 @@ use crate::lopcodes::{
     GETARG_sBx, MAXARG_Ax, MAXARG_Bx, MAXARG_sBx, OpArgN, OpCode, SETARG_sBx, GETARG_A, GETARG_B,
     GETARG_C, GET_OPCODE, ISK, MAXARG_A, MAXARG_B, MAXARG_C, NO_REG, OP_EXTRAARG, OP_JMP, OP_LOADK,
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
-    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF, OP_NOT, OP_EQ, OP_UNM,
+    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF, OP_NOT, OP_EQ, OP_UNM, OP_CONCAT, OP_ADD,
 };
 use crate::lparser::{expdesc, vkisinreg, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK, VFALSE, VINDEXED, C2RustUnnamed_8};
 use crate::ltable::luaH_set;
 use crate::lvm::{luaV_rawequalobj, tointeger};
-use crate::types::{lua_Integer, lua_Number, LUA_OPBAND, LUA_OPBOR, LUA_OPBXOR, LUA_OPSHL, LUA_OPSHR, LUA_OPBNOT, LUA_OPDIV, LUA_OPIDIV, LUA_OPMOD, LUA_OPUNM};
+use crate::types::{lua_Integer, lua_Number, LUA_OPBAND, LUA_OPBOR, LUA_OPBXOR, LUA_OPSHL, LUA_OPSHR, LUA_OPBNOT, LUA_OPDIV, LUA_OPIDIV, LUA_OPMOD, LUA_OPUNM, LUA_OPADD};
 
 pub type BinOpr = libc::c_uint;
 
@@ -1550,5 +1550,74 @@ pub unsafe extern "C" fn luaK_infix(
         _ => {
             luaK_exp2RK(fs, v);
         }
+    };
+}
+
+/*
+** Finalize code for binary operation, after reading 2nd operand.
+** For '(a .. b .. c)' (which is '(a .. (b .. c))', because
+** concatenation is right associative), merge second CONCAT into first
+** one.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_posfix(
+    fs: *mut FuncState,
+    op: BinOpr,
+    mut e1: *mut expdesc,
+    e2: *mut expdesc,
+    line: libc::c_int,
+) {
+    match op as libc::c_uint {
+        19 => { // OPR_AND
+            debug_assert!((*e1).t == NO_JUMP);  /* list closed by 'luK_infix' */
+            luaK_dischargevars(fs, e2);
+            luaK_concat(fs, &mut (*e2).f, (*e1).f);
+            *e1 = *e2;
+        }
+        20 => { // OPR_OR
+            debug_assert!((*e1).f == NO_JUMP);  /* list closed by 'luK_infix' */
+            luaK_dischargevars(fs, e2);
+            luaK_concat(fs, &mut (*e2).t, (*e1).t);
+            *e1 = *e2;
+        }
+        12 => { // OPR_CONCAT
+            luaK_exp2val(fs, e2);
+            if (*e2).k as libc::c_uint == VRELOCABLE as libc::c_int as libc::c_uint
+                && (*((*(*fs).f).code).offset((*e2).u.info as isize) >> 0 as libc::c_int
+                    & !(!(0 as libc::c_int as Instruction) << 6 as libc::c_int)
+                        << 0 as libc::c_int) as OpCode as libc::c_uint
+                    == OP_CONCAT as libc::c_int as libc::c_uint
+            {
+                freeexp(fs, e1);
+                SETARG_B(getinstruction(fs, e2), (*e1).u.info);
+                (*e1).k = VRELOCABLE;
+                (*e1).u.info = (*e2).u.info;
+            } else {
+                luaK_exp2nextreg(fs, e2); /* operand must be on the 'stack' */
+                codebinexpval(fs, OP_CONCAT, e1, e2, line);
+            }
+        }
+        /*  case OPR_ADD: case OPR_SUB: case OPR_MUL: case OPR_DIV:
+            case OPR_IDIV: case OPR_MOD: case OPR_POW:
+            case OPR_BAND: case OPR_BOR: case OPR_BXOR:
+            case OPR_SHL: case OPR_SHR: */
+        0 | 1 | 2 | 5 | 6 | 3 | 4 | 7 | 8 | 9 | 10 | 11 => {
+            if constfolding(
+                fs,
+                (op as libc::c_uint).wrapping_add(LUA_OPADD as libc::c_uint)
+                    as libc::c_int,
+                e1,
+                e2,
+            ) == 0
+            {
+                codebinexpval(fs, (op + OP_ADD as c_uint) as OpCode, e1, e2, line);
+            }
+        }
+        /* case OPR_EQ: case OPR_LT: case OPR_LE:
+           case OPR_NE: case OPR_GT: case OPR_GE: */
+        13 | 14 | 15 | 16 | 17 | 18 => {
+            codecomp(fs, op, e1, e2);
+        }
+        _ => {}
     };
 }

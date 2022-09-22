@@ -97,62 +97,8 @@ void codebinexpval (FuncState *fs, OpCode op,
 void codecomp (FuncState *fs, BinOpr opr, expdesc *e1, expdesc *e2);
 void luaK_prefix (FuncState *fs, UnOpr op, expdesc *e, int line);
 void luaK_infix (FuncState *fs, BinOpr op, expdesc *v);
-
-
-/*
-** Finalize code for binary operation, after reading 2nd operand.
-** For '(a .. b .. c)' (which is '(a .. (b .. c))', because
-** concatenation is right associative), merge second CONCAT into first
-** one.
-*/
 void luaK_posfix (FuncState *fs, BinOpr op,
-                  expdesc *e1, expdesc *e2, int line) {
-  switch (op) {
-    case OPR_AND: {
-      lua_assert(e1->t == NO_JUMP);  /* list closed by 'luK_infix' */
-      luaK_dischargevars(fs, e2);
-      luaK_concat(fs, &e2->f, e1->f);
-      *e1 = *e2;
-      break;
-    }
-    case OPR_OR: {
-      lua_assert(e1->f == NO_JUMP);  /* list closed by 'luK_infix' */
-      luaK_dischargevars(fs, e2);
-      luaK_concat(fs, &e2->t, e1->t);
-      *e1 = *e2;
-      break;
-    }
-    case OPR_CONCAT: {
-      luaK_exp2val(fs, e2);
-      if (e2->k == VRELOCABLE &&
-          GET_OPCODE(getinstruction(fs, e2)) == OP_CONCAT) {
-        lua_assert(e1->u.info == GETARG_B(getinstruction(fs, e2))-1);
-        freeexp(fs, e1);
-        SETARG_B(getinstruction(fs, e2), e1->u.info);
-        e1->k = VRELOCABLE; e1->u.info = e2->u.info;
-      }
-      else {
-        luaK_exp2nextreg(fs, e2);  /* operand must be on the 'stack' */
-        codebinexpval(fs, OP_CONCAT, e1, e2, line);
-      }
-      break;
-    }
-    case OPR_ADD: case OPR_SUB: case OPR_MUL: case OPR_DIV:
-    case OPR_IDIV: case OPR_MOD: case OPR_POW:
-    case OPR_BAND: case OPR_BOR: case OPR_BXOR:
-    case OPR_SHL: case OPR_SHR: {
-      if (!constfolding(fs, op + LUA_OPADD, e1, e2))
-        codebinexpval(fs, cast(OpCode, op + OP_ADD), e1, e2, line);
-      break;
-    }
-    case OPR_EQ: case OPR_LT: case OPR_LE:
-    case OPR_NE: case OPR_GT: case OPR_GE: {
-      codecomp(fs, op, e1, e2);
-      break;
-    }
-    default: lua_assert(0);
-  }
-}
+                  expdesc *e1, expdesc *e2, int line);
 
 
 /*
