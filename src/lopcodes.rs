@@ -67,18 +67,15 @@ pub const MAXARG_C: c_uint = (1 << SIZE_C) - 1;
 */
 
 // creates a mask with 'n' 1 bits at position 'p'
-#[inline(always)]
 pub const fn MASK1(n: c_uint, p: c_uint) -> c_uint {
     (!(!(0 as Instruction) << n)) << p
 }
 
 // creates a mask with 'n' 0 bits at position 'p'
-#[inline(always)]
 pub const fn MASK0(n: c_uint, p: c_uint) -> c_uint {
     !MASK1(n, p)
 }
 
-#[inline(always)]
 pub const fn GET_OPCODE(i: Instruction) -> OpCode {
     ((i >> POS_OP) & MASK1(SIZE_OP, 0)) as OpCode
 }
@@ -88,7 +85,6 @@ pub fn SET_OPCODE(i: &mut Instruction, o: OpCode) {
     *i = (*i & MASK0(SIZE_OP, POS_OP)) | (((o as Instruction) << POS_OP) & MASK1(SIZE_OP, POS_OP));
 }
 
-#[inline(always)]
 pub const fn getarg(i: Instruction, pos: c_uint, size: c_uint) -> c_int {
     ((i >> pos) & MASK1(size, 0)) as c_int
 }
@@ -98,7 +94,6 @@ pub unsafe fn setarg(i: *mut Instruction, v: c_int, pos: c_uint, size: c_uint) {
     *i = (*i) & MASK0(size, pos) | (v as Instruction) << pos & MASK1(size, pos);
 }
 
-#[inline(always)]
 pub const fn GETARG_A(i: Instruction) -> c_int {
     getarg(i, POS_A, SIZE_A)
 }
@@ -108,7 +103,6 @@ pub unsafe fn SETARG_A(i: *mut Instruction, v: c_int) {
     setarg(i, v, POS_A, SIZE_A);
 }
 
-#[inline(always)]
 pub const fn GETARG_B(i: Instruction) -> c_int {
     getarg(i, POS_B, SIZE_B)
 }
@@ -118,7 +112,6 @@ pub unsafe fn SETARG_B(i: *mut Instruction, v: c_int) {
     setarg(i, v, POS_B, SIZE_B);
 }
 
-#[inline(always)]
 pub const fn GETARG_C(i: Instruction) -> c_int {
     getarg(i, POS_C, SIZE_C)
 }
@@ -128,7 +121,6 @@ pub unsafe fn SETARG_C(i: *mut Instruction, v: c_int) {
     setarg(i, v, POS_C, SIZE_C);
 }
 
-#[inline(always)]
 pub const fn GETARG_Bx(i: Instruction) -> c_int {
     getarg(i, POS_Bx, SIZE_Bx)
 }
@@ -138,7 +130,6 @@ pub unsafe fn SETARG_Bx(i: *mut Instruction, v: c_int) {
     setarg(i, v, POS_Bx, SIZE_Bx);
 }
 
-#[inline(always)]
 pub const fn GETARG_Ax(i: Instruction) -> c_int {
     getarg(i, POS_Ax, SIZE_Ax)
 }
@@ -148,7 +139,6 @@ pub unsafe fn SETARG_Ax(i: *mut Instruction, v: c_int) {
     setarg(i, v, POS_Ax, SIZE_Ax);
 }
 
-#[inline(always)]
 pub const fn GETARG_sBx(i: Instruction) -> c_int {
     GETARG_Bx(i) - MAXARG_sBx as c_int
 }
