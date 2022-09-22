@@ -17,12 +17,17 @@ use crate::lopcodes::{
     GETARG_sBx, MAXARG_Ax, MAXARG_Bx, MAXARG_sBx, OpArgN, OpCode, SETARG_sBx, GETARG_A, GETARG_B,
     GETARG_C, GET_OPCODE, ISK, MAXARG_A, MAXARG_B, MAXARG_C, NO_REG, OP_EXTRAARG, OP_JMP, OP_LOADK,
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
-    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF, OP_NOT,
+    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF, OP_NOT, OP_EQ,
 };
 use crate::lparser::{expdesc, vkisinreg, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK, VFALSE, VINDEXED};
 use crate::ltable::luaH_set;
 use crate::lvm::{luaV_rawequalobj, tointeger};
 use crate::types::{lua_Integer, lua_Number, LUA_OPBAND, LUA_OPBOR, LUA_OPBXOR, LUA_OPSHL, LUA_OPSHR, LUA_OPBNOT, LUA_OPDIV, LUA_OPIDIV, LUA_OPMOD};
+
+pub type BinOpr = libc::c_uint;
+
+pub const OPR_NE: BinOpr = 16;
+pub const OPR_EQ: BinOpr = 13;
 
 pub const MAXREGS: c_int = 255;
 pub const NO_JUMP: c_int = -1;
@@ -1411,6 +1416,42 @@ pub unsafe extern "C" fn codebinexpval(
     luaK_fixline(fs, line);
 }
 
+/*
+** Emit code for comparisons.
+** 'e1' was already put in R/K form by 'luaK_infix'.
+*/
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn codecomp(
+    fs: *mut FuncState,
+    opr: BinOpr,
+    mut e1: *mut expdesc,
+    e2: *mut expdesc,
+) {
+    let rk1 = if (*e1).k as libc::c_uint == VK as libc::c_int as libc::c_uint {
+        RKASK((*e1).u.info as c_uint)
+    } else {
+        debug_assert!((*e1).k == VNONRELOC);
+        (*e1).u.info as c_uint
+    };
+    let rk2 = luaK_exp2RK(fs, e2);
+    freeexps(fs, e1, e2);
+    match opr as libc::c_uint {
+        16 => { // OPR_NE: '(a ~= b)' ==> 'not (a == b)' */
+            (*e1).u.info = condjump(fs, OP_EQ, 0 as libc::c_int, rk1 as c_int, rk2);
+        }
+        17 | 18 => { // OPR_GT |  OPR_GE
+            /* '(a > b)' ==> '(b < a)';  '(a >= b)' ==> '(b <= a)' */
+            let op = (opr - OPR_NE) as OpCode + OP_EQ;
+            (*e1).u.info = condjump(fs, op, 1 as libc::c_int, rk2 as c_int, rk1 as c_int);
+        }
+        _ => { /* '==', '<', '<=' use their own opcodes */
+            let op_0 = (opr - OPR_EQ) as OpCode + OP_EQ;
+            (*e1).u.info = condjump(fs, op_0, 1 as libc::c_int, rk1 as c_int, rk2);
+        }
+    }
+    (*e1).k = VJMP;
+}
 
 /*
 ** Change line information associated with current position.

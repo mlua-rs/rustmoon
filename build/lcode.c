@@ -94,36 +94,7 @@ int constfolding (FuncState *fs, int op, expdesc *e1,
 void codeunexpval (FuncState *fs, OpCode op, expdesc *e, int line);
 void codebinexpval (FuncState *fs, OpCode op,
                            expdesc *e1, expdesc *e2, int line);
-
-
-/*
-** Emit code for comparisons.
-** 'e1' was already put in R/K form by 'luaK_infix'.
-*/
-static void codecomp (FuncState *fs, BinOpr opr, expdesc *e1, expdesc *e2) {
-  int rk1 = (e1->k == VK) ? RKASK(e1->u.info)
-                          : check_exp(e1->k == VNONRELOC, e1->u.info);
-  int rk2 = luaK_exp2RK(fs, e2);
-  freeexps(fs, e1, e2);
-  switch (opr) {
-    case OPR_NE: {  /* '(a ~= b)' ==> 'not (a == b)' */
-      e1->u.info = condjump(fs, OP_EQ, 0, rk1, rk2);
-      break;
-    }
-    case OPR_GT: case OPR_GE: {
-      /* '(a > b)' ==> '(b < a)';  '(a >= b)' ==> '(b <= a)' */
-      OpCode op = cast(OpCode, (opr - OPR_NE) + OP_EQ);
-      e1->u.info = condjump(fs, op, 1, rk2, rk1);  /* invert operands */
-      break;
-    }
-    default: {  /* '==', '<', '<=' use their own opcodes */
-      OpCode op = cast(OpCode, (opr - OPR_EQ) + OP_EQ);
-      e1->u.info = condjump(fs, op, 1, rk1, rk2);
-      break;
-    }
-  }
-  e1->k = VJMP;
-}
+void codecomp (FuncState *fs, BinOpr opr, expdesc *e1, expdesc *e2);
 
 
 /*
