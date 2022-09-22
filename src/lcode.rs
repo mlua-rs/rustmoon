@@ -813,7 +813,7 @@ unsafe extern "C" fn discharge2reg(fs: *mut FuncState, mut e: *mut expdesc, reg:
 /*
 ** Ensures expression value is in any register.
 */
- unsafe extern "C" fn discharge2anyreg(fs: *mut FuncState, e: *mut expdesc) {
+unsafe extern "C" fn discharge2anyreg(fs: *mut FuncState, e: *mut expdesc) {
     if (*e).k as c_uint != VNONRELOC as c_uint {
         /* no fixed register yet? */
         luaK_reserveregs(fs, 1); /* get a register */
@@ -821,12 +821,7 @@ unsafe extern "C" fn discharge2reg(fs: *mut FuncState, mut e: *mut expdesc, reg:
     }
 }
 
-unsafe extern "C" fn code_loadbool(
-    fs: *mut FuncState,
-    A: c_int,
-    b: c_int,
-    jump: c_int,
-) -> c_int {
+unsafe extern "C" fn code_loadbool(fs: *mut FuncState, A: c_int, b: c_int, jump: c_int) -> c_int {
     luaK_getlabel(fs); /* those instructions may be jump targets */
     return luaK_codeABC(fs, OP_LOADBOOL, A, b, jump);
 }
@@ -1062,22 +1057,12 @@ unsafe extern "C" fn negatecondition(fs: *mut FuncState, e: *mut expdesc) {
 ** Optimize when 'e' is 'not' something, inverting the condition
 ** and removing the 'not'.
 */
-unsafe extern "C" fn jumponcond(
-    mut fs: *mut FuncState,
-    e: *mut expdesc,
-    cond_0: c_int,
-) -> c_int {
+unsafe extern "C" fn jumponcond(mut fs: *mut FuncState, e: *mut expdesc, cond_0: c_int) -> c_int {
     if (*e).k as c_uint == VRELOCABLE as c_uint {
         let ie = getinstruction(fs, e);
         if GET_OPCODE(*ie) == OP_NOT {
             (*fs).pc -= 1; /* remove previous OP_NOT */
-            return condjump(
-                fs,
-                OP_TEST,
-                GETARG_B(*ie),
-                0,
-                (cond_0 == 0) as c_int,
-            );
+            return condjump(fs, OP_TEST, GETARG_B(*ie), 0, (cond_0 == 0) as c_int);
         }
         /* else go through */
     }
@@ -1184,7 +1169,7 @@ pub unsafe extern "C" fn luaK_indexed(fs: *mut FuncState, mut t: *mut expdesc, k
     (*t).u.ind.t = (*t).u.info as lu_byte; /* register or upvalue index */
     (*t).u.ind.idx = luaK_exp2RK(fs, k) as c_short; /* R/K index for key */
     (*t).u.ind.vt = (if (*t).k as c_uint == VUPVAL as c_uint {
-        VUPVAL 
+        VUPVAL
     } else {
         VLOCAL
     }) as lu_byte;
@@ -1349,9 +1334,7 @@ pub unsafe extern "C" fn luaK_prefix(fs: *mut FuncState, op: UnOpr, e: *mut expd
     static mut ef: expdesc = {
         let init = expdesc {
             k: VKINT,
-            u: C2RustUnnamed_8 {
-                ival: 0,
-            },
+            u: C2RustUnnamed_8 { ival: 0 },
             t: NO_JUMP,
             f: NO_JUMP,
         };
