@@ -1386,6 +1386,33 @@ pub unsafe extern "C" fn codeunexpval(
 }
 
 /*
+** Emit code for binary expressions that "produce values"
+** (everything but logical operators 'and'/'or' and comparison
+** operators).
+** Expression to produce final result will be encoded in 'e1'.
+** Because 'luaK_exp2RK' can free registers, its calls must be
+** in "stack order" (that is, first on 'e2', which may have more
+** recent registers to be released).
+*/
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn codebinexpval(
+    fs: *mut FuncState,
+    op: OpCode,
+    mut e1: *mut expdesc,
+    e2: *mut expdesc,
+    line: libc::c_int,
+) {
+    let rk2 = luaK_exp2RK(fs, e2); /* both operands are "RK" */
+    let rk1 = luaK_exp2RK(fs, e1);
+    freeexps(fs, e1, e2);
+    (*e1).u.info = luaK_codeABC(fs, op, 0 as libc::c_int, rk1, rk2); /* generate opcode */
+    (*e1).k = VRELOCABLE; /* all those operations are relocatable */
+    luaK_fixline(fs, line);
+}
+
+
+/*
 ** Change line information associated with current position.
 */
 #[no_mangle]
