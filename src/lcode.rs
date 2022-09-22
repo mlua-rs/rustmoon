@@ -286,10 +286,7 @@ unsafe extern "C" fn getjumpcontrol(fs: *mut FuncState, pc: c_int) -> *mut Instr
 ** register. Otherwise, change instruction to a simple 'TEST' (produces
 ** no register value)
 */
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn patchtestreg(fs: *mut FuncState, node: c_int, reg: c_int) -> c_int {
+unsafe extern "C" fn patchtestreg(fs: *mut FuncState, node: c_int, reg: c_int) -> c_int {
     let i = getjumpcontrol(fs, node);
     if GET_OPCODE(*i) != OP_TESTSET {
         return 0; /* cannot patch other instructions */
@@ -307,15 +304,7 @@ pub unsafe extern "C" fn patchtestreg(fs: *mut FuncState, node: c_int, reg: c_in
 /*
 ** Traverse a list of tests ensuring no one produces a value
 */
-/*static void removevalues (FuncState *fs, int list) {
-  for (; list != NO_JUMP; list = getjump(fs, list))
-      patchtestreg(fs, list, NO_REG);
-}
-*/
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn removevalues(fs: *mut FuncState, mut list: c_int) {
+unsafe extern "C" fn removevalues(fs: *mut FuncState, mut list: c_int) {
     while list != NO_JUMP {
         patchtestreg(fs, list, NO_REG as c_int);
         list = getjump(fs, list);
@@ -327,10 +316,7 @@ pub unsafe extern "C" fn removevalues(fs: *mut FuncState, mut list: c_int) {
 ** registers: tests producing values jump to 'vtarget' (and put their
 ** values in 'reg'), other tests jump to 'dtarget'.
 */
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn patchlistaux(
+unsafe extern "C" fn patchlistaux(
     fs: *mut FuncState,
     mut list: c_int,
     vtarget: c_int,
@@ -353,9 +339,7 @@ pub unsafe extern "C" fn patchlistaux(
 ** to current position with no values) and reset list of pending
 ** jumps
 */
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn dischargejpc(mut fs: *mut FuncState) {
+unsafe extern "C" fn dischargejpc(mut fs: *mut FuncState) {
     patchlistaux(fs, (*fs).jpc, (*fs).pc, NO_REG as c_int, (*fs).pc);
     (*fs).jpc = NO_JUMP;
 }
@@ -403,10 +387,7 @@ pub unsafe extern "C" fn luaK_patchclose(fs: *mut FuncState, mut list: c_int, mu
  ** Emit instruction 'i', checking for array sizes and saving also its
  ** line information. Return 'i' position.
  */
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn luaK_code(mut fs: *mut FuncState, i: Instruction) -> c_int {
+unsafe extern "C" fn luaK_code(mut fs: *mut FuncState, i: Instruction) -> c_int {
     let f = (*fs).f;
     dischargejpc(fs); /* 'pc' will change */
     /* put new instruction in code array */
@@ -475,16 +456,7 @@ pub unsafe extern "C" fn luaK_codeABx(
 /*
 ** Emit an "extra argument" instruction (format 'iAx')
 */
-/*
-static int codeextraarg (FuncState *fs, int a) {
-    lua_assert(a <= MAXARG_Ax);
-    return luaK_code(fs, CREATE_Ax(OP_EXTRAARG, a));
-  }
-*/
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn codeextraarg(fs: *mut FuncState, a: c_int) -> c_int {
+unsafe extern "C" fn codeextraarg(fs: *mut FuncState, a: c_int) -> c_int {
     return luaK_code(fs, CREATE_Ax(OP_EXTRAARG, a));
 }
 
@@ -534,11 +506,8 @@ pub unsafe extern "C" fn luaK_reserveregs(mut fs: *mut FuncState, n: c_int) {
 /*
 ** Free register 'reg', if it is neither a constant index nor
 ** a local variable.
-)
 */
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn freereg(mut fs: *mut FuncState, reg: c_int) {
+unsafe extern "C" fn freereg(mut fs: *mut FuncState, reg: c_int) {
     if !ISK(reg as c_uint) && reg >= (*fs).nactvar as c_int {
         (*fs).freereg = ((*fs).freereg).wrapping_sub(1);
     }
@@ -547,12 +516,7 @@ pub unsafe extern "C" fn freereg(mut fs: *mut FuncState, reg: c_int) {
 /*
 ** Free register used by expression 'e' (if any)
 */
-/*static void freeexp (FuncState *fs, expdesc *e) {
-  if (e->k == VNONRELOC)
-    freereg(fs, e->u.info);
-}*/
-#[no_mangle]
-pub unsafe extern "C" fn freeexp(fs: *mut FuncState, e: *mut expdesc) {
+unsafe extern "C" fn freeexp(fs: *mut FuncState, e: *mut expdesc) {
     if (*e).k as c_uint == VNONRELOC as c_uint {
         freereg(fs, (*e).u.info);
     }
@@ -590,10 +554,7 @@ pub unsafe extern "C" fn freeexps(fs: *mut FuncState, e1: *mut expdesc, e2: *mut
 ** as keys (nil cannot be a key, integer keys can collapse with float
 ** keys), the caller must provide a useful 'key' for indexing the cache.
 */
-
-// FIXME - static
-#[no_mangle]
-pub unsafe extern "C" fn addk(mut fs: *mut FuncState, key: *mut TValue, v: *mut TValue) -> c_int {
+unsafe extern "C" fn addk(mut fs: *mut FuncState, key: *mut TValue, v: *mut TValue) -> c_int {
     let L = (*(*fs).ls).L;
     let f = (*fs).f;
     let idx = luaH_set(L, (*(*fs).ls).h, key); /* index scanner table */
@@ -676,9 +637,7 @@ pub unsafe extern "C" fn luaK_intK(fs: *mut FuncState, n: lua_Integer) -> c_int 
 /*
 ** Add a float to list of constants and return its index.
 */
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn luaK_numberK(fs: *mut FuncState, r: lua_Number) -> c_int {
+unsafe extern "C" fn luaK_numberK(fs: *mut FuncState, r: lua_Number) -> c_int {
     let mut o = TValue {
         value_: Value {
             gc: 0 as *mut GCObject,
@@ -692,9 +651,7 @@ pub unsafe extern "C" fn luaK_numberK(fs: *mut FuncState, r: lua_Number) -> c_in
 /*
 ** Add a boolean to list of constants and return its index.
 */
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn boolK(fs: *mut FuncState, b: c_int) -> c_int {
+unsafe extern "C" fn boolK(fs: *mut FuncState, b: c_int) -> c_int {
     let mut o = TValue {
         value_: Value {
             gc: 0 as *mut GCObject,
@@ -708,9 +665,7 @@ pub unsafe extern "C" fn boolK(fs: *mut FuncState, b: c_int) -> c_int {
 /*
 ** Add nil to list of constants and return its index.
 */
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn nilK(fs: *mut FuncState) -> c_int {
+unsafe extern "C" fn nilK(fs: *mut FuncState) -> c_int {
     let mut k = TValue {
         value_: Value {
             gc: 0 as *mut GCObject,
@@ -734,7 +689,6 @@ pub unsafe extern "C" fn nilK(fs: *mut FuncState) -> c_int {
 ** Either 'e' is a multi-ret expression (function call or vararg)
 ** or 'nresults' is LUA_MULTRET (as any expression can satisfy that).
 */
-
 #[no_mangle]
 pub unsafe extern "C" fn luaK_setreturns(fs: *mut FuncState, e: *mut expdesc, nresults: c_int) {
     if (*e).k as c_uint == VCALL {
@@ -813,10 +767,7 @@ pub unsafe extern "C" fn luaK_dischargevars(fs: *mut FuncState, mut e: *mut expd
 ** Ensures expression value is in register 'reg' (and therefore
 ** 'e' will become a non-relocatable expression).
 */
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn discharge2reg(fs: *mut FuncState, mut e: *mut expdesc, reg: c_int) {
+unsafe extern "C" fn discharge2reg(fs: *mut FuncState, mut e: *mut expdesc, reg: c_int) {
     luaK_dischargevars(fs, e);
     match (*e).k as c_uint {
         1 => {
@@ -862,9 +813,7 @@ pub unsafe extern "C" fn discharge2reg(fs: *mut FuncState, mut e: *mut expdesc, 
 /*
 ** Ensures expression value is in any register.
 */
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn discharge2anyreg(fs: *mut FuncState, e: *mut expdesc) {
+ unsafe extern "C" fn discharge2anyreg(fs: *mut FuncState, e: *mut expdesc) {
     if (*e).k as c_uint != VNONRELOC as c_uint {
         /* no fixed register yet? */
         luaK_reserveregs(fs, 1); /* get a register */
@@ -872,9 +821,7 @@ pub unsafe extern "C" fn discharge2anyreg(fs: *mut FuncState, e: *mut expdesc) {
     }
 }
 
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn code_loadbool(
+unsafe extern "C" fn code_loadbool(
     fs: *mut FuncState,
     A: c_int,
     b: c_int,
@@ -888,9 +835,7 @@ pub unsafe extern "C" fn code_loadbool(
 ** check whether list has any jump that do not produce a value
 ** or produce an inverted value
 */
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn need_value(fs: *mut FuncState, mut list: c_int) -> c_int {
+unsafe extern "C" fn need_value(fs: *mut FuncState, mut list: c_int) -> c_int {
     while list != NO_JUMP {
         let i = *getjumpcontrol(fs, list);
         if GET_OPCODE(i) as c_uint != OP_TESTSET as c_uint {
@@ -908,10 +853,7 @@ pub unsafe extern "C" fn need_value(fs: *mut FuncState, mut list: c_int) -> c_in
 ** its final position or to "load" instructions (for those tests
 ** that do not produce values).
 */
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn exp2reg(fs: *mut FuncState, mut e: *mut expdesc, reg: c_int) {
+unsafe extern "C" fn exp2reg(fs: *mut FuncState, mut e: *mut expdesc, reg: c_int) {
     discharge2reg(fs, e, reg);
     if (*e).k as c_uint == VJMP as c_uint {
         luaK_concat(fs, &mut (*e).t, (*e).u.info);
@@ -1104,10 +1046,7 @@ pub unsafe extern "C" fn luaK_self(fs: *mut FuncState, mut e: *mut expdesc, key:
 /*
 ** Negate condition 'e' (where 'e' is a comparison).
 */
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn negatecondition(fs: *mut FuncState, e: *mut expdesc) {
+unsafe extern "C" fn negatecondition(fs: *mut FuncState, e: *mut expdesc) {
     let pc = getjumpcontrol(fs, (*e).u.info);
     debug_assert!(
         testTMode(GET_OPCODE(*pc) as size_t) != 0
@@ -1123,9 +1062,7 @@ pub unsafe extern "C" fn negatecondition(fs: *mut FuncState, e: *mut expdesc) {
 ** Optimize when 'e' is 'not' something, inverting the condition
 ** and removing the 'not'.
 */
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn jumponcond(
+unsafe extern "C" fn jumponcond(
     mut fs: *mut FuncState,
     e: *mut expdesc,
     cond_0: c_int,
@@ -1203,9 +1140,7 @@ pub unsafe extern "C" fn luaK_goiffalse(fs: *mut FuncState, mut e: *mut expdesc)
 /*
 ** Code 'not e', doing constant folding.
 */
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn codenot(fs: *mut FuncState, mut e: *mut expdesc) {
+unsafe extern "C" fn codenot(fs: *mut FuncState, mut e: *mut expdesc) {
     luaK_dischargevars(fs, e);
     match (*e).k as c_uint {
         1 | 3 => {
@@ -1261,9 +1196,7 @@ pub unsafe extern "C" fn luaK_indexed(fs: *mut FuncState, mut t: *mut expdesc, k
 ** Bitwise operations need operands convertible to integers; division
 ** operations cannot have 0 as divisor.
 */
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn validop(op: c_int, v1: *mut TValue, v2: *mut TValue) -> c_int {
+unsafe extern "C" fn validop(op: c_int, v1: *mut TValue, v2: *mut TValue) -> c_int {
     match op {
         LUA_OPBAND | LUA_OPBOR | LUA_OPBXOR | LUA_OPSHL | LUA_OPSHR | LUA_OPBNOT => {
             /* conversion errors */
@@ -1282,9 +1215,7 @@ pub unsafe extern "C" fn validop(op: c_int, v1: *mut TValue, v2: *mut TValue) ->
 ** Try to "constant-fold" an operation; return 1 iff successful.
 ** (In this case, 'e1' has the final result.)
 */
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn constfolding(
+unsafe extern "C" fn constfolding(
     fs: *mut FuncState,
     op: c_int,
     mut e1: *mut expdesc,
@@ -1335,10 +1266,7 @@ pub unsafe extern "C" fn constfolding(
 ** (everything but 'not').
 ** Expression to produce final result will be encoded in 'e'.
 */
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn codeunexpval(
+unsafe extern "C" fn codeunexpval(
     fs: *mut FuncState,
     op: OpCode,
     mut e: *mut expdesc,
@@ -1360,9 +1288,7 @@ pub unsafe extern "C" fn codeunexpval(
 ** in "stack order" (that is, first on 'e2', which may have more
 ** recent registers to be released).
 */
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn codebinexpval(
+unsafe extern "C" fn codebinexpval(
     fs: *mut FuncState,
     op: OpCode,
     mut e1: *mut expdesc,
@@ -1381,9 +1307,7 @@ pub unsafe extern "C" fn codebinexpval(
 ** Emit code for comparisons.
 ** 'e1' was already put in R/K form by 'luaK_infix'.
 */
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn codecomp(
+unsafe extern "C" fn codecomp(
     fs: *mut FuncState,
     opr: BinOpr,
     mut e1: *mut expdesc,
