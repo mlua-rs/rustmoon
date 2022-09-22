@@ -37,8 +37,28 @@ use crate::types::{
 
 pub type BinOpr = c_uint;
 
+pub const OPR_NOBINOPR: BinOpr = 21;
+pub const OPR_OR: BinOpr = 20;
+pub const OPR_AND: BinOpr = 19;
+pub const OPR_GE: BinOpr = 18;
+pub const OPR_GT: BinOpr = 17;
 pub const OPR_NE: BinOpr = 16;
+pub const OPR_LE: BinOpr = 15;
+pub const OPR_LT: BinOpr = 14;
 pub const OPR_EQ: BinOpr = 13;
+pub const OPR_CONCAT: BinOpr = 12;
+pub const OPR_SHR: BinOpr = 11;
+pub const OPR_SHL: BinOpr = 10;
+pub const OPR_BXOR: BinOpr = 9;
+pub const OPR_BOR: BinOpr = 8;
+pub const OPR_BAND: BinOpr = 7;
+pub const OPR_IDIV: BinOpr = 6;
+pub const OPR_DIV: BinOpr = 5;
+pub const OPR_POW: BinOpr = 4;
+pub const OPR_MOD: BinOpr = 3;
+pub const OPR_MUL: BinOpr = 2;
+pub const OPR_SUB: BinOpr = 1;
+pub const OPR_ADD: BinOpr = 0;
 
 pub type UnOpr = c_uint;
 pub const OPR_NOUNOPR: UnOpr = 4;
@@ -82,10 +102,7 @@ unsafe fn getinstruction(fs: *mut FuncState, e: *mut expdesc) -> *mut Instructio
 ** If expression is a numeric constant, fills 'v' with its value
 ** and returns 1. Otherwise, returns 0.
 */
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn tonumeral(e: *const expdesc, v: *mut TValue) -> c_int {
+unsafe extern "C" fn tonumeral(e: *const expdesc, v: *mut TValue) -> c_int {
     if hasjumps(e) {
         return 0;
     }
@@ -147,10 +164,7 @@ pub unsafe extern "C" fn luaK_nil(fs: *mut FuncState, mut from: c_int, n: c_int)
 ** Gets the destination address of a jump instruction. Used to traverse
 ** a list of jumps.
 */
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn getjump(fs: *mut FuncState, pc: c_int) -> c_int {
+unsafe extern "C" fn getjump(fs: *mut FuncState, pc: c_int) -> c_int {
     let offset = GETARG_sBx(*((*(*fs).f).code.offset(pc as isize)));
     if offset == NO_JUMP {
         /* point to itself represents end of list */
@@ -664,7 +678,7 @@ pub unsafe extern "C" fn luaK_intK(fs: *mut FuncState, n: lua_Integer) -> c_int 
         },
         tt_: 0,
     };
-    setpvalue(&mut k, n as size_t as *mut c_void);
+    setpvalue(&mut k, n as *mut c_void);
     setivalue(&mut o, n);
     return addk(fs, &mut k, &mut o);
 }
@@ -883,13 +897,6 @@ pub unsafe extern "C" fn code_loadbool(
 ** check whether list has any jump that do not produce a value
 ** or produce an inverted value
 */
-/*static int need_value (FuncState *fs, int list) {
-  for (; list != NO_JUMP; list = getjump(fs, list)) {
-    Instruction i = *getjumpcontrol(fs, list);
-    if (GET_OPCODE(i) != OP_TESTSET) return 1;
-  }
-  return 0;  /* not found */
-}*/
 // FIXME static
 #[no_mangle]
 pub unsafe extern "C" fn need_value(fs: *mut FuncState, mut list: c_int) -> c_int {
@@ -910,28 +917,6 @@ pub unsafe extern "C" fn need_value(fs: *mut FuncState, mut list: c_int) -> c_in
 ** its final position or to "load" instructions (for those tests
 ** that do not produce values).
 */
-/*static void exp2reg (FuncState *fs, expdesc *e, int reg) {
-  discharge2reg(fs, e, reg);
-  if (e->k == VJMP)  /* expression itself is a test? */
-    luaK_concat(fs, &e->t, e->u.info);  /* put this jump in 't' list */
-  if (hasjumps(e)) {
-    int final;  /* position after whole expression */
-    int p_f = NO_JUMP;  /* position of an eventual LOAD false */
-    int p_t = NO_JUMP;  /* position of an eventual LOAD true */
-    if (need_value(fs, e->t) || need_value(fs, e->f)) {
-      int fj = (e->k == VJMP) ? NO_JUMP : luaK_jump(fs);
-      p_f = code_loadbool(fs, reg, 0, 1);
-      p_t = code_loadbool(fs, reg, 1, 0);
-      luaK_patchtohere(fs, fj);
-    }
-    final = luaK_getlabel(fs);
-    patchlistaux(fs, e->f, final, reg, p_f);
-    patchlistaux(fs, e->t, final, reg, p_t);
-  }
-  e->f = e->t = NO_JUMP;
-  e->u.info = reg;
-  e->k = VNONRELOC;
-}*/
 
 // FIXME static
 #[no_mangle]
@@ -1089,9 +1074,9 @@ pub unsafe extern "C" fn luaK_storevar(fs: *mut FuncState, var: *mut expdesc, ex
         10 => {
             // VINDEXED
             let op = (if (*var).u.ind.vt as c_int == VLOCAL as c_int {
-                OP_SETTABLE as c_int
+                OP_SETTABLE
             } else {
-                OP_SETTABUP as c_int
+                OP_SETTABUP
             }) as OpCode;
             let e_0 = luaK_exp2RK(fs, ex);
             luaK_codeABC(
@@ -1273,9 +1258,9 @@ pub unsafe extern "C" fn luaK_indexed(fs: *mut FuncState, mut t: *mut expdesc, k
     (*t).u.ind.t = (*t).u.info as lu_byte; /* register or upvalue index */
     (*t).u.ind.idx = luaK_exp2RK(fs, k) as c_short; /* R/K index for key */
     (*t).u.ind.vt = (if (*t).k as c_uint == VUPVAL as c_uint {
-        VUPVAL as c_int
+        VUPVAL 
     } else {
-        VLOCAL as c_int
+        VLOCAL
     }) as lu_byte;
     (*t).k = VINDEXED;
 }
