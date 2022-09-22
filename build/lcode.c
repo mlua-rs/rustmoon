@@ -95,25 +95,7 @@ void codeunexpval (FuncState *fs, OpCode op, expdesc *e, int line);
 void codebinexpval (FuncState *fs, OpCode op,
                            expdesc *e1, expdesc *e2, int line);
 void codecomp (FuncState *fs, BinOpr opr, expdesc *e1, expdesc *e2);
-
-
-/*
-** Apply prefix operation 'op' to expression 'e'.
-*/
-void luaK_prefix (FuncState *fs, UnOpr op, expdesc *e, int line) {
-  static const expdesc ef = {VKINT, {0}, NO_JUMP, NO_JUMP};
-  switch (op) {
-    case OPR_MINUS: case OPR_BNOT:  /* use 'ef' as fake 2nd operand */
-      if (constfolding(fs, op + LUA_OPUNM, e, &ef))
-        break;
-      /* FALLTHROUGH */
-    case OPR_LEN:
-      codeunexpval(fs, cast(OpCode, op + OP_UNM), e, line);
-      break;
-    case OPR_NOT: codenot(fs, e); break;
-    default: lua_assert(0);
-  }
-}
+void luaK_prefix (FuncState *fs, UnOpr op, expdesc *e, int line);
 
 
 /*

@@ -17,17 +17,24 @@ use crate::lopcodes::{
     GETARG_sBx, MAXARG_Ax, MAXARG_Bx, MAXARG_sBx, OpArgN, OpCode, SETARG_sBx, GETARG_A, GETARG_B,
     GETARG_C, GET_OPCODE, ISK, MAXARG_A, MAXARG_B, MAXARG_C, NO_REG, OP_EXTRAARG, OP_JMP, OP_LOADK,
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
-    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF, OP_NOT, OP_EQ,
+    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF, OP_NOT, OP_EQ, OP_UNM,
 };
-use crate::lparser::{expdesc, vkisinreg, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK, VFALSE, VINDEXED};
+use crate::lparser::{expdesc, vkisinreg, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK, VFALSE, VINDEXED, C2RustUnnamed_8};
 use crate::ltable::luaH_set;
 use crate::lvm::{luaV_rawequalobj, tointeger};
-use crate::types::{lua_Integer, lua_Number, LUA_OPBAND, LUA_OPBOR, LUA_OPBXOR, LUA_OPSHL, LUA_OPSHR, LUA_OPBNOT, LUA_OPDIV, LUA_OPIDIV, LUA_OPMOD};
+use crate::types::{lua_Integer, lua_Number, LUA_OPBAND, LUA_OPBOR, LUA_OPBXOR, LUA_OPSHL, LUA_OPSHR, LUA_OPBNOT, LUA_OPDIV, LUA_OPIDIV, LUA_OPMOD, LUA_OPUNM};
 
 pub type BinOpr = libc::c_uint;
 
 pub const OPR_NE: BinOpr = 16;
 pub const OPR_EQ: BinOpr = 13;
+
+pub type UnOpr = libc::c_uint;
+pub const OPR_NOUNOPR: UnOpr = 4;
+pub const OPR_LEN: UnOpr = 3;
+pub const OPR_NOT: UnOpr = 2;
+pub const OPR_BNOT: UnOpr = 1;
+pub const OPR_MINUS: UnOpr = 0;
 
 pub const MAXREGS: c_int = 255;
 pub const NO_JUMP: c_int = -1;
@@ -1460,4 +1467,54 @@ pub unsafe extern "C" fn codecomp(
 pub unsafe extern "C" fn luaK_fixline(fs: *mut FuncState, line: libc::c_int) {
     *((*(*fs).f).lineinfo).offset(((*fs).pc - 1 as libc::c_int) as isize) = line;
 }
-  
+
+/*
+** Apply prefix operation 'op' to expression 'e'.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_prefix(
+    fs: *mut FuncState,
+    op: UnOpr,
+    e: *mut expdesc,
+    line: libc::c_int,
+) {
+    static mut ef: expdesc = {
+        let init = expdesc {
+            k: VKINT,
+            u: C2RustUnnamed_8 {
+                ival: 0 as libc::c_int as lua_Integer,
+            },
+            t: NO_JUMP,
+            f: NO_JUMP,
+        };
+        init
+    };
+    let mut doCodeunexpval = false;
+    match op as libc::c_uint {
+        0 | 1 => { // OPR_MINUS | OPR_BNOT:  use 'ef' as fake 2nd operand */
+            if constfolding(
+                fs,
+                (op as libc::c_uint).wrapping_add(LUA_OPUNM as libc::c_uint)
+                    as libc::c_int,
+                e,
+                &ef,
+            ) == 0
+            {
+                doCodeunexpval = true;
+            }
+        }
+        3 => { // OPR_LEN
+            doCodeunexpval = true;
+        }
+        2 => { // OPR_NOT
+            codenot(fs, e);
+        }
+        _ => {
+            debug_assert!(false);
+        }
+    }
+    if doCodeunexpval {
+            codeunexpval(fs, (op + OP_UNM as c_uint) as OpCode, e, line);
+    }
+
+}
