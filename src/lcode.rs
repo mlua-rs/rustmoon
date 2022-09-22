@@ -178,10 +178,7 @@ unsafe extern "C" fn getjump(fs: *mut FuncState, pc: c_int) -> c_int {
 ** Fix jump instruction at position 'pc' to jump to 'dest'.
 ** (Jump addresses are relative in Lua)
 */
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn fixjump(fs: *mut FuncState, pc: c_int, dest: c_int) {
+unsafe extern "C" fn fixjump(fs: *mut FuncState, pc: c_int, dest: c_int) {
     let jmp: *mut Instruction = &mut *((*(*fs).f).code).offset(pc as isize) as *mut Instruction;
     let offset = dest - (pc + 1 as c_int);
     if abs(offset) as c_uint > MAXARG_sBx {
@@ -246,10 +243,7 @@ pub unsafe extern "C" fn luaK_ret(fs: *mut FuncState, first: c_int, nret: c_int)
 ** Code a "conditional jump", that is, a test or comparison opcode
 ** followed by a jump. Return jump position.
 */
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn condjump(
+unsafe extern "C" fn condjump(
     fs: *mut FuncState,
     op: OpCode,
     A: c_int,
@@ -276,10 +270,7 @@ pub unsafe extern "C" fn luaK_getlabel(mut fs: *mut FuncState) -> c_int {
 ** jump (that is, its condition), or the jump itself if it is
 ** unconditional.
 */
-
-// FIXME static
-#[no_mangle]
-pub unsafe extern "C" fn getjumpcontrol(fs: *mut FuncState, pc: c_int) -> *mut Instruction {
+unsafe extern "C" fn getjumpcontrol(fs: *mut FuncState, pc: c_int) -> *mut Instruction {
     let pi: *mut Instruction = &mut *((*(*fs).f).code).offset(pc as isize);
     if pc >= 1 && testTMode(GET_OPCODE(*pi.offset(-1)) as usize) != 0 {
         return pi.offset(-1);
