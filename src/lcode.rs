@@ -19,12 +19,12 @@ use crate::lopcodes::{
     GETARG_sBx, MAXARG_Ax, MAXARG_Bx, MAXARG_sBx, OpArgN, OpCode, SETARG_sBx, GETARG_A, GETARG_B,
     GETARG_C, GET_OPCODE, ISK, MAXARG_A, MAXARG_B, MAXARG_C, NO_REG, OP_EXTRAARG, OP_JMP, OP_LOADK,
     OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
-    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF, OP_NOT, OP_EQ, OP_UNM, OP_CONCAT, OP_ADD,
+    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF, OP_NOT, OP_EQ, OP_UNM, OP_CONCAT, OP_ADD, OP_SETLIST, LFIELDS_PER_FLUSH,
 };
 use crate::lparser::{expdesc, vkisinreg, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK, VFALSE, VINDEXED, C2RustUnnamed_8};
 use crate::ltable::luaH_set;
 use crate::lvm::{luaV_rawequalobj, tointeger};
-use crate::types::{lua_Integer, lua_Number, LUA_OPBAND, LUA_OPBOR, LUA_OPBXOR, LUA_OPSHL, LUA_OPSHR, LUA_OPBNOT, LUA_OPDIV, LUA_OPIDIV, LUA_OPMOD, LUA_OPUNM, LUA_OPADD};
+use crate::types::{lua_Integer, lua_Number, LUA_OPBAND, LUA_OPBOR, LUA_OPBXOR, LUA_OPSHL, LUA_OPSHR, LUA_OPBNOT, LUA_OPDIV, LUA_OPIDIV, LUA_OPMOD, LUA_OPUNM, LUA_OPADD, LUA_MULTRET};
 
 pub type BinOpr = libc::c_uint;
 
@@ -1376,13 +1376,6 @@ pub unsafe extern "C" fn constfolding(
 ** (everything but 'not').
 ** Expression to produce final result will be encoded in 'e'.
 */
-/*static void codeunexpval (FuncState *fs, OpCode op, expdesc *e, int line) {
-    int r = luaK_exp2anyreg(fs, e);  /* opcodes operate only on registers */
-    freeexp(fs, e);
-    e->u.info = luaK_codeABC(fs, op, 0, r, 0);  /* generate opcode */
-    e->k = VRELOCABLE;  /* all those operations are relocatable */
-    luaK_fixline(fs, line);
-  }*/
 
 // FIXME static
 #[no_mangle]
@@ -1460,14 +1453,6 @@ pub unsafe extern "C" fn codecomp(
         }
     }
     (*e1).k = VJMP;
-}
-
-/*
-** Change line information associated with current position.
-*/
-#[no_mangle]
-pub unsafe extern "C" fn luaK_fixline(fs: *mut FuncState, line: libc::c_int) {
-    *((*(*fs).f).lineinfo).offset(((*fs).pc - 1 as libc::c_int) as isize) = line;
 }
 
 /*
@@ -1620,4 +1605,59 @@ pub unsafe extern "C" fn luaK_posfix(
         }
         _ => {}
     };
+}
+
+/*
+** Change line information associated with current position.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_fixline(fs: *mut FuncState, line: libc::c_int) {
+    *((*(*fs).f).lineinfo).offset(((*fs).pc - 1 as libc::c_int) as isize) = line;
+}
+
+/*
+** Emit a SETLIST instruction.
+** 'base' is register that keeps table;
+** 'nelems' is #table plus those to be stored now;
+** 'tostore' is number of values (in registers 'base + 1',...) to add to
+** table (or LUA_MULTRET to add up to stack top).
+*/
+/*void luaK_setlist (FuncState *fs, int base, int nelems, int tostore) {
+    int c =  (nelems - 1)/LFIELDS_PER_FLUSH + 1;
+    int b = (tostore == LUA_MULTRET) ? 0 : tostore;
+    lua_assert(tostore != 0 && tostore <= LFIELDS_PER_FLUSH);
+    if (c <= MAXARG_C)
+      luaK_codeABC(fs, OP_SETLIST, base, b, c);
+    else if (c <= MAXARG_Ax) {
+      luaK_codeABC(fs, OP_SETLIST, base, b, 0);
+      codeextraarg(fs, c);
+    }
+    else
+      luaX_syntaxerror(fs->ls, "constructor too long");
+    fs->freereg = base + 1;  /* free registers with list values */
+  }
+  
+  */
+#[no_mangle]
+pub unsafe extern "C" fn luaK_setlist(
+    mut fs: *mut FuncState,
+    base: libc::c_int,
+    nelems: libc::c_int,
+    tostore: libc::c_int,
+) {
+    let c = ((nelems - 1 as libc::c_int) / LFIELDS_PER_FLUSH as libc::c_int) + 1;
+    let b = if tostore == LUA_MULTRET { 0 as libc::c_int } else { tostore };
+    debug_assert!(tostore != 0 && tostore <= LFIELDS_PER_FLUSH as c_int);
+    if c as c_uint <= MAXARG_C {
+        luaK_codeABC(fs, OP_SETLIST, base, b, c);
+    } else if c as c_uint <= MAXARG_Ax {
+        luaK_codeABC(fs, OP_SETLIST, base, b, 0 as libc::c_int);
+        codeextraarg(fs, c);
+    } else {
+        luaX_syntaxerror(
+            (*fs).ls,
+            b"constructor too long\0" as *const u8 as *const libc::c_char,
+        );
+    }
+    (*fs).freereg = (base + 1 as libc::c_int) as lu_byte;
 }
