@@ -4,27 +4,36 @@
 
 use std::ptr;
 
-use libc::{abs, c_int, c_uint, c_void, size_t, c_double, c_short};
+use libc::{abs, c_double, c_int, c_short, c_uint, c_void, size_t};
 
 use crate::lgc::luaC_barrier;
 use crate::llex::luaX_syntaxerror;
 use crate::llimits::{lu_byte, Instruction, MAX_INT};
 use crate::lmem::luaM_growvector;
 use crate::lobject::{
-    setbvalue, setfltvalue, sethvalue, setivalue, setnilvalue, setobj, setpvalue, setsvalue,
-    ttisinteger, ttype, GCObject, TString, TValue, Value, nvalue, luaO_arith, ivalue, fltvalue,
+    fltvalue, ivalue, luaO_arith, nvalue, setbvalue, setfltvalue, sethvalue, setivalue,
+    setnilvalue, setobj, setpvalue, setsvalue, ttisinteger, ttype, GCObject, TString, TValue,
+    Value,
 };
 use crate::lopcodes::{
     getBMode, getCMode, getOpMode, iABC, iABx, iAsBx, luaP_opmodes, CREATE_ABx, CREATE_Ax,
     GETARG_sBx, MAXARG_Ax, MAXARG_Bx, MAXARG_sBx, OpArgN, OpCode, SETARG_sBx, GETARG_A, GETARG_B,
-    GETARG_C, GET_OPCODE, ISK, MAXARG_A, MAXARG_B, MAXARG_C, NO_REG, OP_EXTRAARG, OP_JMP, OP_LOADK,
-    OP_LOADKX, OP_LOADNIL, OP_RETURN, OP_TEST, OP_TESTSET, POS_A, POS_B, POS_C, POS_OP, SETARG_A,
-    SETARG_B, SETARG_C, OP_GETUPVAL, OP_MOVE, OP_GETTABLE, OP_GETTABUP, OP_LOADBOOL, MAXINDEXRK, RKASK, OP_SETUPVAL, OP_SETTABLE, OP_SETTABUP, OP_SELF, OP_NOT, OP_EQ, OP_UNM, OP_CONCAT, OP_ADD, OP_SETLIST, LFIELDS_PER_FLUSH,
+    GETARG_C, GET_OPCODE, ISK, LFIELDS_PER_FLUSH, MAXARG_A, MAXARG_B, MAXARG_C, MAXINDEXRK, NO_REG,
+    OP_ADD, OP_CONCAT, OP_EQ, OP_EXTRAARG, OP_GETTABLE, OP_GETTABUP, OP_GETUPVAL, OP_JMP,
+    OP_LOADBOOL, OP_LOADK, OP_LOADKX, OP_LOADNIL, OP_MOVE, OP_NOT, OP_RETURN, OP_SELF, OP_SETLIST,
+    OP_SETTABLE, OP_SETTABUP, OP_SETUPVAL, OP_TEST, OP_TESTSET, OP_UNM, POS_A, POS_B, POS_C,
+    POS_OP, RKASK, SETARG_A, SETARG_B, SETARG_C,
 };
-use crate::lparser::{expdesc, vkisinreg, FuncState, VCALL, VKFLT, VKINT, VNONRELOC, VVARARG, VRELOCABLE, VLOCAL, VTRUE, VJMP, VUPVAL, VK, VFALSE, VINDEXED, C2RustUnnamed_8};
+use crate::lparser::{
+    expdesc, vkisinreg, C2RustUnnamed_8, FuncState, VCALL, VFALSE, VINDEXED, VJMP, VK, VKFLT,
+    VKINT, VLOCAL, VNONRELOC, VRELOCABLE, VTRUE, VUPVAL, VVARARG,
+};
 use crate::ltable::luaH_set;
 use crate::lvm::{luaV_rawequalobj, tointeger};
-use crate::types::{lua_Integer, lua_Number, LUA_OPBAND, LUA_OPBOR, LUA_OPBXOR, LUA_OPSHL, LUA_OPSHR, LUA_OPBNOT, LUA_OPDIV, LUA_OPIDIV, LUA_OPMOD, LUA_OPUNM, LUA_OPADD, LUA_MULTRET};
+use crate::types::{
+    lua_Integer, lua_Number, LUA_MULTRET, LUA_OPADD, LUA_OPBAND, LUA_OPBNOT, LUA_OPBOR, LUA_OPBXOR,
+    LUA_OPDIV, LUA_OPIDIV, LUA_OPMOD, LUA_OPSHL, LUA_OPSHR, LUA_OPUNM,
+};
 
 pub type BinOpr = c_uint;
 
@@ -746,12 +755,13 @@ pub unsafe extern "C" fn luaK_setreturns(fs: *mut FuncState, e: *mut expdesc, nr
 */
 #[no_mangle]
 pub unsafe extern "C" fn luaK_setoneret(fs: *mut FuncState, mut e: *mut expdesc) {
-    if (*e).k == VCALL { /* expression is an open function call? */
-         /* already returns 1 value */
-         debug_assert!(GETARG_C(*getinstruction(fs, e)) == 2);
+    if (*e).k == VCALL {
+        /* expression is an open function call? */
+        /* already returns 1 value */
+        debug_assert!(GETARG_C(*getinstruction(fs, e)) == 2);
         (*e).k = VNONRELOC; /* result has fixed position */
         (*e).u.info = GETARG_A(*getinstruction(fs, e));
-    } else if (*e).k== VVARARG {
+    } else if (*e).k == VVARARG {
         SETARG_B(getinstruction(fs, e), 2);
         (*e).k = VRELOCABLE; /* can relocate its simple result */
     }
@@ -761,52 +771,38 @@ pub unsafe extern "C" fn luaK_setoneret(fs: *mut FuncState, mut e: *mut expdesc)
 ** Ensure that expression 'e' is not a variable.
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaK_dischargevars(
-    fs: *mut FuncState,
-    mut e: *mut expdesc,
-) {
+pub unsafe extern "C" fn luaK_dischargevars(fs: *mut FuncState, mut e: *mut expdesc) {
     match (*e).k as c_uint {
-        8 => { // VLOCAL /* already in a register */
+        8 => {
+            // VLOCAL /* already in a register */
             (*e).k = VNONRELOC; /* becomes a non-relocatable value */
         }
-        9 => { // VUPVAL /* move value to some (pending) register */
-            (*e)
-                .u
-                .info = luaK_codeABC(
-                fs,
-                OP_GETUPVAL,
-                0 as c_int,
-                (*e).u.info,
-                0 as c_int,
-            );
+        9 => {
+            // VUPVAL /* move value to some (pending) register */
+            (*e).u.info = luaK_codeABC(fs, OP_GETUPVAL, 0 as c_int, (*e).u.info, 0 as c_int);
             (*e).k = VRELOCABLE;
         }
-        10 => { // VINDEXED
+        10 => {
+            // VINDEXED
             let op;
             freereg(fs, (*e).u.ind.idx as c_int);
-            if (*e).u.ind.vt as c_int == VLOCAL as c_int { /* is 't' in a register? */
+            if (*e).u.ind.vt as c_int == VLOCAL as c_int {
+                /* is 't' in a register? */
                 freereg(fs, (*e).u.ind.t as c_int);
                 op = OP_GETTABLE;
             } else {
                 op = OP_GETTABUP; /* 't' is in an upvalue */
             }
-            (*e)
-                .u
-                .info = luaK_codeABC(
-                fs,
-                op,
-                0,
-                (*e).u.ind.t as c_int,
-                (*e).u.ind.idx as c_int,
-            );
+            (*e).u.info = luaK_codeABC(fs, op, 0, (*e).u.ind.t as c_int, (*e).u.ind.idx as c_int);
             (*e).k = VRELOCABLE;
         }
-        14 | 13 => { // VVARARG | VCALL
+        14 | 13 => {
+            // VVARARG | VCALL
             luaK_setoneret(fs, e);
         }
         _ => {} /* there is one value available (somewhere) */
     };
-  }
+}
 
 /*
 ** Ensures expression value is in register 'reg' (and therefore
@@ -815,11 +811,7 @@ pub unsafe extern "C" fn luaK_dischargevars(
 
 // FIXME static
 #[no_mangle]
-pub unsafe extern "C" fn discharge2reg(
-    fs: *mut FuncState,
-    mut e: *mut expdesc,
-    reg: c_int,
-) {
+pub unsafe extern "C" fn discharge2reg(fs: *mut FuncState, mut e: *mut expdesc, reg: c_int) {
     luaK_dischargevars(fs, e);
     match (*e).k as c_uint {
         1 => {
@@ -830,8 +822,7 @@ pub unsafe extern "C" fn discharge2reg(
                 fs,
                 OP_LOADBOOL,
                 reg,
-                ((*e).k as c_uint == VTRUE as c_int as c_uint)
-                    as c_int,
+                ((*e).k as c_uint == VTRUE as c_int as c_uint) as c_int,
                 0,
             );
         }
@@ -869,7 +860,8 @@ pub unsafe extern "C" fn discharge2reg(
 // FIXME static
 #[no_mangle]
 pub unsafe extern "C" fn discharge2anyreg(fs: *mut FuncState, e: *mut expdesc) {
-    if (*e).k as c_uint != VNONRELOC as c_uint { /* no fixed register yet? */
+    if (*e).k as c_uint != VNONRELOC as c_uint {
+        /* no fixed register yet? */
         luaK_reserveregs(fs, 1); /* get a register */
         discharge2reg(fs, e, (*fs).freereg as c_int - 1); /* put value there */
     }
@@ -892,22 +884,19 @@ pub unsafe extern "C" fn code_loadbool(
 ** or produce an inverted value
 */
 /*static int need_value (FuncState *fs, int list) {
-    for (; list != NO_JUMP; list = getjump(fs, list)) {
-      Instruction i = *getjumpcontrol(fs, list);
-      if (GET_OPCODE(i) != OP_TESTSET) return 1;
-    }
-    return 0;  /* not found */
-  }*/
+  for (; list != NO_JUMP; list = getjump(fs, list)) {
+    Instruction i = *getjumpcontrol(fs, list);
+    if (GET_OPCODE(i) != OP_TESTSET) return 1;
+  }
+  return 0;  /* not found */
+}*/
 // FIXME static
 #[no_mangle]
-pub unsafe extern "C" fn need_value(
-    fs: *mut FuncState,
-    mut list: c_int,
-) -> c_int {
+pub unsafe extern "C" fn need_value(fs: *mut FuncState, mut list: c_int) -> c_int {
     while list != NO_JUMP {
         let i = *getjumpcontrol(fs, list);
         if GET_OPCODE(i) as c_uint != OP_TESTSET as c_uint {
-            return 1
+            return 1;
         }
         list = getjump(fs, list);
     }
@@ -922,35 +911,31 @@ pub unsafe extern "C" fn need_value(
 ** that do not produce values).
 */
 /*static void exp2reg (FuncState *fs, expdesc *e, int reg) {
-    discharge2reg(fs, e, reg);
-    if (e->k == VJMP)  /* expression itself is a test? */
-      luaK_concat(fs, &e->t, e->u.info);  /* put this jump in 't' list */
-    if (hasjumps(e)) {
-      int final;  /* position after whole expression */
-      int p_f = NO_JUMP;  /* position of an eventual LOAD false */
-      int p_t = NO_JUMP;  /* position of an eventual LOAD true */
-      if (need_value(fs, e->t) || need_value(fs, e->f)) {
-        int fj = (e->k == VJMP) ? NO_JUMP : luaK_jump(fs);
-        p_f = code_loadbool(fs, reg, 0, 1);
-        p_t = code_loadbool(fs, reg, 1, 0);
-        luaK_patchtohere(fs, fj);
-      }
-      final = luaK_getlabel(fs);
-      patchlistaux(fs, e->f, final, reg, p_f);
-      patchlistaux(fs, e->t, final, reg, p_t);
+  discharge2reg(fs, e, reg);
+  if (e->k == VJMP)  /* expression itself is a test? */
+    luaK_concat(fs, &e->t, e->u.info);  /* put this jump in 't' list */
+  if (hasjumps(e)) {
+    int final;  /* position after whole expression */
+    int p_f = NO_JUMP;  /* position of an eventual LOAD false */
+    int p_t = NO_JUMP;  /* position of an eventual LOAD true */
+    if (need_value(fs, e->t) || need_value(fs, e->f)) {
+      int fj = (e->k == VJMP) ? NO_JUMP : luaK_jump(fs);
+      p_f = code_loadbool(fs, reg, 0, 1);
+      p_t = code_loadbool(fs, reg, 1, 0);
+      luaK_patchtohere(fs, fj);
     }
-    e->f = e->t = NO_JUMP;
-    e->u.info = reg;
-    e->k = VNONRELOC;
-  }*/
+    final = luaK_getlabel(fs);
+    patchlistaux(fs, e->f, final, reg, p_f);
+    patchlistaux(fs, e->t, final, reg, p_t);
+  }
+  e->f = e->t = NO_JUMP;
+  e->u.info = reg;
+  e->k = VNONRELOC;
+}*/
 
 // FIXME static
 #[no_mangle]
-pub unsafe extern "C" fn exp2reg(
-    fs: *mut FuncState,
-    mut e: *mut expdesc,
-    reg: c_int,
-) {
+pub unsafe extern "C" fn exp2reg(fs: *mut FuncState, mut e: *mut expdesc, reg: c_int) {
     discharge2reg(fs, e, reg);
     if (*e).k as c_uint == VJMP as c_uint {
         luaK_concat(fs, &mut (*e).t, (*e).u.info);
@@ -960,8 +945,7 @@ pub unsafe extern "C" fn exp2reg(
         let mut p_f = NO_JUMP;
         let mut p_t = NO_JUMP;
         if need_value(fs, (*e).t) != 0 || need_value(fs, (*e).f) != 0 {
-            let fj = if (*e).k as c_uint == VJMP as c_uint
-            {
+            let fj = if (*e).k as c_uint == VJMP as c_uint {
                 NO_JUMP
             } else {
                 luaK_jump(fs)
@@ -997,17 +981,17 @@ pub unsafe extern "C" fn luaK_exp2nextreg(fs: *mut FuncState, e: *mut expdesc) {
 ** lists) is in some (any) register and return that register.
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaK_exp2anyreg(
-    fs: *mut FuncState,
-    e: *mut expdesc,
-) -> c_int {
+pub unsafe extern "C" fn luaK_exp2anyreg(fs: *mut FuncState, e: *mut expdesc) -> c_int {
     luaK_dischargevars(fs, e);
-    if (*e).k as c_uint == VNONRELOC as c_uint { /* expression already has a register? */
-        if !hasjumps(e) { /* no jumps? */
+    if (*e).k as c_uint == VNONRELOC as c_uint {
+        /* expression already has a register? */
+        if !hasjumps(e) {
+            /* no jumps? */
             return (*e).u.info; /* result is already in a register */
         }
-        if (*e).u.info >= (*fs).nactvar as c_int { /* reg. is not a local? */
-            exp2reg(fs, e, (*e).u.info);  /* put final result in it */
+        if (*e).u.info >= (*fs).nactvar as c_int {
+            /* reg. is not a local? */
+            exp2reg(fs, e, (*e).u.info); /* put final result in it */
             return (*e).u.info;
         }
     }
@@ -1037,35 +1021,37 @@ pub unsafe extern "C" fn luaK_exp2val(fs: *mut FuncState, e: *mut expdesc) {
         luaK_dischargevars(fs, e);
     };
 }
-  
-  
-  /*
-  ** Ensures final expression result is in a valid R/K index
-  ** (that is, it is either in a register or in 'k' with an index
-  ** in the range of R/K indices).
-  ** Returns R/K index.
-  */
+
+/*
+ ** Ensures final expression result is in a valid R/K index
+ ** (that is, it is either in a register or in 'k' with an index
+ ** in the range of R/K indices).
+ ** Returns R/K index.
+ */
 #[no_mangle]
-pub unsafe extern "C" fn luaK_exp2RK(
-    fs: *mut FuncState,
-    mut e: *mut expdesc,
-) -> c_int {
+pub unsafe extern "C" fn luaK_exp2RK(fs: *mut FuncState, mut e: *mut expdesc) -> c_int {
     luaK_exp2val(fs, e);
     let mut doVk = true;
-    match (*e).k as c_uint {  /* move constants to 'k' */
-        2 => { // VTRUE
+    match (*e).k as c_uint {
+        /* move constants to 'k' */
+        2 => {
+            // VTRUE
             (*e).u.info = boolK(fs, 1);
         }
-        3 => { // VFALSE
+        3 => {
+            // VFALSE
             (*e).u.info = boolK(fs, 0);
         }
-        1 => { // VNIL
+        1 => {
+            // VNIL
             (*e).u.info = nilK(fs);
         }
-        6 => { // VKINT
+        6 => {
+            // VKINT
             (*e).u.info = luaK_intK(fs, (*e).u.ival);
         }
-        5 => { // VKFLT
+        5 => {
+            // VKFLT
             (*e).u.info = luaK_numberK(fs, (*e).u.nval);
         }
         4 => { // VK
@@ -1087,22 +1073,21 @@ pub unsafe extern "C" fn luaK_exp2RK(
 ** Generate code to store result of expression 'ex' into variable 'var'.
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaK_storevar(
-    fs: *mut FuncState,
-    var: *mut expdesc,
-    ex: *mut expdesc,
-) {
+pub unsafe extern "C" fn luaK_storevar(fs: *mut FuncState, var: *mut expdesc, ex: *mut expdesc) {
     match (*var).k as c_uint {
-        8 => { // VLOCAL
+        8 => {
+            // VLOCAL
             freeexp(fs, ex);
             exp2reg(fs, ex, (*var).u.info); /* compute 'ex' into proper place */
             return;
         }
-        9 => { // VUPVAL
+        9 => {
+            // VUPVAL
             let e = luaK_exp2anyreg(fs, ex);
             luaK_codeABC(fs, OP_SETUPVAL, e, (*var).u.info, 0 as c_int);
         }
-        10 => { // VINDEXED
+        10 => {
+            // VINDEXED
             let op = (if (*var).u.ind.vt as c_int == VLOCAL as c_int {
                 OP_SETTABLE as c_int
             } else {
@@ -1118,7 +1103,7 @@ pub unsafe extern "C" fn luaK_storevar(
             );
         }
         _ => {
-            debug_assert!(false);  /* invalid var kind to store */
+            debug_assert!(false); /* invalid var kind to store */
         }
     }
     freeexp(fs, ex);
@@ -1128,18 +1113,14 @@ pub unsafe extern "C" fn luaK_storevar(
 ** Emit SELF instruction (convert expression 'e' into 'e:key(e,').
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaK_self(
-    fs: *mut FuncState,
-    mut e: *mut expdesc,
-    key: *mut expdesc,
-) {
+pub unsafe extern "C" fn luaK_self(fs: *mut FuncState, mut e: *mut expdesc, key: *mut expdesc) {
     let ereg: c_int;
     luaK_exp2anyreg(fs, e);
     ereg = (*e).u.info; /* register where 'e' was placed */
     freeexp(fs, e);
     (*e).u.info = (*fs).freereg as c_int; /* base register for op_self */
     (*e).k = VNONRELOC; /* self expression has a fixed register */
-    luaK_reserveregs(fs, 2 as c_int);  /* function and 'self' produced by op_self */
+    luaK_reserveregs(fs, 2 as c_int); /* function and 'self' produced by op_self */
     luaK_codeABC(fs, OP_SELF, (*e).u.info, ereg, luaK_exp2RK(fs, key));
     freeexp(fs, key);
 }
@@ -1152,11 +1133,13 @@ pub unsafe extern "C" fn luaK_self(
 #[no_mangle]
 pub unsafe extern "C" fn negatecondition(fs: *mut FuncState, e: *mut expdesc) {
     let pc = getjumpcontrol(fs, (*e).u.info);
-    debug_assert!(testTMode(GET_OPCODE(*pc) as size_t) != 0 && GET_OPCODE(*pc) != OP_TESTSET &&
-                                             GET_OPCODE(*pc) != OP_TEST);
+    debug_assert!(
+        testTMode(GET_OPCODE(*pc) as size_t) != 0
+            && GET_OPCODE(*pc) != OP_TESTSET
+            && GET_OPCODE(*pc) != OP_TEST
+    );
     SETARG_A(pc, (GETARG_A(*pc) == 0) as c_int);
 }
-
 
 /*
 ** Emit instruction to jump if 'e' is 'cond' (that is, if 'cond'
@@ -1198,11 +1181,13 @@ pub unsafe extern "C" fn luaK_goiftrue(fs: *mut FuncState, mut e: *mut expdesc) 
     let pc: c_int; /* pc of new jump */
     luaK_dischargevars(fs, e);
     match (*e).k as c_uint {
-        11 => { // VJMP condition?
+        11 => {
+            // VJMP condition?
             negatecondition(fs, e);
             pc = (*e).u.info;
         }
-        4 | 5 | 6 | 2 => { // VK VKFLT VKINT VTRUE
+        4 | 5 | 6 | 2 => {
+            // VK VKFLT VKINT VTRUE
             pc = NO_JUMP; /* always true; do nothing */
         }
         _ => {
@@ -1221,13 +1206,16 @@ pub unsafe extern "C" fn luaK_goiffalse(fs: *mut FuncState, mut e: *mut expdesc)
     let pc: c_int;
     luaK_dischargevars(fs, e);
     match (*e).k as c_uint {
-        11 => { // VJMP
+        11 => {
+            // VJMP
             pc = (*e).u.info; /* already jump if true */
         }
-        1 | 3 => { // VNIL | VFALSE
+        1 | 3 => {
+            // VNIL | VFALSE
             pc = NO_JUMP;
         }
-        _ => { /* jump if true */
+        _ => {
+            /* jump if true */
             pc = jumponcond(fs, e, 1 as c_int);
         }
     }
@@ -1244,31 +1232,27 @@ pub unsafe extern "C" fn luaK_goiffalse(fs: *mut FuncState, mut e: *mut expdesc)
 pub unsafe extern "C" fn codenot(fs: *mut FuncState, mut e: *mut expdesc) {
     luaK_dischargevars(fs, e);
     match (*e).k as c_uint {
-        1 | 3 => { // VNIL | VFALSE
+        1 | 3 => {
+            // VNIL | VFALSE
             (*e).k = VTRUE; /* true == not nil == not false */
         }
-        4 | 5 | 6 | 2 => { // VK | VKFLT | VKINT | VTRUE
+        4 | 5 | 6 | 2 => {
+            // VK | VKFLT | VKINT | VTRUE
             (*e).k = VFALSE; /* false == not "x" == not 0.5 == not 1 == not true */
         }
-        11 => { // VJMP
+        11 => {
+            // VJMP
             negatecondition(fs, e);
         }
-        12 | 7 => { // VRELOCABLE | VNONRELOC
+        12 | 7 => {
+            // VRELOCABLE | VNONRELOC
             discharge2anyreg(fs, e);
             freeexp(fs, e);
-            (*e)
-                .u
-                .info = luaK_codeABC(
-                fs,
-                OP_NOT,
-                0 as c_int,
-                (*e).u.info,
-                0 as c_int,
-            );
+            (*e).u.info = luaK_codeABC(fs, OP_NOT, 0 as c_int, (*e).u.info, 0 as c_int);
             (*e).k = VRELOCABLE;
         }
         _ => {
-            debug_assert!(false);  /* cannot happen */
+            debug_assert!(false); /* cannot happen */
         }
     }
     /* interchange true and false lists */
@@ -1284,18 +1268,11 @@ pub unsafe extern "C" fn codenot(fs: *mut FuncState, mut e: *mut expdesc) {
 ** register or upvalue.
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaK_indexed(
-    fs: *mut FuncState,
-    mut t: *mut expdesc,
-    k: *mut expdesc,
-) {
+pub unsafe extern "C" fn luaK_indexed(fs: *mut FuncState, mut t: *mut expdesc, k: *mut expdesc) {
     debug_assert!(!hasjumps(t) && (vkisinreg((*t).k) || (*t).k == VUPVAL));
     (*t).u.ind.t = (*t).u.info as lu_byte; /* register or upvalue index */
     (*t).u.ind.idx = luaK_exp2RK(fs, k) as c_short; /* R/K index for key */
-    (*t)
-        .u
-        .ind
-        .vt = (if (*t).k as c_uint == VUPVAL as c_int as c_uint {
+    (*t).u.ind.vt = (if (*t).k as c_uint == VUPVAL as c_int as c_uint {
         VUPVAL as c_int
     } else {
         VLOCAL as c_int
@@ -1310,17 +1287,15 @@ pub unsafe extern "C" fn luaK_indexed(
 */
 // FIXME static
 #[no_mangle]
-pub unsafe extern "C" fn validop(
-    op: c_int,
-    v1: *mut TValue,
-    v2: *mut TValue,
-) -> c_int {
+pub unsafe extern "C" fn validop(op: c_int, v1: *mut TValue, v2: *mut TValue) -> c_int {
     match op {
-        LUA_OPBAND | LUA_OPBOR | LUA_OPBXOR | LUA_OPSHL | LUA_OPSHR | LUA_OPBNOT => { /* conversion errors */
+        LUA_OPBAND | LUA_OPBOR | LUA_OPBXOR | LUA_OPSHL | LUA_OPSHR | LUA_OPBNOT => {
+            /* conversion errors */
             let mut i: lua_Integer = 0;
             return (tointeger(v1, &mut i) != 0 && tointeger(v2, &mut i) != 0) as c_int;
         }
-        LUA_OPDIV | LUA_OPIDIV | LUA_OPMOD => { /* division by 0 */
+        LUA_OPDIV | LUA_OPIDIV | LUA_OPMOD => {
+            /* division by 0 */
             return (nvalue(v2) != 0 as c_int as c_double) as c_int;
         }
         _ => return 1 as c_int,
@@ -1340,27 +1315,35 @@ pub unsafe extern "C" fn constfolding(
     e2: *const expdesc,
 ) -> c_int {
     let mut v1 = TValue {
-        value_: Value { gc: 0 as *mut GCObject },
+        value_: Value {
+            gc: 0 as *mut GCObject,
+        },
         tt_: 0,
     };
     let mut v2 = TValue {
-        value_: Value { gc: 0 as *mut GCObject },
+        value_: Value {
+            gc: 0 as *mut GCObject,
+        },
         tt_: 0,
     };
     let mut res = TValue {
-        value_: Value { gc: 0 as *mut GCObject },
+        value_: Value {
+            gc: 0 as *mut GCObject,
+        },
         tt_: 0,
     };
-    if tonumeral(e1, &mut v1) == 0 || tonumeral(e2, &mut v2) == 0
+    if tonumeral(e1, &mut v1) == 0
+        || tonumeral(e2, &mut v2) == 0
         || validop(op, &mut v1, &mut v2) == 0
     {
-        return 0 as c_int;  /* non-numeric operands or not safe to fold */
+        return 0 as c_int; /* non-numeric operands or not safe to fold */
     }
     luaO_arith((*(*fs).ls).L, op, &mut v1, &mut v2, &mut res); /* does operation */
     if ttisinteger(&mut res) {
         (*e1).k = VKINT;
         (*e1).u.ival = ivalue(&mut res);
-    } else {  /* folds neither NaN nor 0.0 (to avoid problems with -0.0) */
+    } else {
+        /* folds neither NaN nor 0.0 (to avoid problems with -0.0) */
         let n = fltvalue(&mut res);
         if !(n == n) || n == 0 as c_int as c_double {
             return 0 as c_int;
@@ -1439,15 +1422,18 @@ pub unsafe extern "C" fn codecomp(
     let rk2 = luaK_exp2RK(fs, e2);
     freeexps(fs, e1, e2);
     match opr as c_uint {
-        16 => { // OPR_NE: '(a ~= b)' ==> 'not (a == b)' */
+        16 => {
+            // OPR_NE: '(a ~= b)' ==> 'not (a == b)' */
             (*e1).u.info = condjump(fs, OP_EQ, 0 as c_int, rk1 as c_int, rk2);
         }
-        17 | 18 => { // OPR_GT |  OPR_GE
+        17 | 18 => {
+            // OPR_GT |  OPR_GE
             /* '(a > b)' ==> '(b < a)';  '(a >= b)' ==> '(b <= a)' */
             let op = (opr - OPR_NE) as OpCode + OP_EQ;
             (*e1).u.info = condjump(fs, op, 1 as c_int, rk2 as c_int, rk1 as c_int);
         }
-        _ => { /* '==', '<', '<=' use their own opcodes */
+        _ => {
+            /* '==', '<', '<=' use their own opcodes */
             let op_0 = (opr - OPR_EQ) as OpCode + OP_EQ;
             (*e1).u.info = condjump(fs, op_0, 1 as c_int, rk1 as c_int, rk2);
         }
@@ -1459,12 +1445,7 @@ pub unsafe extern "C" fn codecomp(
 ** Apply prefix operation 'op' to expression 'e'.
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaK_prefix(
-    fs: *mut FuncState,
-    op: UnOpr,
-    e: *mut expdesc,
-    line: c_int,
-) {
+pub unsafe extern "C" fn luaK_prefix(fs: *mut FuncState, op: UnOpr, e: *mut expdesc, line: c_int) {
     static mut ef: expdesc = {
         let init = expdesc {
             k: VKINT,
@@ -1478,11 +1459,11 @@ pub unsafe extern "C" fn luaK_prefix(
     };
     let mut doCodeunexpval = false;
     match op as c_uint {
-        0 | 1 => { // OPR_MINUS | OPR_BNOT:  use 'ef' as fake 2nd operand */
+        0 | 1 => {
+            // OPR_MINUS | OPR_BNOT:  use 'ef' as fake 2nd operand */
             if constfolding(
                 fs,
-                (op as c_uint).wrapping_add(LUA_OPUNM as c_uint)
-                    as c_int,
+                (op as c_uint).wrapping_add(LUA_OPUNM as c_uint) as c_int,
                 e,
                 &ef,
             ) == 0
@@ -1490,10 +1471,12 @@ pub unsafe extern "C" fn luaK_prefix(
                 doCodeunexpval = true;
             }
         }
-        3 => { // OPR_LEN
+        3 => {
+            // OPR_LEN
             doCodeunexpval = true;
         }
-        2 => { // OPR_NOT
+        2 => {
+            // OPR_NOT
             codenot(fs, e);
         }
         _ => {
@@ -1501,9 +1484,8 @@ pub unsafe extern "C" fn luaK_prefix(
         }
     }
     if doCodeunexpval {
-            codeunexpval(fs, (op + OP_UNM as c_uint) as OpCode, e, line);
+        codeunexpval(fs, (op + OP_UNM as c_uint) as OpCode, e, line);
     }
-
 }
 
 /*
@@ -1511,22 +1493,22 @@ pub unsafe extern "C" fn luaK_prefix(
 ** 2nd operand.
 */
 #[no_mangle]
-pub unsafe extern "C" fn luaK_infix(
-    fs: *mut FuncState,
-    op: BinOpr,
-    v: *mut expdesc,
-) {
+pub unsafe extern "C" fn luaK_infix(fs: *mut FuncState, op: BinOpr, v: *mut expdesc) {
     match op as c_uint {
-        19 => { // OPR_AND
+        19 => {
+            // OPR_AND
             luaK_goiftrue(fs, v); /* go ahead only if 'v' is true */
         }
-        20 => { // OPR_OR
+        20 => {
+            // OPR_OR
             luaK_goiffalse(fs, v); /* go ahead only if 'v' is false */
         }
-        12 => { // OPR_CONCAT
+        12 => {
+            // OPR_CONCAT
             luaK_exp2nextreg(fs, v); /* operand must be on the 'stack' */
         }
-        0 | 1 | 2 | 5 | 6 | 3 | 4 | 7 | 8 | 9 | 10 | 11 => { // OPR_ADD | OPR_SUB | OPR_MUL | OPR_DIV | OPR_IDIV | OPR_MOD | OPR_POW | OPR_BAND | OPR_BOR | OPR_BXOR | OPR_SHL | OPR_SHR
+        0 | 1 | 2 | 5 | 6 | 3 | 4 | 7 | 8 | 9 | 10 | 11 => {
+            // OPR_ADD | OPR_SUB | OPR_MUL | OPR_DIV | OPR_IDIV | OPR_MOD | OPR_POW | OPR_BAND | OPR_BOR | OPR_BXOR | OPR_SHL | OPR_SHR
             if tonumeral(v, ptr::null_mut() as *mut TValue) == 0 {
                 luaK_exp2RK(fs, v);
             }
@@ -1553,24 +1535,27 @@ pub unsafe extern "C" fn luaK_posfix(
     line: c_int,
 ) {
     match op as c_uint {
-        19 => { // OPR_AND
-            debug_assert!((*e1).t == NO_JUMP);  /* list closed by 'luK_infix' */
+        19 => {
+            // OPR_AND
+            debug_assert!((*e1).t == NO_JUMP); /* list closed by 'luK_infix' */
             luaK_dischargevars(fs, e2);
             luaK_concat(fs, &mut (*e2).f, (*e1).f);
             *e1 = *e2;
         }
-        20 => { // OPR_OR
-            debug_assert!((*e1).f == NO_JUMP);  /* list closed by 'luK_infix' */
+        20 => {
+            // OPR_OR
+            debug_assert!((*e1).f == NO_JUMP); /* list closed by 'luK_infix' */
             luaK_dischargevars(fs, e2);
             luaK_concat(fs, &mut (*e2).t, (*e1).t);
             *e1 = *e2;
         }
-        12 => { // OPR_CONCAT
+        12 => {
+            // OPR_CONCAT
             luaK_exp2val(fs, e2);
             if (*e2).k as c_uint == VRELOCABLE as c_int as c_uint
                 && (*((*(*fs).f).code).offset((*e2).u.info as isize) >> 0 as c_int
-                    & !(!(0 as c_int as Instruction) << 6 as c_int)
-                        << 0 as c_int) as OpCode as c_uint
+                    & !(!(0 as c_int as Instruction) << 6 as c_int) << 0 as c_int)
+                    as OpCode as c_uint
                     == OP_CONCAT as c_int as c_uint
             {
                 freeexp(fs, e1);
@@ -1583,14 +1568,13 @@ pub unsafe extern "C" fn luaK_posfix(
             }
         }
         /*  case OPR_ADD: case OPR_SUB: case OPR_MUL: case OPR_DIV:
-            case OPR_IDIV: case OPR_MOD: case OPR_POW:
-            case OPR_BAND: case OPR_BOR: case OPR_BXOR:
-            case OPR_SHL: case OPR_SHR: */
+        case OPR_IDIV: case OPR_MOD: case OPR_POW:
+        case OPR_BAND: case OPR_BOR: case OPR_BXOR:
+        case OPR_SHL: case OPR_SHR: */
         0 | 1 | 2 | 5 | 6 | 3 | 4 | 7 | 8 | 9 | 10 | 11 => {
             if constfolding(
                 fs,
-                (op as c_uint).wrapping_add(LUA_OPADD as c_uint)
-                    as c_int,
+                (op as c_uint).wrapping_add(LUA_OPADD as c_uint) as c_int,
                 e1,
                 e2,
             ) == 0
@@ -1599,7 +1583,7 @@ pub unsafe extern "C" fn luaK_posfix(
             }
         }
         /* case OPR_EQ: case OPR_LT: case OPR_LE:
-           case OPR_NE: case OPR_GT: case OPR_GE: */
+        case OPR_NE: case OPR_GT: case OPR_GE: */
         13 | 14 | 15 | 16 | 17 | 18 => {
             codecomp(fs, op, e1, e2);
         }
@@ -1630,7 +1614,11 @@ pub unsafe extern "C" fn luaK_setlist(
     tostore: c_int,
 ) {
     let c = ((nelems - 1 as c_int) / LFIELDS_PER_FLUSH as c_int) + 1;
-    let b = if tostore == LUA_MULTRET { 0 as c_int } else { tostore };
+    let b = if tostore == LUA_MULTRET {
+        0 as c_int
+    } else {
+        tostore
+    };
     debug_assert!(tostore != 0 && tostore <= LFIELDS_PER_FLUSH as c_int);
     if c as c_uint <= MAXARG_C {
         luaK_codeABC(fs, OP_SETLIST, base, b, c);

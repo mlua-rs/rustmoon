@@ -196,7 +196,6 @@ pub const fn INDEXK(r: c_uint) -> c_uint {
     r & !BITRK
 }
 
-
 pub const fn RKASK(x: c_uint) -> c_uint {
     return x | BITRK;
 }
