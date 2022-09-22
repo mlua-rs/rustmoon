@@ -4,7 +4,7 @@
 
 use std::ptr;
 
-use libc::{abs, c_int, c_uint, c_void, size_t};
+use libc::{abs, c_int, c_uint, c_void, size_t, c_double, c_short};
 
 use crate::lgc::luaC_barrier;
 use crate::llex::luaX_syntaxerror;
