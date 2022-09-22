@@ -10,7 +10,7 @@ use crate::llimits::{lu_byte, Instruction, MAX_INT};
 use crate::lmem::luaM_growvector;
 use crate::lobject::{
     setbvalue, setfltvalue, sethvalue, setivalue, setnilvalue, setobj, setpvalue, setsvalue,
-    ttisinteger, ttype, GCObject, TString, TValue, Value, nvalue,
+    ttisinteger, ttype, GCObject, TString, TValue, Value, nvalue, luaO_arith, ivalue, fltvalue,
 };
 use crate::lopcodes::{
     getBMode, getCMode, getOpMode, iABC, iABx, iAsBx, luaP_opmodes, CREATE_ABx, CREATE_Ax,
@@ -1302,13 +1302,94 @@ pub unsafe extern "C" fn validop(
     v2: *mut TValue,
 ) -> libc::c_int {
     match op {
-        LUA_OPBAND | LUA_OPBOR | LUA_OPBXOR | LUA_OPSHL | LUA_OPSHR | LUA_OPBNOT => {
+        LUA_OPBAND | LUA_OPBOR | LUA_OPBXOR | LUA_OPSHL | LUA_OPSHR | LUA_OPBNOT => { /* conversion errors */
             let mut i: lua_Integer = 0;
             return (tointeger(v1, &mut i) != 0 && tointeger(v2, &mut i) != 0) as libc::c_int;
         }
-        LUA_OPDIV | LUA_OPIDIV | LUA_OPMOD => {
+        LUA_OPDIV | LUA_OPIDIV | LUA_OPMOD => { /* division by 0 */
             return (nvalue(v2) != 0 as libc::c_int as libc::c_double) as libc::c_int;
         }
         _ => return 1 as libc::c_int,
     };
 }
+
+/*
+** Try to "constant-fold" an operation; return 1 iff successful.
+** (In this case, 'e1' has the final result.)
+*/
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn constfolding(
+    fs: *mut FuncState,
+    op: libc::c_int,
+    mut e1: *mut expdesc,
+    e2: *const expdesc,
+) -> libc::c_int {
+    let mut v1 = TValue {
+        value_: Value { gc: 0 as *mut GCObject },
+        tt_: 0,
+    };
+    let mut v2 = TValue {
+        value_: Value { gc: 0 as *mut GCObject },
+        tt_: 0,
+    };
+    let mut res = TValue {
+        value_: Value { gc: 0 as *mut GCObject },
+        tt_: 0,
+    };
+    if tonumeral(e1, &mut v1) == 0 || tonumeral(e2, &mut v2) == 0
+        || validop(op, &mut v1, &mut v2) == 0
+    {
+        return 0 as libc::c_int;  /* non-numeric operands or not safe to fold */
+    }
+    luaO_arith((*(*fs).ls).L, op, &mut v1, &mut v2, &mut res); /* does operation */
+    if ttisinteger(&mut res) {
+        (*e1).k = VKINT;
+        (*e1).u.ival = ivalue(&mut res);
+    } else {  /* folds neither NaN nor 0.0 (to avoid problems with -0.0) */
+        let n = fltvalue(&mut res);
+        if !(n == n) || n == 0 as libc::c_int as libc::c_double {
+            return 0 as libc::c_int;
+        }
+        (*e1).k = VKFLT;
+        (*e1).u.nval = n;
+    }
+    return 1 as libc::c_int;
+}
+
+/*
+** Emit code for unary expressions that "produce values"
+** (everything but 'not').
+** Expression to produce final result will be encoded in 'e'.
+*/
+/*static void codeunexpval (FuncState *fs, OpCode op, expdesc *e, int line) {
+    int r = luaK_exp2anyreg(fs, e);  /* opcodes operate only on registers */
+    freeexp(fs, e);
+    e->u.info = luaK_codeABC(fs, op, 0, r, 0);  /* generate opcode */
+    e->k = VRELOCABLE;  /* all those operations are relocatable */
+    luaK_fixline(fs, line);
+  }*/
+
+// FIXME static
+#[no_mangle]
+pub unsafe extern "C" fn codeunexpval(
+    fs: *mut FuncState,
+    op: OpCode,
+    mut e: *mut expdesc,
+    line: libc::c_int,
+) {
+    let r = luaK_exp2anyreg(fs, e);
+    freeexp(fs, e);
+    (*e).u.info = luaK_codeABC(fs, op, 0 as libc::c_int, r, 0 as libc::c_int);
+    (*e).k = VRELOCABLE;
+    luaK_fixline(fs, line);
+}
+
+/*
+** Change line information associated with current position.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn luaK_fixline(fs: *mut FuncState, line: libc::c_int) {
+    *((*(*fs).f).lineinfo).offset(((*fs).pc - 1 as libc::c_int) as isize) = line;
+}
+  

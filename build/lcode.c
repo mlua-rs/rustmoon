@@ -89,44 +89,9 @@ void luaK_goiffalse (FuncState *fs, expdesc *e);
 void codenot (FuncState *fs, expdesc *e);
 void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k);
 int validop (int op, TValue *v1, TValue *v2);
-
-/*
-** Try to "constant-fold" an operation; return 1 iff successful.
-** (In this case, 'e1' has the final result.)
-*/
-static int constfolding (FuncState *fs, int op, expdesc *e1,
-                                                const expdesc *e2) {
-  TValue v1, v2, res;
-  if (!tonumeral(e1, &v1) || !tonumeral(e2, &v2) || !validop(op, &v1, &v2))
-    return 0;  /* non-numeric operands or not safe to fold */
-  luaO_arith(fs->ls->L, op, &v1, &v2, &res);  /* does operation */
-  if (ttisinteger(&res)) {
-    e1->k = VKINT;
-    e1->u.ival = ivalue(&res);
-  }
-  else {  /* folds neither NaN nor 0.0 (to avoid problems with -0.0) */
-    lua_Number n = fltvalue(&res);
-    if (luai_numisnan(n) || n == 0)
-      return 0;
-    e1->k = VKFLT;
-    e1->u.nval = n;
-  }
-  return 1;
-}
-
-
-/*
-** Emit code for unary expressions that "produce values"
-** (everything but 'not').
-** Expression to produce final result will be encoded in 'e'.
-*/
-static void codeunexpval (FuncState *fs, OpCode op, expdesc *e, int line) {
-  int r = luaK_exp2anyreg(fs, e);  /* opcodes operate only on registers */
-  freeexp(fs, e);
-  e->u.info = luaK_codeABC(fs, op, 0, r, 0);  /* generate opcode */
-  e->k = VRELOCABLE;  /* all those operations are relocatable */
-  luaK_fixline(fs, line);
-}
+int constfolding (FuncState *fs, int op, expdesc *e1,
+                                                const expdesc *e2);
+void codeunexpval (FuncState *fs, OpCode op, expdesc *e, int line);
 
 
 /*
