@@ -51,6 +51,20 @@ pub const TK_SHR: c_int = 287;
 pub const TK_SHL: c_int = 286;
 pub const TK_DBCOLON: c_int = 288;
 pub const TK_NE: c_int = 285;
+pub const TK_RETURN: c_int = 274;
+pub const TK_FUNCTION: c_int = 265;
+pub const TK_END: c_int = 262;
+pub const TK_GOTO: c_int = 266;
+pub const TK_DO: c_int = 259;
+pub const TK_UNTIL: c_int = 277;
+pub const TK_REPEAT: c_int = 273;
+pub const TK_IN: c_int = 268;
+pub const TK_FOR: c_int = 264;
+pub const TK_THEN: c_int = 275;
+pub const TK_BREAK: c_int = 258;
+pub const TK_ELSEIF: c_int = 261;
+pub const TK_ELSE: c_int = 260;
+pub const TK_IF: c_int = 267;
 
 /* semantics information */
 #[derive(Copy, Clone)]

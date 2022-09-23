@@ -76,7 +76,7 @@ pub unsafe extern "C" fn hasjumps(e: *const expdesc) -> bool {
 }
 
 #[inline(always)]
-unsafe fn luaK_codeAsBx(fs: *mut FuncState, o: OpCode, A: c_int, sBx: c_int) -> c_int {
+pub unsafe fn luaK_codeAsBx(fs: *mut FuncState, o: OpCode, A: c_int, sBx: c_int) -> c_int {
     return luaK_codeABx(fs, o, A, (sBx + MAXARG_sBx as c_int) as c_uint); // This integer size manipulation is absolutely necessary.
 }
 
@@ -94,8 +94,13 @@ unsafe extern "C" fn CREATE_ABC(o: OpCode, a: c_int, b: c_int, c: c_int) -> u32 
 }
 
 #[inline(always)]
-unsafe fn getinstruction(fs: *mut FuncState, e: *mut expdesc) -> *mut Instruction {
+pub unsafe fn getinstruction(fs: *mut FuncState, e: *mut expdesc) -> *mut Instruction {
     return (*(*fs).f).code.offset((*e).u.info as isize);
+}
+
+#[inline(always)]
+pub unsafe fn luaK_jumpto(fs: *mut FuncState, t: c_int) {
+    luaK_patchlist(fs, luaK_jump(fs), t);
 }
 
 /*

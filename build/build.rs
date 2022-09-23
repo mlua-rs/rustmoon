@@ -3,8 +3,6 @@ fn main() {
         .define("LUA_USE_APICHECK", None)
         .define("LUA_USE_CTYPE", None)
         .define("LUA_USE_POSIX", None)
-        // Lua core
-        .file("build/lparser.c")
         // Non core libs
         .file("build/ldblib.c")
         .file("build/liolib.c")
