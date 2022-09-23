@@ -840,6 +840,10 @@ pub unsafe extern "C" fn lua_isyieldable(L: *mut lua_State) -> c_int {
     return ((*L).nny == 0) as c_int;
 }
 
+pub unsafe fn lua_yield(L: *mut lua_State, nresults: c_int) -> c_int {
+    lua_yieldk(L, nresults, 0, None)
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn lua_yieldk(
     L: *mut lua_State,

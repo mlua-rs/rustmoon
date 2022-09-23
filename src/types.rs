@@ -1,3 +1,5 @@
+use std::ptr;
+
 use libc::{c_char, c_double, c_int, c_longlong, c_uchar, c_ulonglong, c_void, intptr_t, size_t};
 
 use crate::llimits::{LUAI_MAXSTACK, LUA_IDSIZE};
@@ -147,4 +149,25 @@ pub struct lua_Debug {
     pub istailcall: c_char,
     pub short_src: [c_char; LUA_IDSIZE],
     pub i_ci: *mut CallInfo,
+}
+
+impl lua_Debug {
+    pub const fn new() -> Self {
+        lua_Debug {
+            event: 0,
+            name: ptr::null(),
+            namewhat: ptr::null(),
+            what: ptr::null(),
+            source: ptr::null(),
+            currentline: 0,
+            linedefined: 0,
+            lastlinedefined: 0,
+            nups: 0,
+            nparams: 0,
+            isvararg: 0,
+            istailcall: 0,
+            short_src: [0; LUA_IDSIZE],
+            i_ci: ptr::null_mut(),
+        }
+    }
 }
