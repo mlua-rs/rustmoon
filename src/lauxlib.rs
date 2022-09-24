@@ -518,7 +518,7 @@ unsafe fn luaL_getmetatable(L: *mut lua_State, n: *const c_char) -> c_int {
 #[no_mangle]
 pub unsafe extern "C" fn luaL_newmetatable(L: *mut lua_State, tname: *const c_char) -> c_int {
     if luaL_getmetatable(L, tname) != LUA_TNIL {
-        return 0 as c_int;
+        return 0;
     }
     lua_pop(L, 1);
     lua_createtable(L, 0 as c_int, 2 as c_int);
@@ -1033,7 +1033,7 @@ unsafe extern "C" fn skipcomment(lf: *mut LoadF, cp: *mut c_int) -> c_int {
         *cp = getc((*lf).f);
         return 1 as c_int;
     } else {
-        return 0 as c_int;
+        return 0;
     };
 }
 
@@ -1184,7 +1184,7 @@ pub unsafe extern "C" fn luaL_callmeta(
 ) -> c_int {
     obj = lua_absindex(L, obj);
     if luaL_getmetafield(L, obj, event) == LUA_TNIL {
-        return 0 as c_int;
+        return 0;
     }
     lua_pushvalue(L, obj);
     lua_call(L, 1, 1);
@@ -1298,7 +1298,7 @@ pub unsafe extern "C" fn luaL_getsubtable(
         lua_newtable(L);
         lua_pushvalue(L, -(1 as c_int));
         lua_setfield(L, idx, fname);
-        return 0 as c_int;
+        return 0;
     };
 }
 
@@ -1392,7 +1392,7 @@ unsafe extern "C" fn panic(L: *mut lua_State) -> c_int {
         lua_tolstring(L, -(1 as c_int), 0 as *mut size_t),
     );
     fflush(stderr_fd);
-    return 0 as c_int;
+    return 0;
 }
 
 #[no_mangle]
