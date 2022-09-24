@@ -744,12 +744,7 @@ pub unsafe extern "C" fn luaL_optnumber(
     arg: libc::c_int,
     def: lua_Number,
 ) -> lua_Number {
-    // FIXME - luaL_opt should be generic to types, but I don't know how to make that work so I've basically re-implemented it here
-    //return luaL_opt(L, luaL_checknumber, arg, def);
-    if lua_isnoneornil(L, arg) {
-        return def;
-    }
-    return luaL_checknumber(L, arg);
+    return luaL_opt(L, luaL_checknumber, arg, def);
 }
 
 unsafe extern "C" fn interror(L: *mut lua_State, arg: libc::c_int) {
@@ -790,12 +785,12 @@ pub unsafe extern "C" fn lua_replace(L: *mut lua_State, idx: c_int) {
     lua_pop(L, 1);
 }
 
-pub unsafe extern "C" fn luaL_opt(
+pub unsafe extern "C" fn luaL_opt<T>(
     L: *mut lua_State,
-    f: unsafe extern "C" fn(L: *mut lua_State, n: libc::c_int) -> lua_Integer,
-    n: libc::c_int,
-    d: lua_Integer,
-) -> lua_Integer {
+    f: unsafe extern "C" fn(L: *mut lua_State, n: c_int) -> T,
+    n: c_int,
+    d: T,
+) -> T {
     if lua_isnoneornil(L, n) {
         return d;
     }
