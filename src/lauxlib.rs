@@ -164,27 +164,31 @@ pub const LEVELS2: c_int = 11; /* size of the second part of the stack */
 */
 unsafe extern "C" fn findfield(L: *mut lua_State, objidx: c_int, level: c_int) -> c_int {
     if level == 0 || !lua_istable(L, -1) {
-        return 0;
+        return 0; /* not found */
     }
-    lua_pushnil(L);
+    lua_pushnil(L); /* start 'next' loop */
     while lua_next(L, -2) != 0 {
+        /* for each pair in table */
         if lua_type(L, -2) == LUA_TSTRING {
+            /* ignore non-string keys */
             if lua_rawequal(L, objidx, -1) != 0 {
-                lua_pop(L, 1);
+                /* found object? */
+                lua_pop(L, 1); /* remove value (but keep name) */
                 return 1;
             } else {
                 if findfield(L, objidx, level - 1) != 0 {
+                    /* try recursively */
                     lua_remove(L, -2); /* remove table (but keep name) */
                     lua_pushliteral(L, ".");
-                    lua_insert(L, -2);
+                    lua_insert(L, -2); /* place '.' between the two names */
                     lua_concat(L, 3);
                     return 1 as c_int;
                 }
             }
         }
-        lua_pop(L, 1);
+        lua_pop(L, 1); /* remove value */
     }
-    return 0;
+    return 0; /* not found */
 }
 
 /*
@@ -193,19 +197,20 @@ unsafe extern "C" fn findfield(L: *mut lua_State, objidx: c_int, level: c_int) -
 
 unsafe extern "C" fn pushglobalfuncname(L: *mut lua_State, ar: *mut lua_Debug) -> c_int {
     let top = lua_gettop(L);
-    lua_getinfo(L, cstr!("f"), ar);
+    lua_getinfo(L, cstr!("f"), ar); /* push function */
     lua_getfield(L, LUA_REGISTRYINDEX, LUA_LOADED_TABLE);
     if findfield(L, top + 1, 2) != 0 {
         let name = lua_tostring(L, -1);
-        if strncmp(name, cstr!("_G."), 3) == 0 as c_int {
-            lua_pushstring(L, name.offset(3 as c_int as isize));
-            lua_remove(L, -2);
+        if strncmp(name, cstr!("_G."), 3) == 0 {
+            /* name start with '_G.'? */
+            lua_pushstring(L, name.offset(3)); /* push name without prefix */
+            lua_remove(L, -2); /* remove original name */
         }
-        lua_copy(L, -1, top + 1);
-        lua_pop(L, 2);
+        lua_copy(L, -1, top + 1); /* move name to proper place */
+        lua_pop(L, 2); /* remove pushed values */
         return 1;
     } else {
-        lua_settop(L, top);
+        lua_settop(L, top); /* remove function and global table */
         return 0;
     };
 }
@@ -260,10 +265,12 @@ unsafe extern "C" fn lastlevel(L: *mut lua_State) -> c_int {
     };
     let mut li = 1 as c_int;
     let mut le = 1 as c_int;
+    /* find an upper bound */
     while lua_getstack(L, le, &mut ar) != 0 {
         li = le;
         le *= 2 as c_int;
     }
+    /* do a binary search */
     while li < le {
         let m = (li + le) / 2 as c_int;
         if lua_getstack(L, m, &mut ar) != 0 {
@@ -303,24 +310,23 @@ pub unsafe extern "C" fn luaL_traceback(
     let mut n1 = if last - level > LEVELS1 + LEVELS2 {
         LEVELS1
     } else {
-        -(1 as c_int)
+        -1
     };
     if !msg.is_null() {
         lua_pushfstring(L, cstr!("%s\n"), msg);
     }
-    luaL_checkstack(L, 10 as c_int, ptr::null_mut() as *const c_char);
+    luaL_checkstack(L, 10, ptr::null_mut() as *const c_char);
     lua_pushliteral(L, "stack traceback:");
     loop {
-        let fresh314 = level;
-        level = level + 1;
-        if !(lua_getstack(L1, fresh314, &mut ar) != 0) {
+        if !(lua_getstack(L1, level, &mut ar) != 0) {
             break;
         }
-        let fresh315 = n1;
+        level = level + 1;
         n1 = n1 - 1;
-        if fresh315 == 0 as c_int {
-            lua_pushliteral(L, "\n\t...");
-            level = last - LEVELS2 + 1 as c_int;
+        if n1 == -1 {
+            /* too many levels? */
+            lua_pushliteral(L, "\n\t..."); /* add a '...' */
+            level = last - LEVELS2 + 1; /* and skip to last ones */
         } else {
             lua_getinfo(L1, cstr!("Slnt"), &mut ar);
             lua_pushfstring(L, cstr!("\n\t%s:"), (ar.short_src).as_mut_ptr());
@@ -337,6 +343,8 @@ pub unsafe extern "C" fn luaL_traceback(
     }
     lua_concat(L, lua_gettop(L) - top);
 }
+
+/* }====================================================== */
 
 /*
 ** {======================================================
@@ -366,13 +374,15 @@ pub unsafe extern "C" fn luaL_argerror(
         short_src: [0; 60],
         i_ci: 0 as *mut CallInfo,
     };
-    if lua_getstack(L, 0 as c_int, &mut ar) == 0 {
+    if lua_getstack(L, 0, &mut ar) == 0 {
+        /* no stack frame? */
         luaL_error(L, cstr!("bad argument #%d (%s)"), arg, extramsg);
     }
     lua_getinfo(L, cstr!("n"), &mut ar);
-    if strcmp(ar.namewhat, cstr!("method")) == 0 as c_int {
-        arg -= 1;
-        if arg == 0 as c_int {
+    if strcmp(ar.namewhat, cstr!("method")) == 0 {
+        arg -= 1; /* do not count 'self' */
+        if arg == 0 {
+            /* error is in the self argument itself? */
             luaL_error(L, cstr!("calling '%s' on bad self (%s)"), ar.name, extramsg);
         }
     }
@@ -398,13 +408,13 @@ unsafe fn luaL_typename(L: *mut lua_State, i: c_int) -> *const i8 {
 
 unsafe extern "C" fn typeerror(L: *mut lua_State, arg: c_int, tname: *const c_char) -> c_int {
     let msg;
-    let typearg;
+    let typearg; /* name for the type of the actual argument */
     if luaL_getmetafield(L, arg, cstr!("__name")) == LUA_TSTRING {
-        typearg = lua_tostring(L, -1);
+        typearg = lua_tostring(L, -1); /* use the given type name */
     } else if lua_type(L, arg) == LUA_TLIGHTUSERDATA {
-        typearg = cstr!("light userdata");
+        typearg = cstr!("light userdata"); /* special name for messages */
     } else {
-        typearg = luaL_typename(L, arg);
+        typearg = luaL_typename(L, arg); /* standard name */
     }
     msg = lua_pushfstring(L, cstr!("%s expected, got %s"), tname, typearg);
     return luaL_argerror(L, arg, msg);
@@ -437,8 +447,10 @@ pub unsafe extern "C" fn luaL_where(L: *mut lua_State, level: c_int) {
         i_ci: 0 as *mut CallInfo,
     };
     if lua_getstack(L, level, &mut ar) != 0 {
-        lua_getinfo(L, cstr!("Sl"), &mut ar);
-        if ar.currentline > 0 as c_int {
+        /* check function at level */
+        lua_getinfo(L, cstr!("Sl"), &mut ar); /* get info about it */
+        if ar.currentline > 0 {
+            /* is there info? */
             lua_pushfstring(
                 L,
                 cstr!("%s:%d: "),
@@ -448,7 +460,7 @@ pub unsafe extern "C" fn luaL_where(L: *mut lua_State, level: c_int) {
             return;
         }
     }
-    lua_pushfstring(L, cstr!(""));
+    lua_pushfstring(L, cstr!("")); /* else, no information available... */
 }
 
 /*
@@ -472,7 +484,7 @@ pub unsafe extern "C" fn luaL_fileresult(
     stat: c_int,
     fname: *const c_char,
 ) -> c_int {
-    let en: c_int = *errno_location();
+    let en: c_int = *errno_location(); /* calls to Lua API may change this value */
     if stat != 0 {
         lua_pushboolean(L, 1 as c_int);
         return 1 as c_int;
@@ -490,18 +502,20 @@ pub unsafe extern "C" fn luaL_fileresult(
 
 #[no_mangle]
 pub unsafe extern "C" fn luaL_execresult(L: *mut lua_State, stat: c_int) -> c_int {
-    let what = cstr!("exit");
-    if stat == -(1 as c_int) {
+    let what = cstr!("exit"); /* type of termination */
+    if stat == -1 {
+        /* error? */
         return luaL_fileresult(L, 0 as c_int, ptr::null_mut() as *const c_char);
     } else {
-        if *what as c_int == 'e' as i32 && stat == 0 as c_int {
-            lua_pushboolean(L, 1 as c_int);
+        if *what as c_int == 'e' as i32 && stat == 0 {
+            /* successful termination? */
+            lua_pushboolean(L, 1);
         } else {
             lua_pushnil(L);
         }
         lua_pushstring(L, what);
         lua_pushinteger(L, stat as lua_Integer);
-        return 3 as c_int;
+        return 3; /* return true/nil,what,code */
     };
 }
 
@@ -518,15 +532,16 @@ unsafe fn luaL_getmetatable(L: *mut lua_State, n: *const c_char) -> c_int {
 #[no_mangle]
 pub unsafe extern "C" fn luaL_newmetatable(L: *mut lua_State, tname: *const c_char) -> c_int {
     if luaL_getmetatable(L, tname) != LUA_TNIL {
-        return 0;
+        /* name already in use? */
+        return 0; /* leave previous value on top, but return 0 */
     }
     lua_pop(L, 1);
-    lua_createtable(L, 0 as c_int, 2 as c_int);
+    lua_createtable(L, 0 as c_int, 2); /* create metatable */
     lua_pushstring(L, tname);
-    lua_setfield(L, -(2 as c_int), cstr!("__name"));
-    lua_pushvalue(L, -(1 as c_int));
-    lua_setfield(L, LUA_REGISTRYINDEX, tname);
-    return 1 as c_int;
+    lua_setfield(L, -2, cstr!("__name")); /* metatable.__name = tname */
+    lua_pushvalue(L, -1);
+    lua_setfield(L, LUA_REGISTRYINDEX, tname); /* registry.name = metatable */
+    return 1;
 }
 
 #[no_mangle]
@@ -543,16 +558,19 @@ pub unsafe extern "C" fn luaL_testudata(
 ) -> *mut c_void {
     let mut p = lua_touserdata(L, ud);
     if !p.is_null() {
+        /* value is a userdata? */
         if lua_getmetatable(L, ud) != 0 {
-            luaL_getmetatable(L, tname);
+            /* does it have a metatable? */
+            luaL_getmetatable(L, tname); /* get correct metatable */
             if lua_rawequal(L, -1, -2) == 0 {
-                p = ptr::null_mut() as *mut c_void;
+                /* not the same? */
+                p = ptr::null_mut(); /* value is a userdata with wrong metatable */
             }
-            lua_pop(L, 2);
+            lua_pop(L, 2); /* remove both metatables */
             return p;
         }
     }
-    return ptr::null_mut() as *mut c_void;
+    return ptr::null_mut(); /* value is not a userdata with a metatable */
 }
 
 #[no_mangle]
@@ -567,6 +585,8 @@ pub unsafe extern "C" fn luaL_checkudata(
     }
     return p;
 }
+
+/* }====================================================== */
 
 /*
 ** {======================================================
@@ -758,7 +778,8 @@ unsafe extern "C" fn resizebox(L: *mut lua_State, idx: c_int, newsize: size_t) -
     let temp =
         allocf.expect("non-null function pointer")(ud, (*box_0).box_0, (*box_0).bsize, newsize);
     if temp.is_null() && newsize > 0 {
-        resizebox(L, idx, 0 as c_int as size_t);
+        /* allocation error? */
+        resizebox(L, idx, 0); /* free buffer */
         luaL_error(L, cstr!("not enough memory for buffer allocation"));
     }
     (*box_0).box_0 = temp;
@@ -776,11 +797,12 @@ unsafe extern "C" fn newbox(L: *mut lua_State, newsize: size_t) -> *mut c_void {
     (*box_0).box_0 = ptr::null_mut() as *mut c_void;
     (*box_0).bsize = 0 as c_int as size_t;
     if luaL_newmetatable(L, cstr!("LUABOX")) != 0 {
+        /* creating metatable? */
         lua_pushcfunction(L, Some(boxgc));
-        lua_setfield(L, -(2 as c_int), cstr!("__gc"));
+        lua_setfield(L, -(2 as c_int), cstr!("__gc")); /* metatable.__gc = boxgc */
     }
     lua_setmetatable(L, -(2 as c_int));
-    return resizebox(L, -(1 as c_int), newsize);
+    return resizebox(L, -1, newsize);
 }
 
 /*
@@ -800,19 +822,24 @@ unsafe fn buffonstack(B: *mut luaL_Buffer) -> bool {
 pub unsafe extern "C" fn luaL_prepbuffsize(mut B: *mut luaL_Buffer, sz: size_t) -> *mut c_char {
     let L = (*B).L;
     if ((*B).size).wrapping_sub((*B).n) < sz {
+        /* not enough space? */
         let newbuff;
-        let mut newsize = ((*B).size).wrapping_mul(2 as size_t);
+        let mut newsize = ((*B).size).wrapping_mul(2); /* double buffer size */
         if newsize.wrapping_sub((*B).n) < sz {
+            /* not big enough? */
             newsize = ((*B).n).wrapping_add(sz);
         }
         if newsize < (*B).n || newsize.wrapping_sub((*B).n) < sz {
             luaL_error(L, cstr!("buffer too large"));
         }
+        /* create larger buffer */
         if buffonstack(B) {
-            newbuff = resizebox(L, -(1 as c_int), newsize) as *mut c_char;
+            newbuff = resizebox(L, -1, newsize) as *mut c_char;
         } else {
+            /* no buffer yet */
             newbuff = newbox(L, newsize) as *mut c_char;
             memcpy(
+                /* copy original content */
                 newbuff as *mut c_void,
                 (*B).b as *const c_void,
                 ((*B).n).wrapping_mul(::core::mem::size_of::<c_char>() as size_t),
@@ -832,6 +859,7 @@ pub unsafe fn luaL_addsize(mut B: *mut luaL_Buffer, s: size_t) -> size_t {
 #[no_mangle]
 pub unsafe extern "C" fn luaL_addlstring(B: *mut luaL_Buffer, s: *const c_char, l: size_t) {
     if l > 0 {
+        /* avoid 'memcpy' when 's' can be NULL */
         let b = luaL_prepbuffsize(B, l);
         memcpy(
             b as *mut c_void,
@@ -852,8 +880,8 @@ pub unsafe extern "C" fn luaL_pushresult(B: *mut luaL_Buffer) {
     let L = (*B).L;
     lua_pushlstring(L, (*B).b, (*B).n);
     if buffonstack(B) {
-        resizebox(L, -2, 0);
-        lua_remove(L, -2);
+        resizebox(L, -2, 0); /* delete old buffer */
+        lua_remove(L, -2); /* remove its header from the stack */
     }
 }
 
@@ -867,12 +895,13 @@ pub unsafe extern "C" fn luaL_pushresultsize(B: *mut luaL_Buffer, sz: size_t) {
 pub unsafe extern "C" fn luaL_addvalue(B: *mut luaL_Buffer) {
     let L = (*B).L;
     let mut l: size_t = 0;
-    let s = lua_tolstring(L, -(1 as c_int), &mut l);
+    let s = lua_tolstring(L, -1, &mut l);
     if buffonstack(B) {
         lua_insert(L, -2); /* put value below buffer */
     }
     luaL_addlstring(B, s, l);
     if buffonstack(B) {
+        /* remove value */
         lua_remove(L, -2)
     } else {
         lua_remove(L, -1)
@@ -897,6 +926,8 @@ pub unsafe extern "C" fn luaL_buffinitsize(
     return luaL_prepbuffsize(B, sz);
 }
 
+/* }====================================================== */
+
 /*
 ** {======================================================
 ** Reference system
@@ -910,18 +941,20 @@ pub const freelist: c_int = 0;
 pub unsafe extern "C" fn luaL_ref(L: *mut lua_State, mut t: c_int) -> c_int {
     let mut ref_0;
     if lua_isnil(L, -1) != 0 {
-        lua_pop(L, 1);
-        return LUA_REFNIL;
+        lua_pop(L, 1); /* remove from stack */
+        return LUA_REFNIL; /* 'nil' has a unique fixed reference */
     }
     t = lua_absindex(L, t);
-    lua_rawgeti(L, t, freelist as lua_Integer);
-    ref_0 = lua_tointeger(L, -1) as c_int;
-    lua_pop(L, 1);
-    if ref_0 != 0 as c_int {
-        lua_rawgeti(L, t, ref_0 as lua_Integer);
-        lua_rawseti(L, t, freelist as lua_Integer);
+    lua_rawgeti(L, t, freelist as lua_Integer); /* get first free element */
+    ref_0 = lua_tointeger(L, -1) as c_int; /* ref = t[freelist] */
+    lua_pop(L, 1); /* remove it from stack */
+    if ref_0 != 0 {
+        /* any free element? */
+        lua_rawgeti(L, t, ref_0 as lua_Integer); /* remove it from list */
+        lua_rawseti(L, t, freelist as lua_Integer); /* (t[freelist] = t[ref]) */
     } else {
-        ref_0 = lua_rawlen(L, t) as c_int + 1;
+        /* no free elements */
+        ref_0 = lua_rawlen(L, t) as c_int + 1; /* get a new reference */
     }
     lua_rawseti(L, t, ref_0 as lua_Integer);
     return ref_0;
@@ -932,11 +965,13 @@ pub unsafe extern "C" fn luaL_unref(L: *mut lua_State, mut t: c_int, ref_0: c_in
     if ref_0 >= 0 {
         t = lua_absindex(L, t);
         lua_rawgeti(L, t, freelist as lua_Integer);
-        lua_rawseti(L, t, ref_0 as lua_Integer);
+        lua_rawseti(L, t, ref_0 as lua_Integer); /* t[ref] = t[freelist] */
         lua_pushinteger(L, ref_0 as lua_Integer);
-        lua_rawseti(L, t, freelist as lua_Integer);
+        lua_rawseti(L, t, freelist as lua_Integer); /* t[freelist] = ref */
     }
 }
+
+/* }====================================================== */
 
 /*
 ** {======================================================
@@ -985,12 +1020,12 @@ unsafe extern "C" fn errfile(L: *mut lua_State, what: *const c_char, fnameindex:
     let serr: *const c_char = strerror(errno);
     let filename = lua_tostring(L, fnameindex).offset(1 as c_int as isize);
     lua_pushfstring(L, cstr!("cannot %s %s: %s"), what, filename, serr);
-    lua_settop(L, -(1 as c_int) - 1);
+    lua_settop(L, -1 - 1);
     return LUA_ERRFILE;
 }
 
 unsafe extern "C" fn skipBOM(mut lf: *mut LoadF) -> c_int {
-    let mut p: *const c_char = b"\xEF\xBB\xBF\0" as *const u8 as *const c_char;
+    let mut p: *const c_char = b"\xEF\xBB\xBF\0" as *const u8 as *const c_char; /* UTF-8 BOM mark */
     let mut c: c_int;
     (*lf).n = 0 as c_int;
     loop {
@@ -1003,14 +1038,14 @@ unsafe extern "C" fn skipBOM(mut lf: *mut LoadF) -> c_int {
             return c;
         }
         let fresh320 = (*lf).n;
-        (*lf).n = (*lf).n + 1;
+        (*lf).n = (*lf).n + 1; /* to be read by the parser */
         (*lf).buff[fresh320 as usize] = c as c_char;
         if !(*p as c_int != '\0' as i32) {
             break;
         }
     }
-    (*lf).n = 0 as c_int;
-    return getc((*lf).f);
+    (*lf).n = 0; /* prefix matched; discard it */
+    return getc((*lf).f); /* return next character */
 }
 
 /*
@@ -1024,16 +1059,18 @@ unsafe extern "C" fn skipcomment(lf: *mut LoadF, cp: *mut c_int) -> c_int {
     *cp = skipBOM(lf);
     let mut c = *cp;
     if c == '#' as i32 {
+        /* first line is a comment (Unix exec. file)? */
         loop {
+            /* skip first line */
             c = getc((*lf).f);
             if !(c != EOF && c != '\n' as i32) {
                 break;
             }
         }
-        *cp = getc((*lf).f);
-        return 1 as c_int;
+        *cp = getc((*lf).f); /* skip end-of-line, if present */
+        return 1; /* there was a comment */
     } else {
-        return 0;
+        return 0; /* no comment */
     };
 }
 
@@ -1051,7 +1088,7 @@ pub unsafe extern "C" fn luaL_loadfilex(
     let status: c_int;
     let readstatus: c_int;
     let mut c: c_int = 0;
-    let fnameindex = lua_gettop(L) + 1 as c_int;
+    let fnameindex = lua_gettop(L) + 1; /* index of filename on the stack */
     if filename.is_null() {
         lua_pushliteral(L, "=stdin");
         lf.f = fdopen(STDIN_FILENO, cstr!("r"))
@@ -1063,20 +1100,22 @@ pub unsafe extern "C" fn luaL_loadfilex(
         }
     }
     if skipcomment(&mut lf, &mut c) != 0 {
+        /* read initial portion */
         lf.buff[lf.n as usize] = '\n' as i8;
-        lf.n = lf.n + 1;
+        lf.n = lf.n + 1; /* add line to correct line numbers */
     }
     if c == (*::core::mem::transmute::<&[u8; 5], &[c_char; 5]>(b"\x1BLua\0"))[0 as usize] as c_int
         && !filename.is_null()
     {
-        lf.f = freopen(filename, cstr!("rb"), lf.f);
+        /* binary file? */
+        lf.f = freopen(filename, cstr!("rb"), lf.f); /* reopen in binary mode */
         if (lf.f).is_null() {
             return errfile(L, cstr!("reopen"), fnameindex);
         }
-        skipcomment(&mut lf, &mut c);
+        skipcomment(&mut lf, &mut c); /* re-read initial portion */
     }
     if c != EOF {
-        lf.buff[lf.n as usize] = c as c_char;
+        lf.buff[lf.n as usize] = c as c_char; /* 'c' is the first character of the stream */
         lf.n = lf.n + 1;
     }
     status = lua_load(
@@ -1088,10 +1127,10 @@ pub unsafe extern "C" fn luaL_loadfilex(
     );
     readstatus = ferror(lf.f);
     if !filename.is_null() {
-        fclose(lf.f);
+        fclose(lf.f); /* close file (even in case of errors) */
     }
     if readstatus != 0 {
-        lua_settop(L, fnameindex);
+        lua_settop(L, fnameindex); /* ignore results from 'lua_load' */
         return errfile(L, cstr!("read"), fnameindex);
     }
     lua_remove(L, fnameindex);
@@ -1162,17 +1201,19 @@ pub unsafe extern "C" fn luaL_getmetafield(
     event: *const c_char,
 ) -> c_int {
     if lua_getmetatable(L, obj) == 0 {
+        /* no metatable? */
         return LUA_TNIL;
     } else {
         let tt: c_int;
         lua_pushstring(L, event);
-        tt = lua_rawget(L, -(2 as c_int));
+        tt = lua_rawget(L, -2);
         if tt == LUA_TNIL {
-            lua_pop(L, 2);
+            /* is metafield nil? */
+            lua_pop(L, 2); /* remove metatable and metafield */
         } else {
-            lua_remove(L, -2);
+            lua_remove(L, -2); /* remove only metatable */
         }
-        return tt;
+        return tt; /* return metafield type */
     };
 }
 
@@ -1184,6 +1225,7 @@ pub unsafe extern "C" fn luaL_callmeta(
 ) -> c_int {
     obj = lua_absindex(L, obj);
     if luaL_getmetafield(L, obj, event) == LUA_TNIL {
+        /* no metafield? */
         return 0;
     }
     lua_pushvalue(L, obj);
@@ -1196,11 +1238,11 @@ pub unsafe extern "C" fn luaL_len(L: *mut lua_State, idx: c_int) -> lua_Integer 
     let l: lua_Integer;
     let mut isnum: c_int = 0;
     lua_len(L, idx);
-    l = lua_tointegerx(L, -(1 as c_int), &mut isnum);
+    l = lua_tointegerx(L, -1, &mut isnum);
     if isnum == 0 {
         luaL_error(L, cstr!("object length is not an integer"));
     }
-    lua_pop(L, 1);
+    lua_pop(L, 1); /* remove object */
     return l;
 }
 
@@ -1211,6 +1253,7 @@ pub unsafe extern "C" fn luaL_tolstring(
     len: *mut size_t,
 ) -> *const c_char {
     if luaL_callmeta(L, idx, cstr!("__tostring")) != 0 {
+        /* metafield? */
         if lua_isstring(L, -1) == 0 {
             luaL_error(L, cstr!("'__tostring' must return a string"));
         }
@@ -1240,7 +1283,7 @@ pub unsafe extern "C" fn luaL_tolstring(
                 lua_pushliteral(L, "nil");
             }
             _ => {
-                let tt = luaL_getmetafield(L, idx, cstr!("__name"));
+                let tt = luaL_getmetafield(L, idx, cstr!("__name")); /* try name */
                 let kind = if tt == LUA_TSTRING {
                     lua_tostring(L, -1)
                 } else {
@@ -1268,16 +1311,18 @@ pub unsafe extern "C" fn luaL_tolstring(
 pub unsafe extern "C" fn luaL_setfuncs(L: *mut lua_State, mut l: *const luaL_Reg, nup: c_int) {
     luaL_checkstack(L, nup, cstr!("too many upvalues"));
     while !((*l).name).is_null() {
+        /* fill the table with given functions */
         let mut i: c_int = 0;
         while i < nup {
+            /* copy upvalues to the top */
             lua_pushvalue(L, -nup);
             i += 1;
         }
-        lua_pushcclosure(L, (*l).func, nup);
+        lua_pushcclosure(L, (*l).func, nup); /* closure with those upvalues */
         lua_setfield(L, -(nup + 2 as c_int), (*l).name);
         l = l.offset(1);
     }
-    lua_pop(L, nup);
+    lua_pop(L, nup); /* remove upvalues */
 }
 /*
 ** ensure that stack[idx][fname] has a table and push that table
@@ -1291,14 +1336,14 @@ pub unsafe extern "C" fn luaL_getsubtable(
     fname: *const c_char,
 ) -> c_int {
     if lua_getfield(L, idx, fname) == LUA_TTABLE {
-        return 1 as c_int;
+        return 1; /* table already there */
     } else {
-        lua_pop(L, 1);
+        lua_pop(L, 1); /* remove previous result */
         idx = lua_absindex(L, idx);
         lua_newtable(L);
-        lua_pushvalue(L, -(1 as c_int));
-        lua_setfield(L, idx, fname);
-        return 0;
+        lua_pushvalue(L, -1); /* copy to be left at top */
+        lua_setfield(L, idx, fname); /* assign new table to field */
+        return 0; /* false, because did not find table there */
     };
 }
 
@@ -1356,11 +1401,11 @@ pub unsafe extern "C" fn luaL_gsub(
         if wild.is_null() {
             break;
         }
-        luaL_addlstring(&mut b, s, wild.offset_from(s) as c_long as size_t);
-        luaL_addstring(&mut b, r);
-        s = wild.offset(l as isize);
+        luaL_addlstring(&mut b, s, wild.offset_from(s) as c_long as size_t); /* push prefix */
+        luaL_addstring(&mut b, r); /* push replacement in place of pattern */
+        s = wild.offset(l as isize); /* continue after 'p' */
     }
-    luaL_addstring(&mut b, s);
+    luaL_addstring(&mut b, s); /* push last suffix */
     luaL_pushresult(&mut b);
     return lua_tostring(L, -1);
 }
@@ -1375,11 +1420,13 @@ unsafe extern "C" fn l_alloc(
         free(ptr);
         return ptr::null_mut() as *mut c_void;
     } else {
+        /* cannot fail when shrinking a block */
         let newptr = realloc(ptr, nsize);
         if newptr.is_null() && !ptr.is_null() && nsize <= osize {
-            return ptr;
+            return ptr; /* keep the original block */
         } else {
-            return newptr;
+            /* no fail or not shrinking */
+            return newptr; /* use the new block */
         }
     };
 }
@@ -1389,10 +1436,10 @@ unsafe extern "C" fn panic(L: *mut lua_State) -> c_int {
     fprintf(
         stderr_fd,
         cstr!("PANIC: unprotected error in call to Lua API (%s)\n"),
-        lua_tolstring(L, -(1 as c_int), 0 as *mut size_t),
+        lua_tolstring(L, -1, 0 as *mut size_t),
     );
     fflush(stderr_fd);
-    return 0;
+    return 0; /* return to Lua to abort */
 }
 
 #[no_mangle]
@@ -1408,6 +1455,7 @@ pub unsafe extern "C" fn luaL_newstate() -> *mut lua_State {
 pub unsafe extern "C" fn luaL_checkversion_(L: *mut lua_State, ver: lua_Number, sz: size_t) {
     let v = lua_version(L);
     if sz != LUAL_NUMSIZES {
+        /* check numeric types */
         luaL_error(L, cstr!("core and library have incompatible numeric types"));
     }
     let n: *mut lua_State = ptr::null_mut();
